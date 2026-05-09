@@ -1,0 +1,115 @@
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
+from app.config import get_settings
+from app.database import connect_to_mongo, close_mongo_connection
+from app.routes import chat, history, upload, auth, execution
+from app.services.socket_manager import manager as socket_manager
+from fastapi import WebSocket, WebSocketDisconnect
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifecycle: startup and shutdown."""
+    # Startup
+    logger.info("🚀 Starting AI Code Assistant API...")
+    await connect_to_mongo()
+    logger.info("✅ API ready!")
+    yield
+    # Shutdown
+    logger.info("🛑 Shutting down...")
+    await close_mongo_connection()
+
+
+app = FastAPI(
+    title="Code Genie API",
+    description="Real-time AI coding assistant powered by Google Gemini",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS — allow Flutter app (web & mobile)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, restrict to your domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global error caught: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"An unexpected error occurred: {str(exc)}"},
+    )
+
+# Register routes
+app.include_router(chat.router)
+app.include_router(history.router)
+app.include_router(upload.router)
+app.include_router(auth.router)
+app.include_router(execution.router)
+
+# Mount artifacts for web access
+settings = get_settings()
+if os.path.exists(settings.ARTIFACTS_PATH):
+    app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
+    logger.info(f"📁 Artifacts mounted from: {settings.ARTIFACTS_PATH}")
+
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):
+    # Security: Verify JWT token before allowing connection
+    if not token:
+        logger.warning(f"❌ WebSocket connection rejected for {user_id}: Missing token")
+        await websocket.close(code=1008)  # Policy Violation
+        return
+        
+    try:
+        from jose import jwt
+        settings = get_settings()
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        token_user_id = payload.get("sub")
+        if token_user_id != user_id:
+            logger.warning(f"❌ WebSocket connection rejected for {user_id}: Token mismatch")
+            await websocket.close(code=1008)
+            return
+    except Exception as e:
+        logger.warning(f"❌ WebSocket connection rejected for {user_id}: Invalid token ({e})")
+        await websocket.close(code=1008)
+        return
+
+    await socket_manager.connect(websocket, user_id)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        socket_manager.disconnect(websocket, user_id)
+    except Exception as e:
+        logger.error(f"WebSocket Error for {user_id}: {e}")
+        socket_manager.disconnect(websocket, user_id)
+
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    from app.models.responses import HealthResponse
+    return HealthResponse()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
