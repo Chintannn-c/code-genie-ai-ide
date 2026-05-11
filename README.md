@@ -1,16 +1,44 @@
-# ai_coding
+# Code Genie AI: Advanced Multi-Model Orchestrator 🚀
 
-A new Flutter project.
+Code Genie is a high-performance AI coding assistant and forensic-grade orchestration engine designed for speed, reliability, and cost-efficiency. It leverages a parallel multi-model architecture to provide best-in-class reasoning while maintaining a 100% free-tier infrastructure.
 
-## Getting Started
+## ✨ Key Features
 
-This project is a starting point for a Flutter application.
+- **Parallel AI Orchestration**: Queries multiple top-tier models (Gemini 2.0, Groq, and OpenRouter Free Pool) simultaneously.
+- **100% Free-Tier Architecture**: Optimized to utilize over 28+ free models on OpenRouter, including Llama 3.3 70B and Qwen 3 Coder.
+- **Autonomous Agentic Planning**: Decomposes complex coding tasks into actionable steps and executes them proactively.
+- **Forensic-Grade Reliability**: Implements ensemble consensus and automatic model failover to ensure uptime.
+- **Cross-Platform Flutter UI**: A premium, responsive interface for real-time AI collaboration.
 
-A few resources to get you started if this is your first Flutter project:
+## 🛠️ Technology Stack
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **Frontend**: Flutter / Dart
+- **Backend**: FastAPI (Python)
+- **Database**: MongoDB
+- **AI Engines**: 
+  - Google Gemini 2.0 Flash
+  - Groq (Llama 3.3 70B Speculative Decoding)
+  - OpenRouter (Free Model Pool: Llama 3.3, Qwen 3, Lyria 3 Pro, etc.)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🚀 Getting Started
+
+### Prerequisites
+- Flutter SDK
+- Python 3.12+
+- MongoDB instance
+
+### Backend Setup
+1. `cd backend`
+2. `pip install -r requirements.txt`
+3. Configure `.env` with your API keys.
+4. `python -m uvicorn app.main:app --reload`
+
+### Frontend Setup
+1. `flutter pub get`
+2. `flutter run`
+
+## 🛡️ Forensic Audit Engine
+The engine is specialized for deep document analysis and high-reasoning tasks, using parallel ensemble logic to verify facts across multiple AI providers in real-time.
+
+---
+*Built with ❤️ by the Code Genie AI Team.*

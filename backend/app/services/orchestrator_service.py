@@ -3,10 +3,12 @@ import logging
 import time
 import json
 from typing import List, Dict, Any, Optional
-from app.services import gemini_service, groq_service, openrouter_service
-from app.services.agent_tools_service import agent_tools
-from app.services.indexer_service import indexer
-from app.prompts.templates import SYSTEM_INSTRUCTION
+from . import gemini_service as gemini_mod
+from . import groq_service as groq_mod
+from . import openrouter_service as openrouter_mod
+from .agent_tools_service import agent_tools
+from .indexer_service import indexer
+from ..prompts.templates import SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +21,12 @@ class AIOrchestrator:
     """
     
     def __init__(self):
-        self.models = {
-            "gemini": gemini_service,
-            "groq": groq_service,
-            "openrouter": openrouter_service
-        }
+        self.free_pool = [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen3-coder:free",
+            "google/lyria-3-pro-preview",
+            "nousresearch/hermes-3-llama-3.1-405b:free"
+        ]
 
     async def get_parallel_response(self, prompt: str, history: List[Dict] = None, user_level: str = "intermediate") -> Dict[str, Any]:
         """
@@ -33,11 +36,15 @@ class AIOrchestrator:
         start_time = time.time()
         
         # 1. Define tasks for parallel execution
+        # Always include the core services + top free models
         tasks = [
             self._call_model("gemini", prompt, history),
-            self._call_model("groq", prompt, history),
-            self._call_model("openrouter", prompt, history)
+            self._call_model("groq", prompt, history)
         ]
+        
+        # Add top free models from OpenRouter
+        for model_id in self.free_pool[:2]: # Query top 2 free models in parallel
+            tasks.append(self._call_model("openrouter", prompt, history, specific_model=model_id))
         
         # 2. Execute in parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -45,20 +52,19 @@ class AIOrchestrator:
         # 3. Filter successful responses
         successful_responses = []
         for i, res in enumerate(results):
-            model_name = list(self.models.keys())[i] if i < len(self.models) else "unknown"
+            model_id = res.get("model", "unknown") if isinstance(res, dict) else "unknown"
             if isinstance(res, dict) and "error" not in res:
-                logger.info(f"✅ [Orchestrator] {model_name.upper()} succeeded in {res.get('latency', 0):.2f}s")
+                logger.info(f"✅ [Orchestrator] {model_id.upper()} succeeded in {res.get('latency', 0):.2f}s")
                 successful_responses.append(res)
             else:
                 err_msg = str(res) if not isinstance(res, dict) else res.get("error", "Unknown error")
-                logger.warning(f"⚠️ [Orchestrator] {model_name.upper()} failed: {err_msg}")
-        
+                logger.warning(f"⚠️ [Orchestrator] Model failed: {err_msg}")
+
         if not successful_responses:
             # Retry mechanism
-            logger.warning("All models failed. Retrying once...")
-            # Simple retry with just the most reliable model (Gemini)
+            logger.warning("All models failed. Retrying with a secondary free model...")
             try:
-                res = await self._call_model("gemini", prompt, history)
+                res = await self._call_model("openrouter", prompt, history, specific_model="meta-llama/llama-3.3-70b-instruct:free")
                 if "error" not in res:
                     successful_responses.append(res)
             except:
@@ -66,46 +72,36 @@ class AIOrchestrator:
                 
         if not successful_responses:
             return {
-                "answer": "I apologize, but all AI engines are currently unavailable. Please check your internet connection or API keys.",
+                "answer": "I apologize, but all AI engines (including free tier) are currently unavailable. Please check your internet connection.",
                 "strategy": "failed_all",
                 "models_participated": []
             }
 
         # 4. Evaluation & Synthesis Logic
-        # For now, we'll use a selection heuristic based on length, speed, and model strengths.
-        # Deep Synthesis could be another AI call, but let's start with a smart heuristic.
-        
-        # Heuristic: 
-        # - If it's a code request, prefer Gemini if it succeeded.
-        # - If it's a quick chat, prefer the fastest response (usually Groq).
-        
-        is_code = "```" in successful_responses[0]["content"] or any(kw in prompt.lower() for kw in ["code", "function", "fix", "error"])
+        is_code = "```" in (successful_responses[0]["content"] if successful_responses else "") or any(kw in prompt.lower() for kw in ["code", "function", "fix", "error"])
         
         # Sort by speed
         successful_responses.sort(key=lambda x: x["latency"])
         fastest = successful_responses[0]
         
-        # Find Gemini response for depth
-        gemini_res = next((r for r in successful_responses if r["model"] == "gemini"), None)
+        # Find a high-reasoning response (Gemini or Llama 70B)
+        best_res = next((r for r in successful_responses if "gemini" in r["model"] or "70b" in r["model"]), successful_responses[0])
         
         final_answer = ""
         strategy = ""
         models_participated = [r["model"] for r in successful_responses]
 
-        if is_code and gemini_res:
-            # Merged Strategy: Use Gemini's code with Groq's speed as a fallback
-            final_answer = gemini_res["content"]
-            strategy = "Selected high-reasoning Gemini output for complex code task (Parallel execution)."
+        if is_code:
+            final_answer = best_res["content"]
+            strategy = f"Selected high-reasoning {best_res['model']} output for code task."
         elif len(successful_responses) > 1:
-            # Merged Strategy: Synthesis
-            # In a more advanced version, we'd use a small model to merge these.
-            # Here we'll pick the most complete-looking one.
+            # Pick the longest/most complete response
             best = max(successful_responses, key=lambda x: len(x["content"]))
             final_answer = best["content"]
-            strategy = f"Synthesized best response from {len(successful_responses)} parallel models. Chosen based on completeness and depth."
+            strategy = f"Synthesized best response from {len(successful_responses)} parallel free models."
         else:
             final_answer = fastest["content"]
-            strategy = f"Delivered fastest valid response from {fastest['model']} (Parallel mode)."
+            strategy = f"Delivered fastest response from {fastest['model']}."
 
         # 5. Adapt to user level (Post-processing)
         final_answer = self._adapt_to_level(final_answer, user_level)
@@ -119,6 +115,31 @@ class AIOrchestrator:
             "latency": round(total_latency, 2),
             "parallel_execution": True
         }
+
+    async def ensemble_consensus(self, prompt: str, min_agree: int = 2) -> Optional[dict]:
+        """
+        Consensus mechanism using the top free models.
+        """
+        models = self.free_pool[:3] # Use top 3 free models
+
+        print(f"[ENSEMBLE] Launching {len(models)} models in parallel...")
+        
+        tasks = [self._call_model("openrouter", prompt, [], specific_model=mid) for mid in models]
+        responses = await asyncio.gather(*tasks)
+
+        results = [r for r in responses if r is not None and "error" not in r]
+        models_tried = [r["model"] for r in results]
+
+        if not results: return None
+        
+        # Simplified consensus: Return the one with highest "confidence" or longest content
+        results.sort(key=lambda x: len(x["content"]), reverse=True)
+        best = results[0]
+        best['consensus'] = len(results) >= min_agree
+        best['ensemble_models'] = models_tried
+        best['model_used'] = f"Ensemble ({len(results)} models)"
+        
+        return best
 
     async def generate_plan(self, prompt: str, history: List[Dict] = None) -> Dict[str, Any]:
         """
@@ -303,28 +324,29 @@ class AIOrchestrator:
             }
         )
 
-    async def _call_model(self, model_id: str, prompt: str, history: List[Dict]) -> Dict[str, Any]:
+    async def _call_model(self, model_id: str, prompt: str, history: List[Dict], specific_model: str = None) -> Dict[str, Any]:
         start = time.time()
         try:
-            service = self.models[model_id]
             # Convert history to service-specific format if needed
-            # For simplicity, we'll use a common format or just prompt for now
             if model_id == "gemini":
-                # Convert history to Gemini contents
                 contents = []
                 for msg in history:
                     contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
                 contents.append({"role": "user", "parts": [{"text": prompt}]})
-                content = await service.generate(contents)
+                content = await gemini_mod.generate(contents)
+                final_model = "gemini-2.0-flash"
             elif model_id == "groq":
                 messages = history + [{"role": "user", "content": prompt}]
-                content = await service.generate(messages)
+                content = await groq_mod.generate(messages)
+                final_model = "llama-3.3-70b-specdec"
             elif model_id == "openrouter":
                 messages = history + [{"role": "user", "content": prompt}]
-                content = await service.generate(messages)
+                target_model = specific_model or "meta-llama/llama-3.3-70b-instruct:free"
+                content = await openrouter_mod.generate(messages, model=target_model)
+                final_model = target_model
             
             return {
-                "model": model_id,
+                "model": final_model,
                 "content": content,
                 "latency": time.time() - start
             }

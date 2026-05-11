@@ -9,7 +9,24 @@ logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-async def stream_generate(messages: list[dict], model: str = "mistralai/mistral-7b-instruct") -> AsyncGenerator[str, None]:
+# Comprehensive list of currently available FREE models on OpenRouter
+FREE_MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/lyria-3-pro-preview",
+    "qwen/qwen3-coder:free",
+    "z-ai/glm-4.5-air:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
+    "liquid/lfm-2.5-1.2b-thinking:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemma-4-31b-it:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "openai/gpt-oss-120b:free",
+    "openrouter/owl-alpha",
+    "liquid/lfm-2.5-1.2b-instruct:free",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+]
+
+async def stream_generate(messages: list[dict], model: str = "meta-llama/llama-3.3-70b-instruct:free") -> AsyncGenerator[str, None]:
     """
     Stream a response from OpenRouter API.
     """
@@ -64,7 +81,7 @@ async def stream_generate(messages: list[dict], model: str = "mistralai/mistral-
         logger.error(f"OpenRouter Connection Error: {e}")
         yield f"[Error: Could not connect to OpenRouter. {str(e)}]"
 
-async def generate(messages: list[dict], model: str = "mistralai/mistral-7b-instruct") -> str:
+async def generate(messages: list[dict], model: str = "meta-llama/llama-3.3-70b-instruct:free") -> str:
     """
     Generate a complete response from OpenRouter API.
     """
