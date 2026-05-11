@@ -23,6 +23,7 @@ class AIOrchestrator:
     def __init__(self):
         self.free_pool = [
             "meta-llama/llama-3.3-70b-instruct:free",
+            "openai/gpt-oss-120b:free",
             "qwen/qwen3-coder:free",
             "google/lyria-3-pro-preview",
             "nousresearch/hermes-3-llama-3.1-405b:free"
