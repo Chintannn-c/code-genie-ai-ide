@@ -1,24 +1,33 @@
-# Code Genie AI: Advanced Multi-Model Orchestrator 🚀
+# StatAudit Pro: Advanced Forensic AI Orchestrator 🚀
 
-Code Genie is a high-performance AI coding assistant and forensic-grade orchestration engine designed for speed, reliability, and cost-efficiency. It leverages a parallel multi-model architecture to provide best-in-class reasoning while maintaining a 100% free-tier infrastructure.
+StatAudit Pro (formerly Code Genie) is a high-performance forensic-grade orchestration engine designed for deep document auditing, financial analysis, and autonomous code engineering. It leverages a parallel multi-model architecture to provide best-in-class reasoning while maintaining a 100% free-tier infrastructure.
 
 ## ✨ Key Features
 
-- **Parallel AI Orchestration**: Queries multiple top-tier models (Gemini 2.0, Groq, and OpenRouter Free Pool) simultaneously.
-- **100% Free-Tier Architecture**: Optimized to utilize over 28+ free models on OpenRouter, including Llama 3.3 70B and Qwen 3 Coder.
-- **Autonomous Agentic Planning**: Decomposes complex coding tasks into actionable steps and executes them proactively.
-- **Forensic-Grade Reliability**: Implements ensemble consensus and automatic model failover to ensure uptime.
-- **Cross-Platform Flutter UI**: A premium, responsive interface for real-time AI collaboration.
+- **Parallel Multi-Model Orchestration**: Queries multiple top-tier models (Gemini 2.0, Groq, and OpenRouter) in parallel to reach a high-confidence consensus.
+- **May 2026 "Best Free" Stack**: Optimized for the latest free-tier models on OpenRouter, featuring high-parameter reasoning engines like **GPT-OSS 120B**, **Llama 3.3 70B**, and **Qwen 3 Coder**.
+- **Autonomous Agentic Planning**: Decomposes complex forensic goals into actionable engineering steps and executes them proactively with workspace awareness.
+- **Forensic-Grade Reliability**: Implements parallel ensemble consensus and automatic model failover to ensure 100% uptime for critical audit tasks.
+- **StatAudit Dashboard**: A premium Flutter interface for tracking Gini coefficients, risk concentrations, and anomaly spikes in real-time.
+
+## 🛡️ Forensic Audit Strategy
+
+The engine utilizes a **Smart Overlap** strategy for transaction sampling, prioritizing high-risk unique entities while maintaining strict global vendor uniqueness.
+
+### AI Engine Tiers:
+- **Tier 1 (Reasoning)**: Llama 3.3 70B & GPT-OSS 120B (OpenRouter Free)
+- **Tier 2 (Stability)**: Gemini 2.0 Flash (Direct)
+- **Tier 3 (Speed)**: Groq (Speculative Decoding)
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: Flutter / Dart
 - **Backend**: FastAPI (Python)
-- **Database**: MongoDB
-- **AI Engines**: 
-  - Google Gemini 2.0 Flash
-  - Groq (Llama 3.3 70B Speculative Decoding)
-  - OpenRouter (Free Model Pool: Llama 3.3, Qwen 3, Lyria 3 Pro, etc.)
+- **Database**: MongoDB & Persistent File Cache
+- **AI Ecosystem**: 
+  - Google Gemini 3.1 Pro & Flash
+  - Groq (Llama 3.3 70B)
+  - OpenRouter (100% Free Model Pool)
 
 ## 🚀 Getting Started
 
@@ -37,8 +46,5 @@ Code Genie is a high-performance AI coding assistant and forensic-grade orchestr
 1. `flutter pub get`
 2. `flutter run`
 
-## 🛡️ Forensic Audit Engine
-The engine is specialized for deep document analysis and high-reasoning tasks, using parallel ensemble logic to verify facts across multiple AI providers in real-time.
-
 ---
-*Built with ❤️ by the Code Genie AI Team.*
+*Built for forensic excellence by the StatAudit AI Team.*
