@@ -8,7 +8,7 @@ class OrchestrationIndicator extends StatefulWidget {
   const OrchestrationIndicator({
     super.key,
     required this.isActive,
-    this.models = const ['Groq', 'Gemini'],
+    this.models = const ['Llama', 'Gemini'],
   });
 
   @override
@@ -89,9 +89,7 @@ class _OrchestrationIndicatorState extends State<OrchestrationIndicator>
                 margin: const EdgeInsets.only(right: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: m == 'Groq'
-                      ? Colors.orange.withValues(alpha: 0.15)
-                      : Colors.blue.withValues(alpha: 0.15),
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -99,7 +97,7 @@ class _OrchestrationIndicatorState extends State<OrchestrationIndicator>
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
-                    color: m == 'Groq' ? Colors.orange : Colors.blue,
+                    color: const Color(0xFF6366F1),
                   ),
                 ),
               ),

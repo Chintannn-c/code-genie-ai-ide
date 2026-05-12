@@ -39,6 +39,6 @@ class StreamRequest(BaseModel):
     error: str = Field(default="", max_length=5000, description="Error message (for debug)")
     language: str = Field("python")
     difficulty: Literal["beginner", "intermediate", "advanced"] = Field("beginner")
-    type: Literal["generate", "debug", "explain"] = Field("generate")
+    type: Literal["generate", "debug", "explain", "file_analysis", "file_debug"] = Field("generate")
     provider: Literal["gemini", "openrouter", "huggingface"] = Field("gemini")
     model_name: str | None = Field(None, description="Specific model to use (for OpenRouter/HuggingFace)")

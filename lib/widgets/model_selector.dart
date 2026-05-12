@@ -37,26 +37,20 @@ class ModelSelector extends StatelessWidget {
           icon: Icons.hub_rounded,
           isSelected: cp.selectedProvider == 'openrouter',
         ),
-        _buildItem(
-          value: 'groq',
-          label: 'Groq (Llama 3)',
-          icon: Icons.bolt_rounded,
-          isSelected: cp.selectedProvider == 'groq',
-        ),
         if (cp.selectedProvider == 'openrouter') ...[
           const PopupMenuDivider(),
-          _buildSectionHeader('OPENROUTER MODELS'),
+          _buildSectionHeader('FREE MODELS'),
           _buildItem(
-            value: 'model:mistralai/mistral-7b-instruct',
-            label: 'Mistral 7B',
-            icon: Icons.bolt_rounded,
-            isSelected: cp.selectedModel == 'mistralai/mistral-7b-instruct',
+            value: 'model:meta-llama/llama-3.3-70b-instruct:free',
+            label: 'Llama 3.3 (70B)',
+            icon: Icons.psychology_rounded,
+            isSelected: cp.selectedModel == 'meta-llama/llama-3.3-70b-instruct:free',
           ),
           _buildItem(
-            value: 'model:meta-llama/llama-3-8b-instruct',
-            label: 'Llama 3 (8B)',
-            icon: Icons.psychology_rounded,
-            isSelected: cp.selectedModel == 'meta-llama/llama-3-8b-instruct',
+            value: 'model:google/gemini-2.0-flash-exp:free',
+            label: 'Gemini 2.0 Flash',
+            icon: Icons.bolt_rounded,
+            isSelected: cp.selectedModel == 'google/gemini-2.0-flash-exp:free',
           ),
         ],
       ],
@@ -153,8 +147,6 @@ class ModelSelector extends StatelessWidget {
     switch (provider) {
       case 'openrouter':
         return Icons.hub_rounded;
-      case 'groq':
-        return Icons.bolt_rounded;
       default:
         return Icons.auto_awesome_rounded;
     }
@@ -164,8 +156,6 @@ class ModelSelector extends StatelessWidget {
     switch (provider) {
       case 'openrouter':
         return 'OPENROUTER';
-      case 'groq':
-        return 'GROQ';
       default:
         return 'GEMINI';
     }

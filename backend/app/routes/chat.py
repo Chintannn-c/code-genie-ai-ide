@@ -285,7 +285,7 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
             full_response = []
             try:
                 if request.provider == "openrouter":
-                    model = request.model_name or "mistralai/mistral-7b-instruct"
+                    model = request.model_name or "meta-llama/llama-3.3-70b-instruct:free"
                     messages = history + [{"role": "user", "content": prompt_text}]
                     stream = openrouter_service.stream_generate(messages, model=model)
                 elif request.provider == "huggingface" or request.provider == "groq":
