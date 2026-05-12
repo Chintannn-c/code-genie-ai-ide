@@ -1,15 +1,15 @@
 /// API configuration for connecting to the FastAPI backend.
 class ApiConfig {
-  // Toggle this to true when using tunnel (Ngrok/Localtunnel)
-  static const bool useNgrok = true;
-  static const String ngrokUrl = 'https://unrecorded-unpretended-loretta.ngrok-free.dev';
+  // Toggle this to true ONLY for local dev debugging
+  static const bool useNgrok = false;
+  static const String railwayUrl = 'https://code-genie-ai-ide-production.up.railway.app';
   static const String localUrl = 'http://192.168.1.7:8000';
 
   // Allow overriding the base URL via --dart-define=BASE_URL=https://your-api.com
   static String get baseUrl {
     const envUrl = String.fromEnvironment('BASE_URL');
     if (envUrl.isNotEmpty) return envUrl;
-    return useNgrok ? ngrokUrl : localUrl;
+    return useNgrok ? localUrl : railwayUrl;
   }
 
   static String get wsBaseUrl {
