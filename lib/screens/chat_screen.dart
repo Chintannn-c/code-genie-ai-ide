@@ -508,7 +508,7 @@ class _ChatScreenState extends State<ChatScreen>
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: SafeArea(
               bottom: false,
               child: SizedBox(
@@ -552,28 +552,26 @@ class _ChatScreenState extends State<ChatScreen>
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: SafeArea(
-              bottom: false,
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: cp.newChat,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('New Chat'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: cp.newChat,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('New Chat'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  elevation: 0,
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 8), // Added breathing room before list
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => cp.loadChats(),
