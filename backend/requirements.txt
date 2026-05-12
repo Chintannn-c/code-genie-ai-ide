@@ -20,3 +20,4 @@ httpx
 email-validator
 Pillow
 cryptography
+certifi
