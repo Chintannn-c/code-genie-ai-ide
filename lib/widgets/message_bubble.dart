@@ -222,7 +222,13 @@ class MessageBubble extends StatelessWidget {
           color: const Color(0xFF6366F1).withValues(alpha: 0.3),
         ),
       ),
-      child: const Icon(Icons.smart_toy_rounded, size: 20, color: Color(0xFF6366F1)),
+      child: Image.asset(
+        'assets/icon/app_icon.png',
+        width: 16,
+        height: 16,
+        fit: BoxFit.contain,
+      ),
+
     );
   }
 

@@ -683,7 +683,12 @@ class _ChatScreenState extends State<ChatScreen>
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 24),
+                  child: Image.asset(
+                    'assets/icon/app_icon.png',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.contain,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Column(
@@ -893,7 +898,7 @@ class _ChatScreenState extends State<ChatScreen>
                     ],
                   ),
                   Text(
-                    'pro@codegenie.ai',
+                    ap.user?.email ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
@@ -1274,7 +1279,13 @@ class TypingIndicator extends StatelessWidget {
                 color: const Color(0xFF6366F1).withValues(alpha: 0.3),
               ),
             ),
-            child: const Icon(Icons.smart_toy_rounded, size: 20, color: Color(0xFF6366F1)),
+            child: Image.asset(
+              'assets/icon/app_icon.png',
+              width: 18,
+              height: 18,
+              fit: BoxFit.contain,
+            ),
+
           ),
           const SizedBox(width: 12),
           Container(
