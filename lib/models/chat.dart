@@ -5,6 +5,7 @@ class Chat {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int messageCount;
+  final String? lastMessageSnippet;
 
   Chat({
     required this.chatId,
@@ -12,6 +13,7 @@ class Chat {
     required this.createdAt,
     required this.updatedAt,
     required this.messageCount,
+    this.lastMessageSnippet,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class Chat {
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       messageCount: json['message_count'] ?? 0,
+      lastMessageSnippet: json['last_message_snippet'],
     );
   }
 }

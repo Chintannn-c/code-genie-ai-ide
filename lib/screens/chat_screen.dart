@@ -146,6 +146,75 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
+  Map<String, List<dynamic>> _groupChats(List<dynamic> chats) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final last7Days = today.subtract(const Duration(days: 7));
+
+    Map<String, List<dynamic>> groups = {
+      'Today': [],
+      'Yesterday': [],
+      'Previous 7 Days': [],
+      'Older': [],
+    };
+
+    for (var chat in chats) {
+      final chatDate = DateTime(chat.updatedAt.year, chat.updatedAt.month, chat.updatedAt.day);
+      if (chatDate == today) {
+        groups['Today']!.add(chat);
+      } else if (chatDate == yesterday) {
+        groups['Yesterday']!.add(chat);
+      } else if (chatDate.isAfter(last7Days)) {
+        groups['Previous 7 Days']!.add(chat);
+      } else {
+        groups['Older']!.add(chat);
+      }
+    }
+
+    groups.removeWhere((key, value) => value.isEmpty);
+    return groups;
+  }
+
+  Widget _buildGroupedChatList(ChatProvider cp, bool isDark) {
+    final groups = _groupChats(cp.filteredChats);
+    
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: groups.keys.length,
+      padding: const EdgeInsets.only(bottom: 12),
+      itemBuilder: (context, gIndex) {
+        final groupTitle = groups.keys.elementAt(gIndex);
+        final groupChats = groups[groupTitle]!;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text(
+                groupTitle.toUpperCase(),
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            ...groupChats.map((chat) => ChatListTile(
+              chat: chat,
+              isSelected: cp.currentChatId == chat.chatId,
+              isDark: isDark,
+              onTap: () => cp.openChat(chat.chatId),
+              onDelete: () => _confirmDelete(cp, chat.chatId),
+            )),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -631,21 +700,7 @@ class _ChatScreenState extends State<ChatScreen>
                         ),
                       ),
                     )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: cp.filteredChats.length,
-                      padding: const EdgeInsets.only(bottom: 12),
-                      itemBuilder: (context, index) {
-                        final chat = cp.filteredChats[index];
-                        return ChatListTile(
-                          chat: chat,
-                          isSelected: cp.currentChatId == chat.chatId,
-                          isDark: isDark,
-                          onTap: () => cp.openChat(chat.chatId),
-                          onDelete: () => _confirmDelete(cp, chat.chatId),
-                        );
-                      },
-                    ),
+                    : _buildGroupedChatList(cp, isDark),
             ),
           ),
           Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),

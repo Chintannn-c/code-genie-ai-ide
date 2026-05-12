@@ -26,120 +26,139 @@ class FileUploadBar extends StatelessWidget {
     if (files.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      height: 120,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B22) : const Color(0xFFF6F8FA),
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
-          ),
-        ),
+        color: Colors.transparent,
       ),
       child: Row(
         children: [
           Expanded(
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: files.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemCount: files.length + 1,
+              separatorBuilder: (context, index) => const SizedBox(width: 16),
               itemBuilder: (context, index) {
+                if (index == files.length) {
+                  return _buildAddMoreCard();
+                }
                 final file = files[index];
-                return _buildFileItem(context, file);
+                return _buildFileCard(context, file);
               },
             ),
           ),
-          if (files.length > 1) ...[
-            const SizedBox(width: 16),
-            _buildProjectActions(),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildProjectActions() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton.icon(
-          onPressed: onAnalyzeProject,
-          icon: const Icon(Icons.layers_rounded, size: 14),
-          label: const Text('ANALYZE PROJECT'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6366F1),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            textStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-            ),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+  Widget _buildFileCard(BuildContext context, AppFile file) {
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
         ),
-        TextButton(
-          onPressed: onClearAll,
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-            minimumSize: const Size(0, 20),
+      ),
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.black.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _getIconForLang(file.language),
+                  size: 24,
+                  color: const Color(0xFF6366F1),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      file.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      file.sizeString,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: Text(
-            'Clear All',
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              color: isDark ? Colors.white38 : Colors.black38,
+          Positioned(
+            right: -8,
+            top: -8,
+            child: IconButton(
+              icon: Icon(Icons.close_rounded, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+              onPressed: () => onRemove(file.fileId),
             ),
           ),
-        ),
-      ],
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 3,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(2),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildFileItem(BuildContext context, AppFile file) {
+  Widget _buildAddMoreCard() {
     return Container(
-      width: 160,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      width: 180,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D1117) : Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
+          style: BorderStyle.solid,
+          width: 1,
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _getIconForLang(file.language),
-            size: 18,
-            color: const Color(0xFF6366F1),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  file.fileName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                Text(
-                  file.sizeString,
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
-                    color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4),
-                  ),
-                ),
-              ],
+          Icon(Icons.add_rounded, color: isDark ? Colors.white38 : Colors.black38),
+          const SizedBox(height: 4),
+          Text(
+            'Add files',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white38 : Colors.black38,
             ),
           ),
-          _actionMenu(context, file),
         ],
       ),
     );

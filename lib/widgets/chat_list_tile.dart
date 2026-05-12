@@ -43,51 +43,72 @@ class ChatListTile extends StatelessWidget {
                   : null,
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Icon
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
+                  margin: const EdgeInsets.only(top: 4),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF6366F1).withValues(alpha: 0.2)
                         : isDark
-                            ? Colors.white.withValues(alpha: 0.06)
+                            ? Colors.white.withValues(alpha: 0.08)
                             : Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    _getIcon(),
-                    size: 16,
+                    Icons.chat_bubble_outline_rounded,
+                    size: 18,
                     color: isSelected
                         ? const Color(0xFF6366F1)
                         : isDark
-                            ? Colors.white.withValues(alpha: 0.5)
-                            : Colors.black.withValues(alpha: 0.4),
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : Colors.black.withValues(alpha: 0.5),
                   ),
                 ),
-                const SizedBox(width: 10),
-                // Title + date
+                const SizedBox(width: 12),
+                // Title + snippet + date
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              chat.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatTime(chat.updatedAt),
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? Colors.white38
+                                  : Colors.black38,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        chat.title,
+                        chat.lastMessageSnippet ?? 'No messages yet...',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        DateFormat.yMMMd().add_jm().format(chat.updatedAt.toLocal()),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: isDark
                               ? Colors.white.withValues(alpha: 0.4)
                               : Colors.black.withValues(alpha: 0.4),
@@ -95,18 +116,6 @@ class ChatListTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                // Delete button
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    size: 16,
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.3)
-                        : Colors.black.withValues(alpha: 0.3),
-                  ),
-                  onPressed: onDelete,
-                  splashRadius: 16,
                 ),
               ],
             ),
@@ -116,10 +125,17 @@ class ChatListTile extends StatelessWidget {
     );
   }
 
-  IconData _getIcon() {
-    if (chat.title.startsWith('Generate')) return Icons.auto_fix_high;
-    if (chat.title.startsWith('Debug')) return Icons.bug_report;
-    if (chat.title.startsWith('Explain')) return Icons.school;
-    return Icons.chat_bubble_outline;
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final chatDate = DateTime(dt.year, dt.month, dt.day);
+
+    if (chatDate == today) {
+      return DateFormat.jm().format(dt.toLocal());
+    } else if (chatDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday';
+    } else {
+      return DateFormat.MMMd().format(dt.toLocal());
+    }
   }
 }

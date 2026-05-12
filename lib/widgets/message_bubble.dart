@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/message.dart';
 import '../config/api_config.dart';
@@ -156,35 +157,50 @@ class MessageBubble extends StatelessWidget {
                 // Actions row
                 if (!isUser && message.content.isNotEmpty && !isStreaming)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: 8),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (message.modelName != null) _modelBadge(message.modelName!),
+                          _actionIcon(Icons.thumb_up_outlined),
                           const SizedBox(width: 8),
-                          _actionButton(
-                            context,
-                            Icons.copy_rounded,
-                            'Copy',
-                            () {
-                              Clipboard.setData(
-                                ClipboardData(text: message.content),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text('Response copied!'),
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 2),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                          _actionIcon(Icons.thumb_down_outlined),
+                          const SizedBox(width: 8),
+                          _actionIcon(Icons.content_copy_rounded, onTap: () {
+                             Clipboard.setData(ClipboardData(text: message.content));
+                          }),
+                          const SizedBox(width: 8),
+                          _actionIcon(Icons.open_in_new_rounded),
+                          const SizedBox(width: 8),
+                          _actionIcon(Icons.refresh_rounded),
+                          if (message.modelName != null) ...[
+                            const SizedBox(width: 12),
+                            _modelBadge(message.modelName!),
+                          ],
                         ],
                       ),
                     ),
+                if (isUser)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          DateFormat.jm().format(message.timestamp.toLocal()),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.done_all_rounded,
+                          size: 12,
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -197,32 +213,39 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildAvatar() {
     return Container(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
-        ),
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+        ),
       ),
-      child: Image.asset(
-        'assets/icon/app_icon.png',
-        width: 18,
-        height: 18,
-        fit: BoxFit.contain,
-      ),
+      child: const Icon(Icons.smart_toy_rounded, size: 20, color: Color(0xFF6366F1)),
     );
   }
 
   Widget _buildUserAvatar() {
     return Container(
-      width: 32,
-      height: 32,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         color: const Color(0xFF6366F1).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(Icons.person, size: 18, color: Color(0xFF6366F1)),
+      child: const Icon(Icons.person_rounded, size: 20, color: Color(0xFF6366F1)),
+    );
+  }
+
+  Widget _actionIcon(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(
+        icon,
+        size: 16,
+        color: isDark ? Colors.white38 : Colors.black38,
+      ),
     );
   }
 
