@@ -311,8 +311,9 @@ class _ChatInputState extends State<ChatInput> {
       child: IconButton(
         onPressed: () {},
         icon: Icon(icon, size: 20),
-        color: widget.isDark ? Colors.white38 : Colors.black38,
+        color: widget.isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.4),
         splashRadius: 20,
+        hoverColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
       ),
     );
   }

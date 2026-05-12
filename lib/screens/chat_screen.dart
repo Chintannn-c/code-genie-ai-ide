@@ -3,6 +3,8 @@
  * Bug #1 — RepaintBoundary + SizeTransition — line ~170
  */
 
+import 'dart:ui';
+
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -386,14 +388,17 @@ class _ChatScreenState extends State<ChatScreen>
                     children: [
                       Text(
                         cp.currentChat?.title ?? 'New Conversation',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : Colors.black,
+                          letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Icon(Icons.edit_note_rounded, size: 16, color: isDark ? Colors.white24 : Colors.black26),
+                      if (cp.currentChat != null) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.edit_note_rounded, size: 16, color: isDark ? Colors.white24 : Colors.black26),
+                      ],
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -404,7 +409,7 @@ class _ChatScreenState extends State<ChatScreen>
                         ),
                         child: Text(
                           'PRO',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 8,
                             fontWeight: FontWeight.w900,
                             color: const Color(0xFF6366F1),
@@ -419,15 +424,36 @@ class _ChatScreenState extends State<ChatScreen>
                     children: [
                       const ModelSelector(),
                       const SizedBox(width: 8),
-                      Container(width: 4, height: 4, decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black12, shape: BoxShape.circle)),
+                      Container(width: 3, height: 3, decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black12, shape: BoxShape.circle)),
                       const SizedBox(width: 8),
-                      Text(
-                        'Last active: Just now',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: isDark ? Colors.white24 : Colors.black26,
+                      if (cp.currentChat == null)
+                        Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+                            ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white),
+                            const SizedBox(width: 6),
+                            Text(
+                              'System Ready',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF10B981).withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          'Last active: Just now',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -652,25 +678,28 @@ class _ChatScreenState extends State<ChatScreen>
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white24),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF6366F1).withValues(alpha: 0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 4),
+                        blurRadius: 20,
+                        spreadRadius: -2,
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 22),
+                  child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Column(
@@ -679,20 +708,42 @@ class _ChatScreenState extends State<ChatScreen>
                     Text(
                       'Code Genie',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : Colors.black,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.8,
                       ),
                     ),
-                    Text(
-                      'PRO VERSION',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFF6366F1),
-                        letterSpacing: 1.5,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                          ),
+                          child: Text(
+                            'PRO',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: const Color(0xFF6366F1),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'VERSION 2.0',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -701,68 +752,92 @@ class _ChatScreenState extends State<ChatScreen>
           ),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: cp.newChat,
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text('New Chat'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 54),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
-                  textStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                  padding: EdgeInsets.zero,
+                ),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Container(
+                    height: 48,
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.add_rounded, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'New Chat',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Container(
-              height: 42,
+              height: 40,
               decoration: BoxDecoration(
                 color: isDark 
-                    ? Colors.white.withValues(alpha: 0.04) 
-                    : Colors.black.withValues(alpha: 0.04),
+                    ? Colors.white.withValues(alpha: 0.03) 
+                    : Colors.black.withValues(alpha: 0.02),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isDark 
-                      ? Colors.white.withValues(alpha: 0.05) 
-                      : Colors.black.withValues(alpha: 0.05),
+                      ? Colors.white.withValues(alpha: 0.06) 
+                      : Colors.black.withValues(alpha: 0.06),
                 ),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: cp.setSearchQuery,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
-                  color: isDark ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black87,
                 ),
                 decoration: InputDecoration(
                   hintText: 'Search chats...',
-                  hintStyle: GoogleFonts.inter(
-                    color: isDark ? Colors.white38 : Colors.black38,
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: isDark ? Colors.white24 : Colors.black26,
                     fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                   prefixIcon: Icon(
                     Icons.search_rounded,
-                    size: 18,
-                    color: isDark ? Colors.white38 : Colors.black38,
+                    size: 16,
+                    color: isDark ? Colors.white24 : Colors.black26,
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -950,38 +1025,80 @@ class _ChatScreenState extends State<ChatScreen>
   Widget _buildEmptyState(bool isDark) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              'CODE GENIE',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                color: isDark ? Colors.white : Colors.black87,
+            // Premium Pulsating Monolith
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                ),
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.5),
+                    blurRadius: 40,
+                    spreadRadius: -10,
+                  ),
+                ],
               ),
-            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
+              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 54),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+             .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 2.seconds, curve: Curves.easeInOut)
+             .shimmer(duration: 3.seconds, color: Colors.white24),
 
-            const SizedBox(height: 48),
+            const SizedBox(height: 40),
+
+            // Aurora Gradient Title
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Colors.white, Color(0xFF6366F1), Color(0xFFA855F7), Colors.white],
+                stops: [0.0, 0.4, 0.6, 1.0],
+              ).createShader(bounds),
+              child: Text(
+                'CODE GENIE',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 42,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.0,
+                  color: Colors.white,
+                ),
+              ),
+            ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.2, end: 0),
+
+            Text(
+              'Your Intelligence, Accelerated.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white38 : Colors.black38,
+                letterSpacing: 0.5,
+              ),
+            ).animate().fadeIn(delay: 400.ms),
+
+            const SizedBox(height: 64),
+
+            // Premium Action Grid
             Wrap(
-              spacing: 20,
-              runSpacing: 20,
+              spacing: 24,
+              runSpacing: 24,
               alignment: WrapAlignment.center,
               children: [
                 _buildActionCard(
                   title: 'Generate Code',
-                  subtitle: 'Create from English',
-                  icon: Icons.auto_awesome_rounded,
+                  subtitle: 'Turn ideas into logic',
+                  icon: Icons.code_rounded,
                   color: const Color(0xFF6366F1),
                   isDark: isDark,
                   onTap: () => context.read<ChatProvider>().setMode('generate'),
                 ),
                 _buildActionCard(
                   title: 'Debug Errors',
-                  subtitle: 'Fix with AI Fix',
+                  subtitle: 'Heal broken scripts',
                   icon: Icons.bug_report_rounded,
                   color: const Color(0xFF10B981),
                   isDark: isDark,
@@ -989,14 +1106,14 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
                 _buildActionCard(
                   title: 'Explain Snippets',
-                  subtitle: 'Understand logic',
+                  subtitle: 'Master complex logic',
                   icon: Icons.psychology_rounded,
                   color: const Color(0xFFF59E0B),
                   isDark: isDark,
                   onTap: () => context.read<ChatProvider>().setMode('explain'),
                 ),
               ],
-            ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1, end: 0),
+            ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.1, end: 0),
           ],
         ),
       ),
@@ -1063,49 +1180,68 @@ class _ChatScreenState extends State<ChatScreen>
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 200,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF111111)
-              : Colors.black.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 200,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.black.withValues(alpha: 0.02),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.08),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withValues(alpha: 0.2)),
+                  ),
+                  child: Icon(icon, size: 24, color: color),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black87,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white38 : Colors.black45,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 20, color: color),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: isDark ? Colors.white60 : Colors.black54,
-              ),
-            ),
-          ],
         ),
       ),
     );
