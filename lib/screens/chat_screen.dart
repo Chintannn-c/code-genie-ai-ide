@@ -698,19 +698,7 @@ class _ChatScreenState extends State<ChatScreen>
                         letterSpacing: -0.8,
                       ),
                     ),
-                    Row(
-                      children: [
-                        Text(
-                          'VERSION 2.1',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white24 : Colors.black26,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
+      
                   ],
                 ),
               ],
