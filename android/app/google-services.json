@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "336580157107",
+    "project_id": "code-genie-a5d2c",
+    "storage_bucket": "code-genie-a5d2c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:336580157107:android:de5cfedcce83f6eefddac6",
+        "android_client_info": {
+          "package_name": "com.chintan.codegenie"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIOIHTPIbiSPcGgOBxGz-R1TMDVBFrv2Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/chat_screen.dart';
 import 'screens/login_screen.dart';
 import 'providers/chat_provider.dart';
@@ -12,6 +13,7 @@ import 'providers/planning_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   
   // Initialize Notification Service (Hive + Local Notifications)
   final notificationService = NotificationService();
