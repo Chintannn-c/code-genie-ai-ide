@@ -50,18 +50,17 @@ class _ChatInputState extends State<ChatInput> {
       }
       setState(() {});
     });
-
+    
     _focus.onKeyEvent = (node, event) {
-      if (event is KeyDownEvent &&
-          (event.logicalKey == LogicalKeyboardKey.enter ||
-              event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+      if (event is KeyDownEvent && 
+          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) && 
           !HardwareKeyboard.instance.isShiftPressed) {
         _send();
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
     };
-
+    
     _focus.addListener(() => setState(() {}));
   }
 
@@ -182,8 +181,8 @@ class _ChatInputState extends State<ChatInput> {
                     color: _focus.hasFocus
                         ? const Color(0xFF6366F1).withValues(alpha: 0.6)
                         : (widget.isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.05)),
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05)),
                     width: 1.5,
                   ),
                   boxShadow: [
@@ -277,8 +276,7 @@ class _ChatInputState extends State<ChatInput> {
                                         : Colors.black87,
                                   ),
                             decoration: InputDecoration(
-                              hintText:
-                                  context.watch<ChatProvider>().isEditorMode
+                              hintText: context.watch<ChatProvider>().isEditorMode
                                   ? 'Write code here...'
                                   : 'Ask me anything...',
                               hintStyle: GoogleFonts.plusJakartaSans(
@@ -351,48 +349,43 @@ class _ChatInputState extends State<ChatInput> {
       cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: isStop ? widget.onStop : _send,
-        child:
-            AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: canSend && !isStop
-                        ? const LinearGradient(
-                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                          )
-                        : null,
-                    color: isStop
-                        ? Colors.redAccent.withValues(alpha: 0.15)
-                        : (!canSend
-                              ? (widget.isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.05))
-                              : null),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      if (canSend && !isStop)
-                        BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                    ],
-                  ),
-                  child: Icon(
-                    isStop ? Icons.stop_rounded : Icons.send_rounded,
-                    color: canSend
-                        ? (isStop ? Colors.redAccent : Colors.white)
-                        : (widget.isDark ? Colors.white24 : Colors.black26),
-                    size: 20,
-                  ),
-                )
-                .animate(target: canSend ? 1 : 0)
-                .scale(
-                  begin: const Offset(0.95, 0.95),
-                  end: const Offset(1, 1),
-                  duration: 200.ms,
-                  curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: canSend && !isStop
+                ? const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  )
+                : null,
+            color: isStop
+                ? Colors.redAccent.withValues(alpha: 0.15)
+                : (!canSend
+                    ? (widget.isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))
+                    : null),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              if (canSend && !isStop)
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
+            ],
+          ),
+          child: Icon(
+            isStop ? Icons.stop_rounded : Icons.send_rounded,
+            color: canSend
+                ? (isStop ? Colors.redAccent : Colors.white)
+                : (widget.isDark ? Colors.white24 : Colors.black26),
+            size: 20,
+          ),
+        ).animate(target: canSend ? 1 : 0).scale(
+              begin: const Offset(0.95, 0.95),
+              end: const Offset(1, 1),
+              duration: 200.ms,
+              curve: Curves.easeOutBack,
+            ),
       ),
     );
   }
