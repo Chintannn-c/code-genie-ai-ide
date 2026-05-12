@@ -400,23 +400,7 @@ class _ChatScreenState extends State<ChatScreen>
                         Icon(Icons.edit_note_rounded, size: 16, color: isDark ? Colors.white24 : Colors.black26),
                       ],
                       const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
-                        ),
-                        child: Text(
-                          'PRO',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF6366F1),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
+
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -716,24 +700,6 @@ class _ChatScreenState extends State<ChatScreen>
                     ),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
-                          ),
-                          child: Text(
-                            'PRO',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                              color: const Color(0xFF6366F1),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
                         Text(
                           'VERSION 2.1',
                           style: GoogleFonts.plusJakartaSans(
