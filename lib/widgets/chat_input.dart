@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
@@ -49,6 +50,17 @@ class _ChatInputState extends State<ChatInput> {
       }
       setState(() {});
     });
+    
+    _focus.onKeyEvent = (node, event) {
+      if (event is KeyDownEvent && 
+          event.logicalKey == LogicalKeyboardKey.enter && 
+          !HardwareKeyboard.instance.isShiftPressed) {
+        _send();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    };
+    
     _focus.addListener(() => setState(() {}));
   }
 
