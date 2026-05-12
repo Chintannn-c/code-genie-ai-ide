@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     HUGGINGFACE_API_KEY: str = ""
     
-    # Google Auth (Added to prevent 'Extra Inputs' errors)
-    google_client_id: Optional[str] = None
-    google_client_id_web: Optional[str] = None
+    # Google Auth
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_ID_WEB: Optional[str] = None
 
     # Database
     MONGO_URI: str = "mongodb://localhost:27017"
