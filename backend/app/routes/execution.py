@@ -72,8 +72,11 @@ async def execute_code(
         "PYTHONIOENCODING": "utf-8",
     }
     
+    # SMART INTERPRETER DETECTION: Use python3 on Linux (Railway) and python on Windows
+    python_cmd = "python3" if os.name != "nt" else "python"
+    
     runtimes = {
-        "python": ["python", "-c", code],
+        "python": [python_cmd, "-c", code],
         "javascript": ["node", "-e", code],
         "js": ["node", "-e", code],
     }
