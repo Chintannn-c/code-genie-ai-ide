@@ -6,7 +6,6 @@
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
@@ -248,7 +247,7 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
                 child: Column(
                   children: [
-                    _buildHeader(chatProvider, themeProvider, isDark, isWide),
+                    _buildHeader(chatProvider, ap, themeProvider, isDark, isWide),
                     Expanded(
                       child: Column(
                         children: [
@@ -334,6 +333,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Widget _buildHeader(
     ChatProvider cp,
+    AuthProvider ap,
     ThemeProvider tp,
     bool isDark,
     bool isWide,
