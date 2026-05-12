@@ -48,18 +48,11 @@ app = FastAPI(
 
 # CORS Configuration
 settings = get_settings()
-origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://192.168.1.7:8000",
-    "https://code-genie-ai-ide-production.up.railway.app",
-]
+allowed_origins = settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS != "*" else ["*"]
 
-# Add production origins from settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
