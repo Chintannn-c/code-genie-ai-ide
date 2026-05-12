@@ -66,8 +66,10 @@ async def execute_code(
 
     # SECURITY FIX: Absolute environment scrubbing. 
     # Only allow minimal, non-sensitive environment variables.
+    # SECURITY FIX: Inherit the system PATH to find compilers (python3, node, etc.)
+    # but still scrub other sensitive environment variables.
     safe_env = {
-        "PATH": "/usr/bin:/bin", # Restricted path
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"), 
         "LANG": "en_US.UTF-8",
         "PYTHONIOENCODING": "utf-8",
     }
