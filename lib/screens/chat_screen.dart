@@ -172,63 +172,70 @@ class _ChatScreenState extends State<ChatScreen>
         children: [
           if (isWide) _buildSidebar(chatProvider, authProvider, isDark),
           Expanded(
-            child: Column(
-              children: [
-                _buildHeader(chatProvider, themeProvider, isDark, isWide),
-                Expanded(
-                  child: Column(
-                    children: [
-                      const PlanningTimeline(),
-                      Expanded(
-                        child: chatProvider.messages.isEmpty
-                            ? _buildEmptyState(isDark)
-                            : _buildMessageList(chatProvider, isDark),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isWide ? 1100 : double.infinity,
+                ),
+                child: Column(
+                  children: [
+                    _buildHeader(chatProvider, themeProvider, isDark, isWide),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          const PlanningTimeline(),
+                          Expanded(
+                            child: chatProvider.messages.isEmpty
+                                ? _buildEmptyState(isDark)
+                                : _buildMessageList(chatProvider, isDark),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                FileUploadBar(
-                  files: chatProvider.selectedFiles,
-                  isDark: isDark,
-                  onRemove: chatProvider.removeFile,
-                  onAnalyze: (id) => chatProvider.analyzeFile(id),
-                  onAnalyzeProject: chatProvider.analyzeProject,
-                  onClearAll: chatProvider.clearFiles,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: OrchestrationIndicator(
-                    isActive:
-                        chatProvider.isStreaming ||
-                        chatProvider.isOrchestrating,
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isWide ? 40 : 12,
-                    vertical: 12,
-                  ),
-                  child: ChatInput(
-                    mode: chatProvider.selectedMode,
-                    isStreaming: chatProvider.isStreaming,
-                    isDark: isDark,
-                    onStop: chatProvider.stopStreaming,
-                    attachmentButton: AttachmentButton(
-                      isDark: isDark,
-                      isLoading: chatProvider.isUploading,
-                      onFilesSelected: chatProvider.uploadFiles,
                     ),
-                    onSend: ({required prompt, code = '', error = ''}) {
-                      chatProvider.sendMessage(
-                        prompt: prompt,
-                        code: code,
-                        error: error,
-                      );
-                      _scrollToBottom(force: true);
-                    },
-                  ),
+                    FileUploadBar(
+                      files: chatProvider.selectedFiles,
+                      isDark: isDark,
+                      onRemove: chatProvider.removeFile,
+                      onAnalyze: (id) => chatProvider.analyzeFile(id),
+                      onAnalyzeProject: chatProvider.analyzeProject,
+                      onClearAll: chatProvider.clearFiles,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: OrchestrationIndicator(
+                        isActive:
+                            chatProvider.isStreaming ||
+                            chatProvider.isOrchestrating,
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 40 : 12,
+                        vertical: 12,
+                      ),
+                      child: ChatInput(
+                        mode: chatProvider.selectedMode,
+                        isStreaming: chatProvider.isStreaming,
+                        isDark: isDark,
+                        onStop: chatProvider.stopStreaming,
+                        attachmentButton: AttachmentButton(
+                          isDark: isDark,
+                          isLoading: chatProvider.isUploading,
+                          onFilesSelected: chatProvider.uploadFiles,
+                        ),
+                        onSend: ({required prompt, code = '', error = ''}) {
+                          chatProvider.sendMessage(
+                            prompt: prompt,
+                            code: code,
+                            error: error,
+                          );
+                          _scrollToBottom(force: true);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
           // ANIM FIX: Replaced AnimatedContainer with SizeTransition + RepaintBoundary
