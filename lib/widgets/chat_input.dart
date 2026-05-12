@@ -313,9 +313,9 @@ class _ChatInputState extends State<ChatInput> {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
