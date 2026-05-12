@@ -2,7 +2,7 @@
 class ApiConfig {
   // Toggle this to true ONLY for local dev debugging
   static const bool useNgrok = false;
-  static const String railwayUrl = 'https://code-genie-ai-ide-production.up.railway.app';
+  static const String railwayUrl = 'https://jubilant-blessing-production-ff1a.up.railway.app';
   static const String localUrl = 'http://192.168.1.7:8000';
 
   // Allow overriding the base URL via --dart-define=BASE_URL=https://your-api.com
