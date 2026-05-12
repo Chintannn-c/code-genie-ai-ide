@@ -9,19 +9,37 @@ logger = logging.getLogger(__name__)
 
 GROQ_API_BASE = "https://api.groq.com/openai/v1/chat/completions"
 
+def sanitize_messages(messages: list[dict]) -> list[dict]:
+    """Ensures roles are compatible with Groq API (system, user, assistant)."""
+    sanitized = []
+    for msg in messages:
+        # Map our internal 'ai' role to Groq's 'assistant'
+        role = msg.get("role", "user")
+        if role == "ai":
+            role = "assistant"
+        elif role not in ["system", "user", "assistant"]:
+            role = "user"
+            
+        sanitized.append({
+            "role": role, 
+            "content": str(msg.get("content", ""))
+        })
+    return sanitized
+
 async def stream_generate(messages: list[dict], model: str = "llama-3.3-70b-versatile") -> AsyncGenerator[str, None]:
     settings = get_settings()
     if not settings.GROQ_API_KEY:
         yield "[Error: Groq API Key is missing in .env]"
         return
 
+    # Sanitize and prepend system instruction
+    messages = sanitize_messages(messages)
+    messages.insert(0, {"role": "system", "content": SYSTEM_INSTRUCTION})
+
     headers = {
         "Authorization": f"Bearer {settings.GROQ_API_KEY}",
         "Content-Type": "application/json",
     }
-
-    # Prepend system instruction
-    messages.insert(0, {"role": "system", "content": SYSTEM_INSTRUCTION})
 
     payload = {
         "model": model,
@@ -66,6 +84,8 @@ async def generate(messages: list[dict], model: str = "llama-3.3-70b-versatile")
         "Content-Type": "application/json",
     }
 
+    # Sanitize and prepend system instruction
+    messages = sanitize_messages(messages)
     messages.insert(0, {"role": "system", "content": SYSTEM_INSTRUCTION})
 
     payload = {
