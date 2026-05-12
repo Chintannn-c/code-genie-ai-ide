@@ -139,6 +139,13 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         socket_manager.disconnect(websocket, user_id)
 
 
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    from app.models.responses import HealthResponse
+    return HealthResponse()
+
+
 # Serve Flutter Web Build
 web_path = os.path.join(os.path.dirname(__file__), "static_web")
 if os.path.exists(web_path):
@@ -148,12 +155,6 @@ if os.path.exists(web_path):
     async def not_found_handler(request: Request, exc):
         """Catch-all to support Flutter Web routing."""
         return FileResponse(os.path.join(web_path, "index.html"))
-
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
-    from app.models.responses import HealthResponse
-    return HealthResponse()
 
 
 if __name__ == "__main__":
