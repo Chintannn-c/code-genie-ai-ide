@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/api_config.dart';
 
@@ -23,9 +24,13 @@ class WebSocketService {
     final wsUrl = ApiConfig.baseUrl.replaceFirst('http', 'ws') + '/ws/$userId$tokenQuery';
     
     try {
-      _channel = WebSocketChannel.connect(
-        Uri.parse(wsUrl),
-      );
+      if (kIsWeb) {
+        // Explicit Web Connection
+        _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      } else {
+        // Native/Mobile Connection
+        _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      }
       
       _channel!.stream.listen(
         (message) {

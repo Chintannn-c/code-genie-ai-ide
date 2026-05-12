@@ -735,7 +735,7 @@ class _ChatScreenState extends State<ChatScreen>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'VERSION 2.0',
+                          'VERSION 2.1',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,

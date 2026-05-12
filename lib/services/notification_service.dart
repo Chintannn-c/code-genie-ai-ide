@@ -39,21 +39,23 @@ class NotificationService {
     await Hive.openBox<NotificationModel>(boxName);
 
     // 2. Initialize Local Notifications
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+    if (!kIsWeb) {
+      const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
+      const InitializationSettings initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
 
-    await _localNotifications.initialize(
-      settings: initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap by broadcasting payload for navigation
-        debugPrint('🚀 Notification tapped with payload: ${details.payload}');
-        _navigationStreamController.add(details.payload);
-      },
-    );
+      await _localNotifications.initialize(
+        settings: initSettings,
+        onDidReceiveNotificationResponse: (details) {
+          // Handle notification tap by broadcasting payload for navigation
+          debugPrint('🚀 Notification tapped with payload: ${details.payload}');
+          _navigationStreamController.add(details.payload);
+        },
+      );
+    }
     
     debugPrint('🔔 NotificationService Initialized');
   }
