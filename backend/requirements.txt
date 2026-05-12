@@ -18,3 +18,5 @@ pytesseract
 groq
 httpx
 email-validator
+Pillow
+cryptography
