@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 GROQ_API_BASE = "https://api.groq.com/openai/v1/chat/completions"
 
-async def stream_generate(messages: list[dict], model: str = "llama-3.1-8b-instant") -> AsyncGenerator[str, None]:
+async def stream_generate(messages: list[dict], model: str = "llama-3.3-70b-versatile") -> AsyncGenerator[str, None]:
     settings = get_settings()
     if not settings.GROQ_API_KEY:
         yield "[Error: Groq API Key is missing in .env]"
@@ -56,7 +56,7 @@ async def stream_generate(messages: list[dict], model: str = "llama-3.1-8b-insta
         logger.error(f"Groq Stream Error: {e}")
         yield f"[Error: {str(e)}]"
 
-async def generate(messages: list[dict], model: str = "llama-3.1-8b-instant") -> str:
+async def generate(messages: list[dict], model: str = "llama-3.3-70b-versatile") -> str:
     settings = get_settings()
     if not settings.GROQ_API_KEY:
         return "[Error: Groq API Key is missing in .env]"

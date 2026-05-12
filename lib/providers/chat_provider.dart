@@ -270,7 +270,7 @@ class ChatProvider extends ChangeNotifier {
       }
     } catch (e) {
       _messages.remove(userMessage);
-      _errorMessage = 'Failed to send message: $e';
+      _errorMessage = 'Code Genie failed to respond. Try again...';
       notifyListeners();
     }
   }
@@ -341,10 +341,24 @@ class ChatProvider extends ChangeNotifier {
         modelName: _selectedModel,
       );
 
-      _streamSubscription = stream.listen(
+      _streamSubscription = stream.timeout(
+        const Duration(seconds: 20),
+        onTimeout: (sink) {
+          final errorText = '[Error: Code Genie failed to respond. Connection timed out.]';
+          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+            _messages[_messages.length - 1] = _messages.last.copyWith(content: errorText);
+          }
+          _isStreaming = false;
+          notifyListeners();
+          sink.close();
+        },
+      ).listen(
         (chunk) async {
           if (chunk.error != null) {
-            _errorMessage = chunk.error;
+            final errorText = '[Error: ${chunk.error}]';
+            if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+              _messages[_messages.length - 1] = _messages.last.copyWith(content: errorText);
+            }
             _isStreaming = false;
             notifyListeners();
             return;
@@ -378,7 +392,10 @@ class ChatProvider extends ChangeNotifier {
           notifyListeners();
         },
         onError: (e) {
-          _errorMessage = 'Stream error: $e';
+          final errorText = '[Error: Connection lost. Please try again.]';
+          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+            _messages[_messages.length - 1] = _messages.last.copyWith(content: errorText);
+          }
           _isStreaming = false;
           notifyListeners();
         },

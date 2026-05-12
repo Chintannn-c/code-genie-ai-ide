@@ -23,6 +23,8 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Bypass-Tunnel-Reminder': 'true', 
+      'ngrok-skip-browser-warning': 'true', // Added for Ngrok
     };
     if (_token != null) {
       headers['Authorization'] = 'Bearer $_token';
@@ -285,7 +287,7 @@ class ApiService {
   Future<String> createChat(String userId, String title) async {
     final response = await _client.post(
       _uri(ApiConfig.chats(userId)),
-      headers: _headers,
+      headers: { ..._headers, 'Bypass-Tunnel-Reminder': 'true' },
       body: jsonEncode({'title': title}),
     );
 

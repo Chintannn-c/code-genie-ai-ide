@@ -4,7 +4,8 @@ from uuid import uuid4
 from fastapi import UploadFile
 from app.config import get_settings
 
-UPLOAD_DIR = "uploads"
+settings = get_settings()
+UPLOAD_DIR = settings.UPLOAD_PATH
 
 async def save_upload(user_id: str, file: UploadFile) -> str:
     """Save an uploaded file to local storage. Returns relative path."""

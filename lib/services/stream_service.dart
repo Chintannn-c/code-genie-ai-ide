@@ -25,6 +25,8 @@ class StreamService {
         'Content-Type': 'application/json',
         'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
+        'Bypass-Tunnel-Reminder': 'true',
+        'ngrok-skip-browser-warning': 'true',
       };
       
       if (_token != null) {

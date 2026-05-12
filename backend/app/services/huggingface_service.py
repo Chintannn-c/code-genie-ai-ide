@@ -7,97 +7,54 @@ from app.prompts.templates import SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
-# Standard Hugging Face Inference API URL pattern
-HF_API_BASE_URL = "https://api-inference.huggingface.co/models/"
+HF_API_BASE = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
 
-async def stream_generate(prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.2") -> AsyncGenerator[str, None]:
-    """
-    Stream a response from Hugging Face Inference API.
-    Note: Not all HF models support standard streaming via Inference API, 
-    but we'll implement it for those that do (SSE).
-    """
+async def stream_generate(messages: list[dict]) -> AsyncGenerator[str, None]:
     settings = get_settings()
     if not settings.HUGGINGFACE_API_KEY:
-        yield "[Error: Hugging Face API Key is missing.]"
+        yield "[Error: Hugging Face API Key is missing in .env]"
         return
 
-    url = f"{HF_API_BASE_URL}{model}"
     headers = {
         "Authorization": f"Bearer {settings.HUGGINGFACE_API_KEY}",
         "Content-Type": "application/json",
     }
 
-    # Prep prompt with system instruction
-    full_prompt = f"{SYSTEM_INSTRUCTION}\n\nUser: {prompt}\nAssistant:"
+    # Format prompt for Mistral
+    prompt = f"<s>[INST] {SYSTEM_INSTRUCTION}\n\n"
+    for msg in messages:
+        role = "User" if msg["role"] == "user" else "Assistant"
+        prompt += f"{role}: {msg['content']}\n"
+    prompt += "[/INST]"
 
     payload = {
-        "inputs": full_prompt,
+        "inputs": prompt,
         "parameters": {
             "max_new_tokens": 1024,
             "temperature": 0.7,
             "return_full_text": False,
         },
-        "options": {
-            "use_cache": True,
-            "wait_for_model": True,
-        }
+        "stream": True
     }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            if response.status_code != 200:
-                yield f"[Error: Hugging Face API returned {response.status_code} - {response.text}]"
-                return
+            async with client.stream("POST", HF_API_BASE, headers=headers, json=payload) as response:
+                if response.status_code != 200:
+                    text = await response.aread()
+                    yield f"[Error: Hugging Face API returned {response.status_code}]"
+                    return
 
-            data = response.json()
-            # HF Inference API usually returns a list for non-streaming
-            if isinstance(data, list) and len(data) > 0:
-                text = data[0].get("generated_text", "")
-                if text:
-                    yield text
-            else:
-                yield "[Error: Unexpected response format from Hugging Face.]"
-
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if line.startswith("data:"):
+                        try:
+                            data = json.loads(line[5:])
+                            content = data.get("token", {}).get("text", "")
+                            if content and content != "</s>":
+                                yield content
+                        except:
+                            continue
     except Exception as e:
-        logger.error(f"Hugging Face Error: {e}")
+        logger.error(f"Hugging Face Stream Error: {e}")
         yield f"[Error: {str(e)}]"
-
-async def generate(prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.2") -> str:
-    """
-    Generate a complete response from Hugging Face Inference API.
-    """
-    settings = get_settings()
-    if not settings.HUGGINGFACE_API_KEY:
-        return "[Error: Hugging Face API Key is missing.]"
-
-    url = f"{HF_API_BASE_URL}{model}"
-    headers = {
-        "Authorization": f"Bearer {settings.HUGGINGFACE_API_KEY}",
-        "Content-Type": "application/json",
-    }
-
-    full_prompt = f"{SYSTEM_INSTRUCTION}\n\nUser: {prompt}\nAssistant:"
-
-    payload = {
-        "inputs": full_prompt,
-        "parameters": {
-            "max_new_tokens": 1024,
-            "temperature": 0.7,
-            "return_full_text": False,
-        }
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            if response.status_code != 200:
-                return f"[Error: Hugging Face API returned {response.status_code}]"
-            
-            data = response.json()
-            if isinstance(data, list) and len(data) > 0:
-                return data[0].get("generated_text", "")
-            return "[Error: Unexpected response format]"
-    except Exception as e:
-        logger.error(f"Hugging Face Error: {e}")
-        return f"[Error: {str(e)}]"

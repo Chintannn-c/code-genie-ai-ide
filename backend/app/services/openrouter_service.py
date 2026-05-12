@@ -26,10 +26,30 @@ FREE_MODELS = [
     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 ]
 
+# List of models that are free but might not have the :free suffix
+VERIFIED_FREE_MODELS = [
+    "google/gemini-pro-1.5",
+    "google/gemini-2.0-flash-exp",
+    "google/lyria-3-pro-preview"
+]
+
+def validate_free_model(model_id: str):
+    """
+    CRITICAL SAFETY FILTER: Ensures we NEVER call a paid model by accident.
+    """
+    if ":free" in model_id or model_id in VERIFIED_FREE_MODELS:
+        return True
+    
+    logger.error(f"❌ BLOCKING PAID MODEL CALL: {model_id}")
+    raise ValueError(f"Safety Error: {model_id} is not a verified FREE model. Request blocked to prevent billing.")
+
 async def stream_generate(messages: list[dict], model: str = "meta-llama/llama-3.3-70b-instruct:free") -> AsyncGenerator[str, None]:
     """
     Stream a response from OpenRouter API.
     """
+    # 1. Enforce safety check
+    validate_free_model(model)
+    
     settings = get_settings()
     if not settings.OPENROUTER_API_KEY:
         yield "[Error: OpenRouter API Key is missing. Please check your .env file.]"
@@ -71,7 +91,7 @@ async def stream_generate(messages: list[dict], model: str = "meta-llama/llama-3
                     try:
                         data = json.loads(data_str)
                         content = data["choices"][0]["delta"].get("content", "")
-                        if content:
+                        if content and content.strip():
                             yield content
                     except Exception as e:
                         logger.error(f"Error parsing OpenRouter chunk: {e}")

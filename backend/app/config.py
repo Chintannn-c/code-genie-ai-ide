@@ -1,42 +1,43 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from typing import Optional
 
 
 class Settings(BaseSettings):
     """Application settings loaded from .env file."""
 
+    # API Keys
     GEMINI_API_KEY: str
-    MONGO_URI: str = "mongodb://localhost:27017"
-    DB_NAME: str = "ai_code_assistant"
-    GEMINI_MODEL: str = "gemini-2.0-flash-lite"
     GROQ_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
     HUGGINGFACE_API_KEY: str = ""
     
+    # Google Auth (Added to prevent 'Extra Inputs' errors)
+    google_client_id: Optional[str] = None
+    google_client_id_web: Optional[str] = None
+
+    # Database
+    MONGO_URI: str = "mongodb://localhost:27017"
+    DB_NAME: str = "ai_code_assistant"
+    GEMINI_MODEL: str = "gemini-2.0-flash-lite"
+    ALLOWED_ORIGINS: str = "*" 
+    
     # Paths
-    ARTIFACTS_PATH: str = "C:\\Users\\sharm\\.gemini\\antigravity\\brain\\7de4a6eb-952b-4dab-8c53-1d99bd684c04"
+    ARTIFACTS_PATH: str = "../data/artifacts"
+    UPLOAD_PATH: str = "../data/uploads"
     EXECUTION_TIMEOUT: float = 10.0
     
-    # Auth Settings
-    JWT_SECRET: str = "your-super-secret-key-change-me"
+    # Auth Settings (Default provided for stability, override in .env)
+    JWT_SECRET: str = "genie-dev-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
-    # Google Auth (Required for non-Firebase Google Sign-In)
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_ID_WEB: str = ""
-
-    # Server
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-
-    # Pagination defaults
-    DEFAULT_PAGE_SIZE: int = 20
-    MAX_PAGE_SIZE: int = 100
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # Pydantic Config: Allow extra fields in .env without crashing
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore", 
+        env_file_encoding="utf-8"
+    )
 
 
 @lru_cache()

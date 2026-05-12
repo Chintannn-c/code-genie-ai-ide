@@ -26,6 +26,10 @@ class NotificationService {
   final _rawMessageStreamController = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get rawMessageStream => _rawMessageStreamController.stream;
 
+  // Stream controller for navigation events triggered by notification taps
+  final _navigationStreamController = StreamController<String?>.broadcast();
+  Stream<String?> get navigationStream => _navigationStreamController.stream;
+
   Future<void> init() async {
     // 1. Initialize Hive
     await Hive.initFlutter();
@@ -45,8 +49,9 @@ class NotificationService {
     await _localNotifications.initialize(
       settings: initSettings,
       onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap (e.g., navigate to a specific screen)
-        debugPrint('Notification tapped: ${details.payload}');
+        // Handle notification tap by broadcasting payload for navigation
+        debugPrint('🚀 Notification tapped with payload: ${details.payload}');
+        _navigationStreamController.add(details.payload);
       },
     );
     

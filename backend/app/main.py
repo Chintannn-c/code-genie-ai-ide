@@ -24,11 +24,18 @@ async def lifespan(app: FastAPI):
     """Application lifecycle: startup and shutdown."""
     # Startup
     logger.info("🚀 Starting AI Code Assistant API...")
+    
+    # Ensure data directories exist
+    settings = get_settings()
+    os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
+    os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
+    logger.info(f"📁 Data directories initialized: {settings.ARTIFACTS_PATH}, {settings.UPLOAD_PATH}")
+
     await connect_to_mongo()
     logger.info("✅ API ready!")
     yield
     # Shutdown
-    logger.info("🛑 Shutting down...")
+    logger.info("🛑 Shutdown complete.")
     await close_mongo_connection()
 
 
@@ -39,14 +46,33 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow Flutter app (web & mobile)
+# CORS Configuration
+settings = get_settings()
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://192.168.1.7:8000",
+    "https://unrecorded-unpretended-loretta.ngrok-free.dev", # Active Tunnel
+]
+
+# Add production origins from settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to your domain
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -65,6 +91,9 @@ app.include_router(execution.router)
 
 # Mount artifacts for web access
 settings = get_settings()
+os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
+os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
+
 if os.path.exists(settings.ARTIFACTS_PATH):
     app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
     logger.info(f"📁 Artifacts mounted from: {settings.ARTIFACTS_PATH}")

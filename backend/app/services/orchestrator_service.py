@@ -23,10 +23,18 @@ class AIOrchestrator:
     def __init__(self):
         self.free_pool = [
             "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen-2.5-coder-32b-instruct:free",
+            "google/gemini-2.0-flash-exp:free",
+            "deepseek/deepseek-chat:free",
+            "microsoft/phi-3-medium-128k-instruct:free",
             "openai/gpt-oss-120b:free",
-            "qwen/qwen3-coder:free",
-            "google/lyria-3-pro-preview",
-            "nousresearch/hermes-3-llama-3.1-405b:free"
+            "qwen/qwen-2.5-coder-7b-instruct:free",
+            "google/gemini-pro-1.5:free",
+            "nousresearch/hermes-3-llama-3.1-405b:free",
+            "mistralai/mistral-7b-instruct:free",
+            "gryphe/mythomax-l2-13b:free",
+            "undi95/toppy-m-7b:free",
+            "openchat/openchat-7b:free"
         ]
 
     async def get_parallel_response(self, prompt: str, history: List[Dict] = None, user_level: str = "intermediate") -> Dict[str, Any]:
@@ -47,8 +55,15 @@ class AIOrchestrator:
         for model_id in self.free_pool[:2]: # Query top 2 free models in parallel
             tasks.append(self._call_model("openrouter", prompt, history, specific_model=model_id))
         
-        # 2. Execute in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # 2. Execute in parallel with a global timeout to prevent hanging on slow free models
+        try:
+            results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=20.0)
+        except asyncio.TimeoutError:
+            logger.error("🛑 [Orchestrator] Parallel orchestration TIMEOUT after 20s. Using partial results.")
+            results = []
+        except Exception as e:
+            logger.error(f"❌ [Orchestrator] Parallel gather failed: {e}")
+            results = []
         
         # 3. Filter successful responses
         successful_responses = []
@@ -73,7 +88,7 @@ class AIOrchestrator:
                 
         if not successful_responses:
             return {
-                "answer": "I apologize, but all AI engines (including free tier) are currently unavailable. Please check your internet connection.",
+                "answer": "Code Genie failed to respond. Try again...",
                 "strategy": "failed_all",
                 "models_participated": []
             }
@@ -328,32 +343,40 @@ class AIOrchestrator:
     async def _call_model(self, model_id: str, prompt: str, history: List[Dict], specific_model: str = None) -> Dict[str, Any]:
         start = time.time()
         try:
-            # Convert history to service-specific format if needed
-            if model_id == "gemini":
-                contents = []
-                for msg in history:
-                    contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
-                contents.append({"role": "user", "parts": [{"text": prompt}]})
-                content = await gemini_mod.generate(contents)
-                final_model = "gemini-2.0-flash"
-            elif model_id == "groq":
-                messages = history + [{"role": "user", "content": prompt}]
-                content = await groq_mod.generate(messages)
-                final_model = "llama-3.3-70b-specdec"
-            elif model_id == "openrouter":
-                messages = history + [{"role": "user", "content": prompt}]
-                target_model = specific_model or "meta-llama/llama-3.3-70b-instruct:free"
-                content = await openrouter_mod.generate(messages, model=target_model)
-                final_model = target_model
-            
-            return {
-                "model": final_model,
-                "content": content,
-                "latency": time.time() - start
-            }
+            # Add internal timeout per model call to ensure one stuck model doesn't block others
+            return await asyncio.wait_for(self._execute_model_call(model_id, prompt, history, specific_model), timeout=12.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"🕒 [Orchestrator] Model {model_id} timed out after 12s")
+            return {"model": model_id, "error": "Timeout", "latency": 12.0}
         except Exception as e:
             logger.error(f"Parallel Task Error ({model_id}): {e}")
             return {"model": model_id, "error": str(e), "latency": time.time() - start}
+
+    async def _execute_model_call(self, model_id: str, prompt: str, history: List[Dict], specific_model: str = None) -> Dict[str, Any]:
+        start = time.time()
+        # Convert history to service-specific format if needed
+        if model_id == "gemini":
+            contents = []
+            for msg in history:
+                contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+            contents.append({"role": "user", "parts": [{"text": prompt}]})
+            content = await gemini_mod.generate(contents)
+            final_model = "gemini-2.0-flash"
+        elif model_id == "groq":
+            messages = history + [{"role": "user", "content": prompt}]
+            content = await groq_mod.generate(messages)
+            final_model = "llama-3.3-70b-specdec"
+        elif model_id == "openrouter":
+            messages = history + [{"role": "user", "content": prompt}]
+            target_model = specific_model or "meta-llama/llama-3.3-70b-instruct:free"
+            content = await openrouter_mod.generate(messages, model=target_model)
+            final_model = target_model
+        
+        return {
+            "model": final_model,
+            "content": content,
+            "latency": time.time() - start
+        }
 
     def _adapt_to_level(self, text: str, level: str) -> str:
         """

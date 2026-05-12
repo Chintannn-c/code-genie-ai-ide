@@ -1,8 +1,8 @@
 /// API configuration for connecting to the FastAPI backend.
 class ApiConfig {
-  // Toggle this to true when using ngrok
-  static const bool useNgrok = false;
-  static const String ngrokUrl = 'https://YOUR_NGROK_URL.ngrok-free.app';
+  // Toggle this to true when using tunnel (Ngrok/Localtunnel)
+  static const bool useNgrok = true;
+  static const String ngrokUrl = 'https://unrecorded-unpretended-loretta.ngrok-free.dev';
   static const String localUrl = 'http://192.168.1.7:8000';
 
   // Allow overriding the base URL via --dart-define=BASE_URL=https://your-api.com

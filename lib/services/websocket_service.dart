@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 import '../config/api_config.dart';
 
 class WebSocketService {
@@ -23,7 +24,17 @@ class WebSocketService {
     final wsUrl = ApiConfig.baseUrl.replaceFirst('http', 'ws') + '/ws/$userId$tokenQuery';
     
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _channel = IOWebSocketChannel.connect(
+        Uri.parse(wsUrl),
+        // Localtunnel bypass headers
+        headers: {
+          'Bypass-Tunnel-Reminder': 'true',
+          'ngrok-skip-browser-warning': 'true',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Connection': 'Upgrade',
+          'Upgrade': 'websocket',
+        },
+      );
       
       _channel!.stream.listen(
         (message) {

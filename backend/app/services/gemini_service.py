@@ -31,9 +31,10 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
     
     # Prioritized list of models to try
     models_to_try = [
-        settings.GEMINI_MODEL,           # 1. Gemini 3.1 Pro (Preferred)
-        "gemini-3.1-flash",              # 2. High-Speed 3.1 Fallback
-        "gemini-3-flash",                # 3. Stable 3.0 Fallback
+        settings.GEMINI_MODEL,           # 1. Primary from .env
+        "gemini-1.5-flash",              # 2. Fast Fallback
+        "gemini-2.0-flash-exp",          # 3. Next-Gen Fallback
+        "gemini-1.5-pro",                # 4. High-Reasoning Fallback
     ]
     
     # Remove duplicates while preserving order
@@ -79,7 +80,9 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
                 break
 
     # If we get here, all models failed
-    yield f"\n[Error: All AI engines are currently unavailable. Please try again in a few seconds. (Last error: {last_error})]"
+    error_msg = f"Code Genie failed to respond. (AI Engine Error: {last_error})"
+    logger.error(f"❌ ALL MODELS FAILED: {last_error}")
+    yield f"\n{error_msg}"
 
 
 async def generate(contents: list[dict]) -> str:
@@ -118,6 +121,7 @@ async def generate(contents: list[dict]) -> str:
                 continue
             else:
                 logger.error(f"Fatal Gemini error with {model_name}: {e}")
+                last_error = e
                 break
 
     raise RuntimeError(f"All AI engines are currently unavailable. Last error: {last_error}")

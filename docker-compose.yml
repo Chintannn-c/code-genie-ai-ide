@@ -1,0 +1,29 @@
+# Code Genie: Production Orchestration
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: genie_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - genie_data:/data
+    depends_on:
+      - mongodb
+    restart: always
+
+  mongodb:
+    image: mongo:latest
+    container_name: genie_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+volumes:
+  genie_data:
+  mongo_data:

@@ -40,14 +40,15 @@ class MessageBubble extends StatelessWidget {
               children: [
                 // Role label
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: 4, left: 4, right: 4),
                   child: Text(
-                    isUser ? 'You' : 'Code Genie',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    isUser ? 'YOU' : 'CODE GENIE',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.5)
+                          ? Colors.white.withValues(alpha: 0.4)
                           : Colors.black.withValues(alpha: 0.4),
                     ),
                   ),
@@ -59,28 +60,68 @@ class MessageBubble extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   decoration: BoxDecoration(
-                    color: isUser
-                        ? const Color(0xFF6366F1)
-                        : isDark
-                            ? const Color(0xFF111827)
-                            : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: isUser
+                        ? const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                          )
+                        : null,
+                    color: !isUser
+                        ? (message.content.contains('[Error')
+                            ? Colors.redAccent.withValues(alpha: 0.1)
+                            : (isDark
+                                ? const Color(0xFF1F2937).withValues(alpha: 0.4)
+                                : Colors.white.withValues(alpha: 0.9)))
+                        : null,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(20),
+                      topRight: const Radius.circular(20),
+                      bottomLeft: Radius.circular(isUser ? 20 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 20),
+                    ),
                     border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.06),
+                      color: message.content.contains('[Error')
+                          ? Colors.redAccent.withValues(alpha: 0.3)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.black.withValues(alpha: 0.05)),
+                      width: message.content.contains('[Error') ? 1.5 : 1.0,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: isUser 
+                            ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+                            : (message.content.contains('[Error') 
+                                ? Colors.redAccent.withValues(alpha: 0.1)
+                                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.05)),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (message.content.contains('[Error'))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'AI ENGINE ERROR',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.redAccent,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ..._buildContent(context),
                       if (isStreaming && !isUser) _buildCursor(),
                     ],

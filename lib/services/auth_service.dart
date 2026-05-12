@@ -58,56 +58,69 @@ class AuthService {
     }
     
     _isSigningIn = true;
+    final stopwatch = Stopwatch()..start();
     try {
       print('🚀 [AuthService] Initiating Google Sign-In...');
       
-      // Try silent sign-in first with a slightly longer timeout for web
+      // Try silent sign-in first with a more reasonable timeout
       GoogleSignInAccount? googleUser;
       try {
+        print('📡 [AuthService] Attempting silent sign-in...');
         googleUser = await _googleSignIn.signInSilently().timeout(
-          const Duration(seconds: 1),
-          onTimeout: () => null,
+          const Duration(seconds: 5), // Increased from 1s to 5s for better reliability
+          onTimeout: () {
+            print('📡 [AuthService] Silent sign-in timed out after 5s');
+            return null;
+          },
         );
       } catch (e) {
-        print('📡 [AuthService] Silent sign-in error (ignoring): $e');
+        print('📡 [AuthService] Silent sign-in error: $e');
       }
       
       if (googleUser == null) {
-        print('📡 [AuthService] No silent session, launching popup...');
+        print('📡 [AuthService] No silent session, launching interactive popup...');
         googleUser = await _googleSignIn.signIn();
       }
       
       if (googleUser == null) {
-        print('⚠️ [AuthService] Sign-in cancelled or popup closed.');
+        print('⚠️ [AuthService] Sign-in cancelled by user.');
         throw Exception('Google sign-in cancelled');
       }
       
-      print('✅ [AuthService] User: ${googleUser.email}');
+      print('✅ [AuthService] Google account selected (${stopwatch.elapsedMilliseconds}ms): ${googleUser.email}');
       
+      final authStart = stopwatch.elapsedMilliseconds;
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      print('🛡️ [AuthService] Google Authentication retrieved: ${googleAuth.idToken != null}');
+      print('🛡️ [AuthService] Google Tokens retrieved (${stopwatch.elapsedMilliseconds - authStart}ms)');
+      
       final String? idToken = googleAuth.idToken;
-
       if (idToken == null) {
-        print('❌ [AuthService] ID Token is NULL. Scopes: ${googleUser.authHeaders}');
-        throw Exception('Failed to get ID token from Google. Please ensure you are connected to the internet and try again.');
+        throw Exception('Failed to get ID token from Google.');
       }
 
       // Send ID token to our backend
+      print('📤 [AuthService] Verifying with backend...');
+      final backendStart = stopwatch.elapsedMilliseconds;
       final response = await _client.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.googleLogin}'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true',
+          'ngrok-skip-browser-warning': 'true',
+        },
         body: jsonEncode({'id_token': idToken}),
-      );
+      ).timeout(const Duration(seconds: 15)); // Add timeout to backend call
+
+      print('📥 [AuthService] Backend responded (${stopwatch.elapsedMilliseconds - backendStart}ms) with status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final user = User.fromJson(data);
         await _saveSession(user);
+        print('✨ [AuthService] Login complete! Total time: ${stopwatch.elapsedMilliseconds}ms');
         return user;
       } else {
-        final error =
-            jsonDecode(response.body)['detail'] ?? 'Google login failed';
+        final error = jsonDecode(response.body)['detail'] ?? 'Google login failed';
         throw Exception(error);
       }
     } catch (e) {
@@ -115,6 +128,7 @@ class AuthService {
       rethrow;
     } finally {
       _isSigningIn = false;
+      stopwatch.stop();
     }
   }
 

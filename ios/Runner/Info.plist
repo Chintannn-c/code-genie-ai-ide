@@ -45,5 +45,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Code Genie needs access to your gallery to analyze code screenshots and documents.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Code Genie needs camera access to capture code snippets for real-time AI analysis.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Code Genie needs microphone access for future voice-to-code features.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

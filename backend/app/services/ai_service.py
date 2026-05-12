@@ -11,36 +11,64 @@ async def stream_generate(contents: list[dict], type: str = "generate") -> Async
     Always-on Orchestration: Queries multiple models in parallel
     and streams the synthesized result.
     """
-    # Extract prompt text
-    prompt_text = ""
-    for item in contents:
-        for part in item.get("parts", []):
-            if "text" in part:
-                prompt_text += part["text"]
-
     try:
-        logger.info(f"🚀 [Orchestrator] Initiating parallel generation for: {type}")
+        logger.info(f"🚀 [AI Service] Primary stream (Gemini) initiated for: {type}")
         
-        # Parallel Execution
-        # We use history from contents if available (simplified for now)
-        result = await orchestrator_service.orchestrator.get_parallel_response(
-            prompt=prompt_text,
-            user_level="intermediate"
-        )
-        
-        answer = result["answer"]
-        
-        # Stream the synthesized answer in chunks to simulate real-time thinking
-        # (This allows the frontend to show the typing animation synced with "incoming" data)
-        words = answer.split(' ')
-        for i in range(0, len(words), 2): # Send 2 words at a time for speed
-            chunk = " ".join(words[i:i+2]) + " "
-            yield chunk
-            await asyncio.sleep(0.02) # Subtle delay for natural feel
+        # 1. Try Gemini with a strict watchdog timer
+        # If Gemini doesn't yield a single chunk in 10s, it's considered failed
+        gemini_stream = gemini_service.stream_generate(contents)
+        try:
+            async for chunk in asyncio.wait_for(gemini_stream.__aiter__(), timeout=10.0):
+                yield chunk
+            # Once started, continue the stream
+            async for chunk in gemini_stream:
+                yield chunk
+        except (asyncio.TimeoutError, Exception) as e:
+            logger.error(f"⚠️ Gemini watchdog triggered or failed: {e}. Pivoting to Groq...")
+            raise e # Trigger the catch block below for Groq fallback
 
     except Exception as e:
-        logger.error(f"❌ [Orchestrator] Global failure: {e}")
-        yield f"\n[System Error: Orchestration failed. Last error: {str(e)}]"
+        logger.error(f"Attempting Groq fallback due to: {e}")
+        try:
+            # 2. Fallback to Groq for reliability
+            messages = []
+            for item in contents:
+                messages.append({"role": item["role"], "content": "".join([p.get("text", "") for p in item.get("parts", [])])})
+            
+            async for chunk in groq_service.stream_generate(messages):
+                yield chunk
+        except Exception as groq_e:
+            logger.error(f"⚠️ Groq fallback failed: {groq_e}. Attempting OMNI-POOL failover...")
+            try:
+                # 3. Omni-Pool Fallback: Try all free models from orchestrator
+                from .orchestrator_service import orchestrator
+                from . import openrouter_service
+                
+                # Convert contents to common format
+                messages = []
+                for item in contents:
+                    messages.append({"role": item["role"], "content": "".join([p.get("text", "") for p in item.get("parts", [])])})
+                
+                success = False
+                for model_id in orchestrator.free_pool:
+                    try:
+                        logger.info(f"🔄 Attempting OMNI-FAILOVER with: {model_id}")
+                        async for chunk in openrouter_service.stream_generate(messages, model=model_id):
+                            yield chunk
+                        success = True
+                        break # Exit pool loop on success
+                    except Exception as pool_e:
+                        logger.warning(f"⏩ Pool model {model_id} failed: {pool_e}. Trying next...")
+                        continue
+                
+                if not success:
+                    # 4. Final Safety Net: Hugging Face
+                    from . import huggingface_service
+                    async for chunk in huggingface_service.stream_generate(messages):
+                        yield chunk
+            except Exception as hf_e:
+                logger.error(f"❌ All AI failovers exhausted: {hf_e}")
+                yield f"\nCode Genie failed to respond. (System Error: {hf_e})"
 
 async def generate(contents: list[dict], type: str = "generate") -> str:
     """

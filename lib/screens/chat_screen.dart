@@ -22,6 +22,8 @@ import '../widgets/attachment_button.dart';
 import '../providers/notification_provider.dart';
 import '../providers/planning_provider.dart';
 import '../widgets/planning_timeline.dart';
+import 'dart:convert';
+import '../services/notification_service.dart';
 import 'notification_screen.dart';
 
 /// Main chat screen with sidebar and chat area.
@@ -66,6 +68,27 @@ class _ChatScreenState extends State<ChatScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ChatProvider>().initialize();
+        
+        // --- SMART REDIRECT LOGIC ---
+        // Listen for notification taps to auto-navigate to the source
+        NotificationService().navigationStream.listen((payload) {
+          if (payload != null && mounted) {
+            try {
+              final Map<String, dynamic> data = jsonDecode(payload);
+              final String? chatId = data['chatId'] ?? data['id'];
+              if (chatId != null) {
+                debugPrint('📍 Redirecting to Chat: $chatId');
+                context.read<ChatProvider>().openChat(chatId);
+                // If drawer is open, close it
+                if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+                  Navigator.pop(context);
+                }
+              }
+            } catch (e) {
+              debugPrint('⚠️ Error parsing notification payload for redirect: $e');
+            }
+          }
+        });
       }
     });
   }
