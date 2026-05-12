@@ -17,3 +17,4 @@ pyngrok
 pytesseract
 groq
 httpx
+email-validator
