@@ -78,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 54,
                         fit: BoxFit.contain,
                       ),
-                    ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                    ),
                     
                     const SizedBox(height: 32),
                     
@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : Colors.black87,
                       ),
-                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+                    ),
                     
                     const SizedBox(height: 8),
                     
@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 15,
                         color: isDark ? Colors.white54 : Colors.black54,
                       ),
-                    ).animate().fadeIn(delay: 300.ms),
+                    ),
                     
                     const SizedBox(height: 48),
 
@@ -127,12 +127,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                      ).animate().shake(),
+                      ),
 
                     // Form
                     if (!_isLogin)
-                      _textField(_nameCtrl, 'Full Name', Icons.person_outline, isDark)
-                        .animate().fadeIn().slideX(),
+                      _textField(_nameCtrl, 'Full Name', Icons.person_outline, isDark),
                     
                     const SizedBox(height: 16),
                     _textField(_emailCtrl, 'Email Address', Icons.email_outlined, isDark),
@@ -184,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                       ),
-                    ).animate().fadeIn(delay: 500.ms),
+                    ),
 
                     const SizedBox(height: 16),
 
@@ -212,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
-                    ).animate().fadeIn(delay: 600.ms),
+                    ),
 
                     const SizedBox(height: 24),
 

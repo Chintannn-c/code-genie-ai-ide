@@ -53,7 +53,7 @@ origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://192.168.1.7:8000",
-    "https://unrecorded-unpretended-loretta.ngrok-free.dev", # Active Tunnel
+    "https://code-genie-ai-ide-production.up.railway.app",
 ]
 
 # Add production origins from settings

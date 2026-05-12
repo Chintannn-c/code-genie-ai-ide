@@ -114,10 +114,8 @@ class _ChatScreenState extends State<ChatScreen>
       final cp = context.read<ChatProvider>();
 
       if (force || _isAtBottom) {
-        _scrollController.animateTo(
+        _scrollController.jumpTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
         );
       } else if (cp.isStreaming && !_isAtBottom) {
         if (!_showScrollButton) {
@@ -167,7 +165,9 @@ class _ChatScreenState extends State<ChatScreen>
       floatingActionButton: _showScrollButton
           ? _buildScrollButton(isDark)
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonLocation: isWide 
+          ? FloatingActionButtonLocation.endFloat 
+          : FloatingActionButtonLocation.centerFloat,
       body: Row(
         children: [
           if (isWide) _buildSidebar(chatProvider, authProvider, isDark),
