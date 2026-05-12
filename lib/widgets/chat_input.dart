@@ -90,7 +90,6 @@ class _ChatInputState extends State<ChatInput> {
     if (!cp.isEditorMode) return;
 
     final selection = _promptCtrl.selection;
-    // Only trigger if we just typed one character (length increased by 1)
     if (value.length <= (_lastValue?.length ?? 0)) {
       _lastValue = value;
       return;
@@ -161,8 +160,6 @@ class _ChatInputState extends State<ChatInput> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.isDark ? Colors.black : Colors.white;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       color: Colors.transparent,
@@ -204,116 +201,117 @@ class _ChatInputState extends State<ChatInput> {
                     ),
                   ],
                 ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (widget.attachmentButton != null)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: widget.attachmentButton!,
-                    ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (widget.attachmentButton != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: widget.attachmentButton!,
+                      ),
 
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (context.watch<ChatProvider>().isEditorMode)
-                          Container(
-                            padding: const EdgeInsets.only(left: 16, top: 12),
-                            alignment: Alignment.centerLeft,
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF6366F1,
-                                    ).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _detectedLang.toUpperCase(),
-                                    style: GoogleFonts.jetBrainsMono(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF6366F1),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (context.watch<ChatProvider>().isEditorMode)
+                            Container(
+                              padding: const EdgeInsets.only(left: 16, top: 12),
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF6366F1,
+                                      ).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      _detectedLang.toUpperCase(),
+                                      style: GoogleFonts.jetBrainsMono(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF6366F1),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'SYNTAX DETECTED',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: widget.isDark
-                                        ? Colors.white24
-                                        : Colors.black26,
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'SYNTAX DETECTED',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      color: widget.isDark
+                                          ? Colors.white24
+                                          : Colors.black26,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ).animate().fadeIn().slideX(begin: -0.1, end: 0),
-                          ),
-                        TextField(
-                          controller: _promptCtrl,
-                          focusNode: _focus,
-                          maxLines: 5,
-                          minLines: 1,
-                          onChanged: _handleAutoClosing,
-                          onSubmitted: (_) => _send(),
-                          style: context.watch<ChatProvider>().isEditorMode
-                              ? GoogleFonts.jetBrainsMono(
-                                  fontSize: 14,
-                                  height: 1.6,
-                                  color: widget.isDark
-                                      ? Colors.white
-                                      : Colors.black87,
-                                )
-                              : GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  color: widget.isDark
-                                      ? Colors.white
-                                      : Colors.black87,
-                                ),
-                          decoration: InputDecoration(
-                            hintText: context.watch<ChatProvider>().isEditorMode
-                                ? 'Write code here...'
-                                : 'Ask me anything...',
-                            hintStyle: GoogleFonts.plusJakartaSans(
-                              color: widget.isDark
-                                  ? Colors.white38
-                                  : Colors.black38,
-                              fontSize: 14,
+                                ],
+                              ).animate().fadeIn().slideX(begin: -0.1, end: 0),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
+                          TextField(
+                            controller: _promptCtrl,
+                            focusNode: _focus,
+                            maxLines: 5,
+                            minLines: 1,
+                            onChanged: _handleAutoClosing,
+                            onSubmitted: (_) => _send(),
+                            style: context.watch<ChatProvider>().isEditorMode
+                                ? GoogleFonts.jetBrainsMono(
+                                    fontSize: 14,
+                                    height: 1.6,
+                                    color: widget.isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  )
+                                : GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    color: widget.isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
+                            decoration: InputDecoration(
+                              hintText: context.watch<ChatProvider>().isEditorMode
+                                  ? 'Write code here...'
+                                  : 'Ask me anything...',
+                              hintStyle: GoogleFonts.plusJakartaSans(
+                                color: widget.isDark
+                                    ? Colors.white38
+                                    : Colors.black38,
+                                fontSize: 14,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
                             ),
-                            border: InputBorder.none,
-                            isDense: true,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildOrchestratorToggle(),
-                        const SizedBox(width: 4),
-                        _buildSendButton(),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildOrchestratorToggle(),
+                          const SizedBox(width: 4),
+                          _buildSendButton(),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
