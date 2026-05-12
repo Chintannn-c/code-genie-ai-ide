@@ -111,6 +111,14 @@ class ChatProvider extends ChangeNotifier {
 
   // Getters
   List<Chat> get chats => _chats;
+
+  Chat? get currentChat {
+    if (_currentChatId == null) return null;
+    for (var chat in _chats) {
+      if (chat.chatId == _currentChatId) return chat;
+    }
+    return null;
+  }
   
   List<Chat> get filteredChats {
     if (_searchQuery.isEmpty) return _chats;

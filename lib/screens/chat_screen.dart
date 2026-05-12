@@ -218,7 +218,7 @@ class _ChatScreenState extends State<ChatScreen>
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final chatProvider = context.watch<ChatProvider>();
-    final authProvider = context.watch<AuthProvider>();
+    final ap = context.watch<AuthProvider>();
     final isDark = themeProvider.isDark;
     final isWide = MediaQuery.of(context).size.width > 700;
 
@@ -229,7 +229,7 @@ class _ChatScreenState extends State<ChatScreen>
           ? null
           : Drawer(
               backgroundColor: isDark ? Colors.black : Colors.white,
-              child: _buildSidebar(chatProvider, authProvider, isDark),
+              child: _buildSidebar(chatProvider, ap, isDark),
             ),
       floatingActionButton: _showScrollButton
           ? _buildScrollButton(isDark)
@@ -239,7 +239,7 @@ class _ChatScreenState extends State<ChatScreen>
           : FloatingActionButtonLocation.centerFloat,
       body: Row(
         children: [
-          if (isWide) _buildSidebar(chatProvider, authProvider, isDark),
+          if (isWide) _buildSidebar(chatProvider, ap, isDark),
           Expanded(
             child: Center(
               child: ConstrainedBox(
