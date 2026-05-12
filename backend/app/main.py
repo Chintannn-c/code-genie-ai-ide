@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -131,6 +131,16 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         logger.error(f"WebSocket Error for {user_id}: {e}")
         socket_manager.disconnect(websocket, user_id)
 
+
+# Serve Flutter Web Build
+web_path = os.path.join(os.path.dirname(__file__), "static_web")
+if os.path.exists(web_path):
+    app.mount("/", StaticFiles(directory=web_path, html=True), name="web")
+    
+    @app.exception_handler(404)
+    async def not_found_handler(request: Request, exc):
+        """Catch-all to support Flutter Web routing."""
+        return FileResponse(os.path.join(web_path, "index.html"))
 
 @app.get("/api/health")
 async def health_check():
