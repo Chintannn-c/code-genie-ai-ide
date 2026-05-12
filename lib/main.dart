@@ -10,10 +10,13 @@ import 'providers/auth_provider.dart';
 import 'services/notification_service.dart';
 import 'providers/notification_provider.dart';
 import 'providers/planning_provider.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   
   // Initialize Notification Service (Hive + Local Notifications)
   final notificationService = NotificationService();
