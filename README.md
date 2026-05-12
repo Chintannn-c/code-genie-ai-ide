@@ -19,11 +19,13 @@ Code Genie never stops. If a primary model (like Gemini) throttles or fails, the
 3. **Tertiary**: OpenRouter (GPT-OSS 120B)
 4. **Safety Net**: Hugging Face (Mistral 7B)
 
-### 🎨 Diamond UI/UX
+### 💎 Diamond UI/UX (Version 2.0 - Premium Hardened)
 A developer-centric interface built with Flutter, featuring:
-- **Glassmorphism Design**: Semi-transparent UI elements with real-time blur.
-- **Smart Notifications**: Native OS-level alerts with integrated deep-linking.
-- **Interactive Editor**: Real-time syntax detection and parallel AI analysis.
+- **Aurora Dashboard**: High-fidelity landing page with pulsating neon branding and multi-tonal gradient titles.
+- **Crystal Glassmorphism**: High-contrast action cards with BackdropFilter blurs, subtle border glows, and cinematic staggered animations.
+- **Futuristic Top Navigation**: Reactive header with real-time model selectors, "PRO" status badges, and intelligent notification hubs.
+- **Integrated Action Hub**: Vertically-structured prompt area with high-fidelity control icons (Mic, Code, Files) and multi-model orchestration toggles.
+- **Cinematic Interactions**: Custom-animated "3-Dot" typing indicators and glassmorphism chat bubbles for an immersive AI experience.
 
 ---
 
