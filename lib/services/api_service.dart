@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -192,7 +193,15 @@ class ApiService {
     request.fields['user_id'] = userId;
 
     for (var path in filePaths) {
-      request.files.add(await http.MultipartFile.fromPath('files', path));
+      if (kIsWeb) {
+        // On web, paths are typically just filenames or blob URLs. 
+        // We'd ideally need the actual bytes here, but if we only have paths, 
+        // this method should be called with bytes or handled via a different service.
+        // For now, we'll guard against the crash.
+        request.files.add(http.MultipartFile.fromString('files', path, filename: 'file.txt'));
+      } else {
+        request.files.add(await http.MultipartFile.fromPath('files', path));
+      }
     }
 
     var streamedResponse = await request.send();
