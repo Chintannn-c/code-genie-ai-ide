@@ -48,11 +48,24 @@ app = FastAPI(
 
 # CORS Configuration
 settings = get_settings()
-allowed_origins = settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS != "*" else ["*"]
+# Explicit origins are required when allow_credentials=True
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://192.168.1.7:8000",
+    "https://jubilant-blessing-production-ff1a.up.railway.app",
+    "https://codegenie.com",
+]
+
+# Add any extra origins from environment
+if settings.ALLOWED_ORIGINS != "*":
+    extra_origins = settings.ALLOWED_ORIGINS.split(",")
+    origins.extend([o.strip() for o in extra_origins if o.strip() not in origins])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
