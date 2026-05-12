@@ -53,7 +53,7 @@ class _ChatInputState extends State<ChatInput> {
     
     _focus.onKeyEvent = (node, event) {
       if (event is KeyDownEvent && 
-          event.logicalKey == LogicalKeyboardKey.enter && 
+          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) && 
           !HardwareKeyboard.instance.isShiftPressed) {
         _send();
         return KeyEventResult.handled;
