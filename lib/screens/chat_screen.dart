@@ -3,10 +3,10 @@
  * Bug #1 — RepaintBoundary + SizeTransition — line ~170
  */
 
-import 'dart:io';
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
@@ -20,7 +20,6 @@ import '../widgets/file_upload_bar.dart';
 import '../widgets/model_selector.dart';
 import '../widgets/attachment_button.dart';
 import '../providers/notification_provider.dart';
-import '../providers/planning_provider.dart';
 import '../widgets/planning_timeline.dart';
 import 'dart:convert';
 import '../services/notification_service.dart';
@@ -376,6 +375,65 @@ class _ChatScreenState extends State<ChatScreen>
               const SizedBox(width: 16),
             ],
 
+            if (isWide) ...[
+              const SizedBox(width: 16),
+              // Chat Title & Model Info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        cp.currentChat?.title ?? 'New Conversation',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(Icons.edit_note_rounded, size: 16, color: isDark ? Colors.white24 : Colors.black26),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+                        ),
+                        child: Text(
+                          'PRO',
+                          style: GoogleFonts.inter(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF6366F1),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const ModelSelector(),
+                      const SizedBox(width: 8),
+                      Container(width: 4, height: 4, decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black12, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Last active: Just now',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+
             const Spacer(),
 
             // Editor Mode Toggle
@@ -477,9 +535,25 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.star_outline_rounded, size: 20, color: isDark ? Colors.white24 : Colors.black26),
+              onPressed: () {},
+              tooltip: 'Favorite',
+            ),
             _buildNotificationBadge(context, isDark),
-            const SizedBox(width: 4),
             _buildThemeToggle(tp, isDark),
+            const SizedBox(width: 6),
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+              backgroundImage: ap.user?.pictureUrl != null
+                  ? NetworkImage(ap.user!.pictureUrl!)
+                  : null,
+              child: ap.user?.pictureUrl == null
+                  ? Icon(Icons.person_rounded, size: 14, color: isDark ? Colors.white70 : Colors.black87)
+                  : null,
+            ),
+            const SizedBox(width: 12),
           ],
         ),
       ),
@@ -578,65 +652,81 @@ class _ChatScreenState extends State<ChatScreen>
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            child: SafeArea(
-              bottom: false,
-              child: SizedBox(
-                width: double.infinity,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
                     ),
-                    const SizedBox(height: 12),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                        blurRadius: 15,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
                       'Code Genie',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : Colors.black,
                         letterSpacing: -0.5,
-                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'PRO VERSION',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF6366F1),
+                        letterSpacing: 1.5,
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SizedBox(
-              width: double.infinity,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
               child: ElevatedButton.icon(
                 onPressed: cp.newChat,
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const Icon(Icons.add_rounded, size: 20),
                 label: const Text('New Chat'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  minimumSize: const Size(double.infinity, 54),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
+                  textStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -703,43 +793,122 @@ class _ChatScreenState extends State<ChatScreen>
                     : _buildGroupedChatList(cp, isDark),
             ),
           ),
-          Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
-              backgroundImage: ap.user?.pictureUrl != null
-                  ? NetworkImage(ap.user!.pictureUrl!)
-                  : null,
-              child: ap.user?.pictureUrl == null
-                  ? Icon(
-                      Icons.person_rounded,
-                      color: isDark ? Colors.white : Colors.black87,
-                      size: 20,
-                    )
-                  : null,
-            ),
-            title: Text(
-              ap.user?.fullName ?? 'User',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-            trailing: IconButton(
-              icon: const Icon(
-                Icons.logout_rounded,
-                size: 20,
-                color: Colors.redAccent,
-              ),
-              onPressed: () => _confirmLogout(context),
-            ),
-          ),
+          Divider(height: 1, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+          
+          _buildUserProfileCard(ap, isDark),
+          _buildSidebarUtility(context, isDark),
+          const SizedBox(height: 12),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUserProfileCard(AuthProvider ap, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Row(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                  backgroundImage: ap.user?.pictureUrl != null
+                      ? NetworkImage(ap.user!.pictureUrl!)
+                      : null,
+                  child: ap.user?.pictureUrl == null
+                      ? const Icon(Icons.person_rounded, color: Color(0xFF6366F1), size: 18)
+                      : null,
+                ),
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: isDark ? Colors.black : Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        ap.user?.fullName ?? 'Developer',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.verified_rounded, size: 10, color: Color(0xFF6366F1)),
+                    ],
+                  ),
+                  Text(
+                    'pro@codegenie.ai',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarUtility(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _utilityIcon(Icons.settings_outlined, 'Settings', isDark),
+          _utilityIcon(Icons.help_outline_rounded, 'Help', isDark),
+          _utilityIcon(Icons.star_outline_rounded, 'Favorites', isDark),
+          _utilityIcon(Icons.logout_rounded, 'Sign Out', isDark, color: Colors.redAccent.withValues(alpha: 0.6), onTap: () => _confirmLogout(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _utilityIcon(IconData icon, String tooltip, bool isDark, {Color? color, VoidCallback? onTap}) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 20, color: color ?? (isDark ? Colors.white38 : Colors.black38)),
+        ),
       ),
     );
   }
@@ -761,8 +930,11 @@ class _ChatScreenState extends State<ChatScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        itemCount: cp.messages.length,
+        itemCount: cp.messages.length + (cp.isStreaming ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == cp.messages.length && cp.isStreaming) {
+            return const TypingIndicator();
+          }
           final msg = cp.messages[index];
           final isLastAI = index == cp.messages.length - 1 && msg.role == 'ai';
           return MessageBubble(
@@ -987,6 +1159,76 @@ class _ChatScreenState extends State<ChatScreen>
                 curve: Curves.easeOutCubic,
               )
               .fadeIn(),
+    );
+  }
+}
+
+class TypingIndicator extends StatelessWidget {
+  const TypingIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+              ),
+            ),
+            child: const Icon(Icons.smart_toy_rounded, size: 20, color: Color(0xFF6366F1)),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? Colors.white.withValues(alpha: 0.03) 
+                  : Colors.black.withValues(alpha: 0.03),
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.05) 
+                    : Colors.black.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (index) {
+                return Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF6366F1),
+                    shape: BoxShape.circle,
+                  ),
+                ).animate(onPlay: (controller) => controller.repeat()).scale(
+                  duration: 600.ms,
+                  delay: (index * 200).ms,
+                  begin: const Offset(0.5, 0.5),
+                  end: const Offset(1.2, 1.2),
+                ).fadeIn(
+                  duration: 600.ms,
+                  delay: (index * 200).ms,
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
