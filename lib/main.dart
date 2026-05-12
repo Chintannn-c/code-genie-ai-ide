@@ -14,14 +14,29 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   
-  // Initialize Notification Service (Hive + Local Notifications)
-  final notificationService = NotificationService();
-  await notificationService.init();
-
+  try {
+    debugPrint('🚀 Starting App Initialization...');
+    
+    // Initialize Firebase with timeout protection
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 10), onTimeout: () {
+      debugPrint('⚠️ Firebase Initialization Timed Out');
+      return null;
+    });
+    
+    // Initialize Notification Service (Hive + Local Notifications)
+    final notificationService = NotificationService();
+    await notificationService.init().timeout(const Duration(seconds: 5), onTimeout: () {
+      debugPrint('⚠️ Notification Service Initialization Timed Out');
+    });
+    
+    debugPrint('✅ All services initialized');
+  } catch (e) {
+    debugPrint('❌ Initialization Error: $e');
+  }
+  
   runApp(
     MultiProvider(
       providers: [
