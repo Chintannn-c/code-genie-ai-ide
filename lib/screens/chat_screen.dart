@@ -42,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen>
   bool _showScrollButton = false;
   bool _isAtBottom = true;
   bool _showRightPanel = true;
+  final TextEditingController _searchController = TextEditingController();
 
   // ANIM FIX: Explicit AnimationController for CodePanel size transition
   late AnimationController _panelController;
@@ -128,8 +129,8 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void dispose() {
     _scrollController.dispose();
-    _panelController
-        .dispose(); // ANIM FIX: Critical disposal to prevent memory leaks
+    _panelController.dispose(); 
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -571,18 +572,57 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
           ),
-          const SizedBox(height: 8), // Added breathing room before list
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              height: 42,
+              decoration: BoxDecoration(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.04) 
+                    : Colors.black.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.05) 
+                      : Colors.black.withValues(alpha: 0.05),
+                ),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: cp.setSearchQuery,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search chats...',
+                  hintStyle: GoogleFonts.inter(
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontSize: 13,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8), 
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => cp.loadChats(),
-              child: cp.chats.isEmpty
+              child: cp.filteredChats.isEmpty
                   ? SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 40),
                         alignment: Alignment.center,
                         child: Text(
-                          'No chats yet',
+                          cp.searchQuery.isEmpty ? 'No chats yet' : 'No results found',
                           style: GoogleFonts.inter(
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.3)
@@ -593,10 +633,10 @@ class _ChatScreenState extends State<ChatScreen>
                     )
                   : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: cp.chats.length,
+                      itemCount: cp.filteredChats.length,
                       padding: const EdgeInsets.only(bottom: 12),
                       itemBuilder: (context, index) {
-                        final chat = cp.chats[index];
+                        final chat = cp.filteredChats[index];
                         return ChatListTile(
                           chat: chat,
                           isSelected: cp.currentChatId == chat.chatId,

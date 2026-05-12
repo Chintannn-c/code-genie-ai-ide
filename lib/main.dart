@@ -64,14 +64,23 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Inter',
         colorSchemeSeed: const Color(0xFF6366F1),
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         fontFamily: 'Inter',
-        colorSchemeSeed: const Color(0xFF6366F1),
-        scaffoldBackgroundColor: Colors.black,
-        cardColor: const Color(0xFF111111),
+        colorSchemeSeed: const Color(0xFF818CF8),
+        scaffoldBackgroundColor: const Color(0xFF020617), // Deep space black
+        cardColor: const Color(0xFF0F172A), // Slate card
+        canvasColor: const Color(0xFF020617),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
       home: _getHome(authProvider),
     );

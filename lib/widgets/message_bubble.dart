@@ -25,6 +25,7 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 700;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
@@ -54,55 +55,67 @@ class MessageBubble extends StatelessWidget {
                   ),
                 ),
                 // Message content
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.78,
+                ClipRRect(
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(24),
+                    topRight: const Radius.circular(24),
+                    bottomLeft: Radius.circular(isUser ? 24 : 6),
+                    bottomRight: Radius.circular(isUser ? 6 : 24),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: isUser
-                        ? const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                          )
-                        : null,
-                    color: !isUser
-                        ? (message.content.contains('[Error')
-                            ? Colors.redAccent.withValues(alpha: 0.1)
-                            : (isDark
-                                ? const Color(0xFF1F2937).withValues(alpha: 0.4)
-                                : Colors.white.withValues(alpha: 0.9)))
-                        : null,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(20),
-                      topRight: const Radius.circular(20),
-                      bottomLeft: Radius.circular(isUser ? 20 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 20),
-                    ),
-                    border: Border.all(
-                      color: message.content.contains('[Error')
-                          ? Colors.redAccent.withValues(alpha: 0.3)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.05)),
-                      width: message.content.contains('[Error') ? 1.5 : 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isUser 
-                            ? const Color(0xFF6366F1).withValues(alpha: 0.3)
-                            : (message.content.contains('[Error') 
-                                ? Colors.redAccent.withValues(alpha: 0.1)
-                                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.05)),
-                        blurRadius: 15,
-                        offset: const Offset(0, 6),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: isUser ? 0 : 12, sigmaY: isUser ? 0 : 12),
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * (isWide ? 0.65 : 0.8),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        gradient: isUser
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                              )
+                            : null,
+                        color: !isUser
+                            ? (message.content.contains('[Error')
+                                ? Colors.redAccent.withValues(alpha: 0.15)
+                                : (isDark
+                                    ? const Color(0xFF1E293B).withValues(alpha: 0.5)
+                                    : Colors.white.withValues(alpha: 0.8)))
+                            : null,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(24),
+                          topRight: const Radius.circular(24),
+                          bottomLeft: Radius.circular(isUser ? 24 : 6),
+                          bottomRight: Radius.circular(isUser ? 6 : 24),
+                        ),
+                        border: Border.all(
+                          color: message.content.contains('[Error')
+                              ? Colors.redAccent.withValues(alpha: 0.4)
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : Colors.black.withValues(alpha: 0.05)),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          if (isUser)
+                            BoxShadow(
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          if (!isUser && !isDark)
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                       if (message.content.contains('[Error'))
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -126,7 +139,9 @@ class MessageBubble extends StatelessWidget {
                       if (isStreaming && !isUser) _buildCursor(),
                     ],
                   ),
-                ).animate(
+                ),
+              ),
+            ).animate(
                   target: isStreaming ? 1 : 1, // Always stay at end state for history
                 ).fadeIn(
                   duration: isStreaming ? 400.ms : 0.ms,

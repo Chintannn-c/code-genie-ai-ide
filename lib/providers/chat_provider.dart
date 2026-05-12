@@ -111,6 +111,22 @@ class ChatProvider extends ChangeNotifier {
 
   // Getters
   List<Chat> get chats => _chats;
+  
+  List<Chat> get filteredChats {
+    if (_searchQuery.isEmpty) return _chats;
+    return _chats.where((chat) => 
+      chat.title.toLowerCase().contains(_searchQuery.toLowerCase())
+    ).toList();
+  }
+
+  String _searchQuery = '';
+  String get searchQuery => _searchQuery;
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
   List<Message> get messages => _messages;
   String? get currentChatId => _currentChatId;
   bool get isStreaming => _isStreaming;

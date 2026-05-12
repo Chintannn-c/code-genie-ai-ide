@@ -171,33 +171,39 @@ class _ChatInputState extends State<ChatInput> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(24),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: widget.isDark
-                    ? const Color(0xFF1F2937).withValues(
-                        alpha: 0.8,
-                      ) // High-performance translucent solid
-                    : Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: _focus.hasFocus
-                      ? const Color(0xFF6366F1).withValues(alpha: 0.5)
-                      : widget.isDark
-                      ? Colors.white.withValues(alpha: 0.12)
-                      : Colors.black.withValues(alpha: 0.1),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: widget.isDark ? 0.4 : 0.1,
-                    ),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                decoration: BoxDecoration(
+                  color: widget.isDark
+                      ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: _focus.hasFocus
+                        ? const Color(0xFF6366F1).withValues(alpha: 0.6)
+                        : (widget.isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05)),
+                    width: 1.5,
                   ),
-                ],
-              ),
+                  boxShadow: [
+                    if (_focus.hasFocus)
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: widget.isDark ? 0.4 : 0.1,
+                      ),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
