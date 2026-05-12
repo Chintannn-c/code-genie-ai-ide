@@ -55,6 +55,7 @@ origins = [
     "http://127.0.0.1:8000",
     "http://192.168.1.7:8000",
     "https://jubilant-blessing-production-ff1a.up.railway.app",
+    "https://jubilant-blessing-production-f1f9.up.railway.app",
     "https://codegenie.com",
 ]
 
