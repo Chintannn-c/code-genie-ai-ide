@@ -292,23 +292,7 @@ class _ChatInputState extends State<ChatInput> {
                         children: [
                           if (widget.attachmentButton != null)
                              widget.attachmentButton!,
-                          _actionIconButton(Icons.mic_none_rounded, 'Voice Input', onTap: () {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(content: Text('Voice input coming soon!'), behavior: SnackBarBehavior.floating)
-                             );
-                          }),
-                          _actionIconButton(
-                            cp.isEditorMode ? Icons.auto_awesome_rounded : Icons.code_rounded,
-                            'Code Editor Mode',
-                            onTap: cp.toggleEditorMode,
-                            isActive: cp.isEditorMode,
-                          ),
-                          _actionIconButton(
-                            Icons.terminal_rounded,
-                            'Toggle Terminal Panel',
-                            onTap: widget.onToggleTerminal,
-                            isActive: widget.isTerminalOpen,
-                          ),
+
                           const Spacer(),
                           _buildOrchestratorToggle(),
                           const SizedBox(width: 8),

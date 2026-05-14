@@ -501,14 +501,6 @@ class _ChatScreenState extends State<ChatScreen>
             const Spacer(),
 
             const Spacer(),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(Icons.star_outline_rounded, size: 20, color: isDark ? Colors.white24 : Colors.black26),
-              onPressed: () {},
-              tooltip: 'Favorite',
-            ),
-            _buildNotificationBadge(context, isDark),
-            _buildThemeToggle(tp, isDark),
             const SizedBox(width: 6),
             CircleAvatar(
               radius: 14,

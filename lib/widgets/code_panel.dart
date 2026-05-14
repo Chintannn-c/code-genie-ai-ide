@@ -148,13 +148,7 @@ class CodePanel extends StatelessWidget {
             color: const Color(0xFFF43F5E),
             onTap: () => cp.fixCode(code, language),
           ),
-          const SizedBox(width: 8),
-          _buildActionChip(
-            label: 'OPTIMIZE',
-            icon: Icons.bolt_rounded,
-            color: const Color(0xFFF59E0B),
-            onTap: () => cp.optimizeCode(code, language),
-          ),
+        
         ],
       ),
     );
