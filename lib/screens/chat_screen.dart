@@ -312,11 +312,41 @@ class _ChatScreenState extends State<ChatScreen>
                         isTerminalOpen: _showRightPanel,
                         isDark: isDark,
                         onStop: chatProvider.stopStreaming,
-                        attachmentButton: AttachmentButton(
-                          isDark: isDark,
-                          isLoading: chatProvider.isUploading,
-                          onFilesSelected: chatProvider.uploadFiles,
-                        ),
+                         attachmentButton: Stack(
+                           clipBehavior: Clip.none,
+                           children: [
+                             AttachmentButton(
+                               isDark: isDark,
+                               isLoading: chatProvider.isUploading,
+                               onFilesSelected: chatProvider.uploadFiles,
+                             ),
+                             if (chatProvider.selectedFiles.isNotEmpty)
+                               Positioned(
+                                 right: -2,
+                                 top: -2,
+                                 child: Container(
+                                   padding: const EdgeInsets.all(4),
+                                   decoration: const BoxDecoration(
+                                     color: Color(0xFF6366F1),
+                                     shape: BoxShape.circle,
+                                   ),
+                                   constraints: const BoxConstraints(
+                                     minWidth: 14,
+                                     minHeight: 14,
+                                   ),
+                                   child: Text(
+                                     chatProvider.selectedFiles.length.toString(),
+                                     style: const TextStyle(
+                                       color: Colors.white,
+                                       fontSize: 8,
+                                       fontWeight: FontWeight.bold,
+                                     ),
+                                     textAlign: TextAlign.center,
+                                   ),
+                                 ),
+                               ),
+                           ],
+                         ),
                         onSend: ({required prompt, code = '', error = ''}) {
                           chatProvider.sendMessage(
                             prompt: prompt,
@@ -754,6 +784,74 @@ class _ChatScreenState extends State<ChatScreen>
                     : _buildGroupedChatList(cp, isDark),
             ),
           ),
+
+          if (cp.selectedFiles.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.folder_open_rounded, size: 14, color: isDark ? Colors.white24 : Colors.black26),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PROJECT FILES (${cp.selectedFiles.length})',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                      color: isDark ? Colors.white24 : Colors.black26,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: cp.clearFiles,
+                    child: Text(
+                      'CLEAR',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.redAccent.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              height: 100,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListView.builder(
+                itemCount: cp.selectedFiles.length,
+                itemBuilder: (context, index) {
+                  final file = cp.selectedFiles[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.description_outlined, size: 14, color: const Color(0xFF6366F1).withValues(alpha: 0.6)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            file.fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 12),
+                          onPressed: () => cp.removeFile(file.fileId),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          
           Divider(height: 1, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
           
           _buildUserProfileCard(ap, isDark),

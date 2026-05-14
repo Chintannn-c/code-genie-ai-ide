@@ -29,7 +29,14 @@ class FileUploadBar extends StatelessWidget {
       height: 120,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: isDark 
+            ? const Color(0xFF1E293B).withValues(alpha: 0.2) 
+            : Colors.black.withValues(alpha: 0.02),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
       ),
       child: Row(
         children: [

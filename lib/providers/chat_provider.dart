@@ -468,7 +468,9 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final uploaded = await _apiService.uploadFiles(userId: _userId!, files: files);
+      debugPrint('✅ Uploaded ${uploaded.length} files successfully');
       _selectedFiles.addAll(uploaded);
+      debugPrint('📁 Current selected files: ${_selectedFiles.length}');
     } catch (e) {
       _errorMessage = 'Upload failed: $e';
       debugPrint('❌ Upload error: $e');
