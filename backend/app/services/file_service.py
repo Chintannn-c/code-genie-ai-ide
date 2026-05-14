@@ -9,7 +9,9 @@ UPLOAD_DIR = settings.UPLOAD_PATH
 
 async def save_upload(user_id: str, file: UploadFile) -> str:
     """Save an uploaded file to local storage. Returns relative path."""
-    user_dir = os.path.join(UPLOAD_DIR, user_id)
+    # SECURITY FIX: Sanitize user_id to prevent path traversal attacks
+    safe_user_id = "".join([c for c in user_id if c.isalnum() or c in ('-', '_')])
+    user_dir = os.path.join(UPLOAD_DIR, safe_user_id)
     if not os.path.exists(user_dir):
         os.makedirs(user_dir)
         
