@@ -281,86 +281,20 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
 
         from app.services import openrouter_service, groq_service
 
-        async def event_generator():
-            full_response = []
-            final_model_name = "unknown"
-            try:
-                # --- PHASE 1: Primary Request ---
-                try:
-                    if request.provider == "openrouter":
-                        model = request.model_name or "meta-llama/llama-3.3-70b-instruct:free"
-                        messages = history + [{"role": "user", "content": prompt_text}]
-                        stream = openrouter_service.stream_generate(messages, model=model)
-                        final_model_name = model
-                    elif request.provider == "huggingface" or request.provider == "groq":
-                        model = request.model_name or "llama3-8b-8192"
-                        messages = history + [{"role": "user", "content": prompt_text}]
-                        stream = groq_service.stream_generate(messages, model=model)
-                        final_model_name = model
-                    else:
-                        raise ValueError("Defaulting to Gemini")
-                    
-                    # Test if stream is actually working
-                    async for chunk in stream:
-                        full_response.append(chunk)
-                        yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
-                
-                except Exception as e:
-                    logger.warning(f"Primary provider ({request.provider}) failed: {e}. Attempting failover to Gemini...")
-                    # --- PHASE 2: Failover to Gemini ---
-                    contents = []
-                    for msg in history:
-                        contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
-                    contents.append({"role": "user", "parts": [{"text": prompt_text}]})
-                    
-                    from app.config import get_settings
-                    final_model_name = f"GEMINI-BACKUP ({get_settings().GEMINI_MODEL})"
-                    
-                    stream = gemini_service.stream_generate(contents)
-                    async for chunk in stream:
-                        full_response.append(chunk)
-                        yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
-
-                # --- PHASE 3: Success Handling ---
-                if not full_response:
-                    # If we got here with no response, it's a failure
-                    raise ValueError("No response generated from any provider")
-
-                # Save success message
-                complete_text = "".join(full_response)
-                message_id = await chat_service.save_message(
-                    chat_id=chat_id, role="ai", content=complete_text,
-                    current_user_id=current_user_id,
-                    msg_type=request.type, language=request.language,
-                    model_name=final_model_name,
-                )
-
-                yield ServerSentEvent(
-                    event="message",
-                    data=json.dumps({
-                        "text": "",
-                        "done": True,
-                        "chat_id": chat_id,
-                        "message_id": message_id,
-                        "model_name": final_model_name,
-                    }),
-                )
-
-            except Exception as e:
-                logger.error(f"Stream generation error: {e}")
-                error_msg = "AI Fails to response..."
-                yield ServerSentEvent(data=json.dumps({"text": error_msg, "done": False}))
-                yield ServerSentEvent(
-                    event="message",
-                    data=json.dumps({
-                        "text": "",
-                        "done": True,
-                        "chat_id": chat_id,
-                        "error": error_msg
-                    }),
-                )
-
-        return EventSourceResponse(event_generator(), headers={"X-Accel-Buffering": "no"})
+        from app.services.llm_gateway import stream_with_failover
+        return EventSourceResponse(
+            stream_with_failover(
+                provider=request.provider,
+                model_name=request.model_name,
+                prompt_text=prompt_text,
+                history=history,
+                current_user_id=current_user_id,
+                chat_id=chat_id,
+                msg_type=request.type,
+                language=request.language
+            ),
+            headers={"X-Accel-Buffering": "no"}
+        )
     except Exception as e:
         logger.error(f"Stream setup error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

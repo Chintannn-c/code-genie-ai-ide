@@ -98,7 +98,14 @@ async def analyze_file(
         
         prompt_text = build_prompt(prompt=f"Analyze this file: {file_meta['file_name']}", language=file_meta["language"], difficulty=request.difficulty if hasattr(request, 'difficulty') else "beginner", type="file_analysis", code=content)
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
-        ai_response = await gemini_service.generate(contents)
+        
+        # Use selected provider
+        if request.provider == "groq":
+            ai_response = await groq_service.generate([{"role": "user", "content": prompt_text}], model=request.model_name or "llama3-8b-8192")
+        elif request.provider == "openrouter":
+            ai_response = await openrouter_service.generate([{"role": "user", "content": prompt_text}], model=request.model_name or "meta-llama/llama-3.3-70b-instruct:free")
+        else:
+            ai_response = await gemini_service.generate(contents)
         
         # Save AI message
         message_id = await chat_service.save_message(
@@ -107,7 +114,8 @@ async def analyze_file(
             content=ai_response,
             current_user_id=current_user_id,
             msg_type="file_analysis",
-            language=file_meta["language"]
+            language=file_meta["language"],
+            model_name=request.model_name or f"{request.provider.upper() if request.provider else 'GEMINI'} (Direct)"
         )
         
         return ChatResponse(
@@ -155,7 +163,13 @@ async def debug_file(
         
         prompt_text = build_prompt(prompt=f"Debug {file_meta['file_name']}: {request.error}", language=file_meta["language"], difficulty=request.difficulty if hasattr(request, 'difficulty') else "beginner", type="file_debug", code=content, error=request.error)
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
-        ai_response = await gemini_service.generate(contents)
+        
+        if request.provider == "groq":
+            ai_response = await groq_service.generate([{"role": "user", "content": prompt_text}], model=request.model_name or "llama3-8b-8192")
+        elif request.provider == "openrouter":
+            ai_response = await openrouter_service.generate([{"role": "user", "content": prompt_text}], model=request.model_name or "meta-llama/llama-3.3-70b-instruct:free")
+        else:
+            ai_response = await gemini_service.generate(contents)
         
         message_id = await chat_service.save_message(
             chat_id=chat_id,
@@ -163,7 +177,8 @@ async def debug_file(
             content=ai_response,
             current_user_id=current_user_id,
             msg_type="file_debug",
-            language=file_meta["language"]
+            language=file_meta["language"],
+            model_name=request.model_name or f"{request.provider.upper() if request.provider else 'GEMINI'} (Direct)"
         )
         
         return ChatResponse(
@@ -210,31 +225,18 @@ async def stream_analyze_file(request: dict, current_user_id: str = Depends(get_
         )
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
 
-        async def event_generator():
-            full_response = []
-            try:
-                async for chunk in gemini_service.stream_generate(contents):
-                    full_response.append(chunk)
-                    yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
-                
-                complete_text = "".join(full_response)
-                message_id = await chat_service.save_message(
-                    chat_id=chat_id, role="ai", content=complete_text,
-                    current_user_id=current_user_id,
-                    msg_type="file_analysis", language=file_meta["language"]
-                )
-
-                yield ServerSentEvent(
-                    data=json.dumps({
-                        "text": "", "done": True, 
-                        "chat_id": chat_id, "message_id": message_id
-                    })
-                )
-            except Exception as e:
-                yield ServerSentEvent(data=json.dumps({"error": str(e)}))
-
+         from app.services.llm_gateway import stream_with_failover
         return EventSourceResponse(
-            event_generator(),
+            stream_with_failover(
+                provider=request.get("provider", "gemini"),
+                model_name=request.get("model_name"),
+                prompt_text=prompt_text,
+                history=[], # Analysis doesn't usually need deep history
+                current_user_id=current_user_id,
+                chat_id=chat_id,
+                msg_type="file_analysis",
+                language=file_meta["language"]
+            ),
             headers={"X-Accel-Buffering": "no"}
         )
 
@@ -275,31 +277,18 @@ async def stream_debug_file(request: dict, current_user_id: str = Depends(get_cu
         )
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
 
-        async def event_generator():
-            full_response = []
-            try:
-                async for chunk in gemini_service.stream_generate(contents):
-                    full_response.append(chunk)
-                    yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
-                
-                complete_text = "".join(full_response)
-                message_id = await chat_service.save_message(
-                    chat_id=chat_id, role="ai", content=complete_text,
-                    current_user_id=current_user_id,
-                    msg_type="file_debug", language=file_meta["language"]
-                )
-
-                yield ServerSentEvent(
-                    data=json.dumps({
-                        "text": "", "done": True, 
-                        "chat_id": chat_id, "message_id": message_id
-                    })
-                )
-            except Exception as e:
-                yield ServerSentEvent(data=json.dumps({"error": str(e)}))
-
+         from app.services.llm_gateway import stream_with_failover
         return EventSourceResponse(
-            event_generator(),
+            stream_with_failover(
+                provider=request.get("provider", "gemini"),
+                model_name=request.get("model_name"),
+                prompt_text=prompt_text,
+                history=[],
+                current_user_id=current_user_id,
+                chat_id=chat_id,
+                msg_type="file_debug",
+                language=file_meta["language"]
+            ),
             headers={"X-Accel-Buffering": "no"}
         )
 
