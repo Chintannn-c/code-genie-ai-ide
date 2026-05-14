@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 from app.models.files import UploadResponse, FileAnalysisRequest, FileDebugRequest, PatchRequest
 from app.models.responses import ChatResponse
-from app.services import chat_service, file_service, ai_service as gemini_service
+from app.services import chat_service, file_service, ai_service as gemini_service, groq_service, openrouter_service
 from app.prompts.templates import build_prompt
 from app.routes.deps import get_current_user_id
 from datetime import datetime, timezone
@@ -225,7 +225,7 @@ async def stream_analyze_file(request: dict, current_user_id: str = Depends(get_
         )
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
 
-         from app.services.llm_gateway import stream_with_failover
+        from app.services.llm_gateway import stream_with_failover
         return EventSourceResponse(
             stream_with_failover(
                 provider=request.get("provider", "gemini"),
@@ -277,7 +277,7 @@ async def stream_debug_file(request: dict, current_user_id: str = Depends(get_cu
         )
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
 
-         from app.services.llm_gateway import stream_with_failover
+        from app.services.llm_gateway import stream_with_failover
         return EventSourceResponse(
             stream_with_failover(
                 provider=request.get("provider", "gemini"),
