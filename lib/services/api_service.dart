@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
 import '../models/app_file.dart';
+import 'package:file_picker/file_picker.dart';
 
 /// HTTP API service for non-streaming requests.
 class ApiService {
@@ -186,22 +187,46 @@ class ApiService {
   /// Upload multiple files
   Future<List<AppFile>> uploadFiles({
     required String userId,
-    required List<String> filePaths,
+    required List<PlatformFile> files,
   }) async {
     var request = http.MultipartRequest('POST', _uri(ApiConfig.upload));
 
+    // ADDED: Set headers for authentication and proxy bypass
+    request.headers.addAll({
+      if (_token != null) 'Authorization': 'Bearer $_token',
+      'Accept': 'application/json',
+      'Bypass-Tunnel-Reminder': 'true',
+      'ngrok-skip-browser-warning': 'true',
+    });
+
     request.fields['user_id'] = userId;
 
-    for (var path in filePaths) {
+    for (var file in files) {
       if (kIsWeb) {
-        // On web, paths are typically just filenames or blob URLs. 
-        // We'd ideally need the actual bytes here, but if we only have paths, 
-        // this method should be called with bytes or handled via a different service.
-        // For now, we'll guard against the crash.
-        request.files.add(http.MultipartFile.fromString('files', path, filename: 'file.txt'));
+        // FIX: On Web, we MUST use bytes as path is null
+        if (file.bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'files',
+            file.bytes!,
+            filename: file.name,
+          ));
+        }
       } else {
-        request.files.add(await http.MultipartFile.fromPath('files', path));
+        // On Native, path is generally preferred
+        if (file.path != null) {
+          request.files.add(await http.MultipartFile.fromPath('files', file.path!));
+        } else if (file.bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'files',
+            file.bytes!,
+            filename: file.name,
+          ));
+        }
       }
+    }
+
+    if (request.files.isEmpty) {
+      throw Exception('No valid files to upload');
     }
 
     var streamedResponse = await request.send();

@@ -12,6 +12,7 @@ import '../models/chat.dart';
 import '../models/message.dart';
 import '../models/app_file.dart';
 import '../services/api_service.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/stream_service.dart';
 import '../services/websocket_service.dart';
 import '../utils/constants.dart';
@@ -460,14 +461,17 @@ class ChatProvider extends ChangeNotifier {
     sendMessage(prompt: prompt);
   }
   
-  Future<void> uploadFiles(List<String> paths) async {
+  Future<void> uploadFiles(List<PlatformFile> files) async {
+    if (files.isEmpty) return;
     _isUploading = true;
+    _errorMessage = null;
     notifyListeners();
     try {
-      final uploaded = await _apiService.uploadFiles(userId: _userId!, filePaths: paths);
+      final uploaded = await _apiService.uploadFiles(userId: _userId!, files: files);
       _selectedFiles.addAll(uploaded);
     } catch (e) {
       _errorMessage = 'Upload failed: $e';
+      debugPrint('❌ Upload error: $e');
     } finally {
       _isUploading = false;
       notifyListeners();

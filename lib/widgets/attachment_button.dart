@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart' as fp;
 import 'package:google_fonts/google_fonts.dart';
 
 class AttachmentButton extends StatelessWidget {
-  final Function(List<String>) onFilesSelected;
+  final Function(List<fp.PlatformFile>) onFilesSelected;
   final bool isDark;
   final bool isLoading;
 
@@ -101,32 +101,12 @@ class AttachmentButton extends StatelessWidget {
     try {
       final result = await fp.FilePicker.platform.pickFiles(
         allowMultiple: true,
-        type: fp.FileType.custom,
-        allowedExtensions: isImage 
-            ? ['png', 'jpg', 'jpeg', 'webp']
-            : [
-                'dart', 'py', 'js', 'mjs', 'cjs', 'ts', 'java', 'kt', 'kts', 'swift', 'go', 'rs', 'rb', 'php', 'cs',
-                'c', 'h', 'cpp', 'cc', 'cxx', 'hpp', 'hh',
-                'html', 'htm', 'css', 'scss', 'sass', 'less',
-                'json', 'yaml', 'yml', 'xml', 'toml', 'ini', 'env',
-                'sql', 'psql', 'sqlite',
-                'sh', 'bash', 'zsh', 'fish',
-                'gradle', 'groovy',
-                'scala', 'clj', 'hs', 'elm', 'erl', 'ex', 'exs',
-                'md', 'markdown', 'tex', 'rst',
-                'asm', 's',
-                'lua', 'pl', 'pm', 'r', 'mat', 'm',
-                'dockerfile', 'tf',
-                'bat', 'ps1',
-                'ipynb',
-                'vue', 'svelte',
-                'nim', 'zig', 'cr', 'v', 'txt'
-              ],
+        withData: true, // IMPORTANT for Web support
+        type: isImage ? fp.FileType.image : fp.FileType.any, // Allow any for files to be safe
       );
 
-      if (result != null && result.paths.isNotEmpty) {
-        final paths = result.paths.whereType<String>().toList();
-        onFilesSelected(paths);
+      if (result != null && result.files.isNotEmpty) {
+        onFilesSelected(result.files);
       }
     } catch (e) {
       debugPrint('Error picking files: $e');

@@ -68,7 +68,29 @@ class _ChatScreenState extends State<ChatScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<ChatProvider>().initialize();
+        final cp = context.read<ChatProvider>();
+        cp.initialize();
+        
+        // ADDED: Error Listener to show feedback to user
+        cp.addListener(() {
+          if (cp.errorMessage != null && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(cp.errorMessage!),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+                action: SnackBarAction(
+                  label: 'Dismiss',
+                  textColor: Colors.white,
+                  onPressed: () => cp.clearError(),
+                ),
+              ),
+            );
+            // We don't clear it here automatically because the SnackBarAction does it,
+            // or it might be cleared by other logic. But let's clear it to avoid repeat snacks.
+            cp.clearError();
+          }
+        });
         
         // --- SMART REDIRECT LOGIC ---
         // Listen for notification taps to auto-navigate to the source
