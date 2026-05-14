@@ -88,11 +88,9 @@ class MessageBubble extends StatelessWidget {
                               )
                             : null,
                         color: !isUser
-                            ? (message.content.contains('[Error')
-                                ? Colors.redAccent.withValues(alpha: 0.15)
-                                : (isDark
-                                    ? const Color(0xFF1E293B).withValues(alpha: 0.5)
-                                    : Colors.white.withValues(alpha: 0.8)))
+                            ? (isDark
+                                ? const Color(0xFF1E293B).withValues(alpha: 0.5)
+                                : Colors.white.withValues(alpha: 0.8))
                             : null,
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(24),
@@ -101,11 +99,9 @@ class MessageBubble extends StatelessWidget {
                           bottomRight: Radius.circular(isUser ? 6 : 24),
                         ),
                         border: Border.all(
-                          color: message.content.contains('[Error')
-                              ? Colors.redAccent.withValues(alpha: 0.4)
-                              : (isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.05)),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.black.withValues(alpha: 0.05),
                           width: 1.5,
                         ),
                         boxShadow: [
@@ -126,25 +122,6 @@ class MessageBubble extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                      if (message.content.contains('[Error'))
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
-                              const SizedBox(width: 6),
-                              Text(
-                                'AI ENGINE ERROR',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.redAccent,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ..._buildContent(context),
                       if (isStreaming && !isUser) _buildCursor(),
                     ],
@@ -308,7 +285,7 @@ class MessageBubble extends StatelessWidget {
     // Purify content: remove technical model attribution lines
     String purifiedContent = message.content;
     purifiedContent = purifiedContent.split('\n')
-        .where((line) => !line.contains('Model: AI Orchestrator'))
+        .where((line) => !line.contains('Model: AI Orchestrator') && !line.startsWith('[Error:'))
         .join('\n')
         .trim();
 

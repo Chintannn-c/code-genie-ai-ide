@@ -13,6 +13,8 @@ class ChatInput extends StatefulWidget {
   final Widget? attachmentButton;
   final Function({required String prompt, String code, String error}) onSend;
   final bool isDark;
+  final VoidCallback onToggleTerminal;
+  final bool isTerminalOpen;
 
   const ChatInput({
     super.key,
@@ -20,6 +22,8 @@ class ChatInput extends StatefulWidget {
     required this.isStreaming,
     required this.onStop,
     required this.onSend,
+    required this.onToggleTerminal,
+    required this.isTerminalOpen,
     this.attachmentButton,
     this.isDark = true,
   });
@@ -160,6 +164,8 @@ class _ChatInputState extends State<ChatInput> {
 
   @override
   Widget build(BuildContext context) {
+    final cp = context.watch<ChatProvider>();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       color: Colors.transparent,
@@ -204,7 +210,7 @@ class _ChatInputState extends State<ChatInput> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (context.watch<ChatProvider>().isEditorMode)
+                    if (cp.isEditorMode)
                       Container(
                         padding: const EdgeInsets.only(left: 16, top: 12),
                         alignment: Alignment.centerLeft,
@@ -251,7 +257,7 @@ class _ChatInputState extends State<ChatInput> {
                       minLines: 1,
                       onChanged: _handleAutoClosing,
                       onSubmitted: (_) => _send(),
-                      style: context.watch<ChatProvider>().isEditorMode
+                      style: cp.isEditorMode
                           ? GoogleFonts.jetBrainsMono(
                               fontSize: 14,
                               height: 1.6,
@@ -266,7 +272,7 @@ class _ChatInputState extends State<ChatInput> {
                                   : Colors.black87,
                             ),
                       decoration: InputDecoration(
-                        hintText: context.watch<ChatProvider>().isEditorMode
+                        hintText: cp.isEditorMode
                             ? 'Write code here...'
                             : 'Ask me anything...',
                         hintStyle: GoogleFonts.plusJakartaSans(
@@ -286,8 +292,23 @@ class _ChatInputState extends State<ChatInput> {
                         children: [
                           if (widget.attachmentButton != null)
                              widget.attachmentButton!,
-                          _actionIconButton(Icons.mic_none_rounded, 'Voice Input'),
-                          _actionIconButton(Icons.code_rounded, 'Code Mode'),
+                          _actionIconButton(Icons.mic_none_rounded, 'Voice Input', onTap: () {
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(content: Text('Voice input coming soon!'), behavior: SnackBarBehavior.floating)
+                             );
+                          }),
+                          _actionIconButton(
+                            cp.isEditorMode ? Icons.auto_awesome_rounded : Icons.code_rounded,
+                            'Code Editor Mode',
+                            onTap: cp.toggleEditorMode,
+                            isActive: cp.isEditorMode,
+                          ),
+                          _actionIconButton(
+                            Icons.terminal_rounded,
+                            'Toggle Terminal Panel',
+                            onTap: widget.onToggleTerminal,
+                            isActive: widget.isTerminalOpen,
+                          ),
                           const Spacer(),
                           _buildOrchestratorToggle(),
                           const SizedBox(width: 8),
@@ -305,13 +326,15 @@ class _ChatInputState extends State<ChatInput> {
     );
   }
 
-  Widget _actionIconButton(IconData icon, String tooltip) {
+  Widget _actionIconButton(IconData icon, String tooltip, {VoidCallback? onTap, bool isActive = false}) {
     return Tooltip(
       message: tooltip,
       child: IconButton(
-        onPressed: () {},
+        onPressed: onTap,
         icon: Icon(icon, size: 20),
-        color: widget.isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.4),
+        color: isActive 
+            ? const Color(0xFF6366F1)
+            : (widget.isDark ? Colors.white.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.4)),
         splashRadius: 20,
         hoverColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
       ),

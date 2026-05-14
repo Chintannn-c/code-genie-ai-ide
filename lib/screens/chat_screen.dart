@@ -308,6 +308,8 @@ class _ChatScreenState extends State<ChatScreen>
                       child: ChatInput(
                         mode: chatProvider.selectedMode,
                         isStreaming: chatProvider.isStreaming,
+                        onToggleTerminal: _togglePanel,
+                        isTerminalOpen: _showRightPanel,
                         isDark: isDark,
                         onStop: chatProvider.stopStreaming,
                         attachmentButton: AttachmentButton(
@@ -468,104 +470,7 @@ class _ChatScreenState extends State<ChatScreen>
 
             const Spacer(),
 
-            // Editor Mode Toggle
-            GestureDetector(
-              onTap: cp.toggleEditorMode,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: cp.isEditorMode
-                      ? const Color(0xFF6366F1).withValues(alpha: 0.15)
-                      : (isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.05)),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: cp.isEditorMode
-                        ? const Color(0xFF6366F1).withValues(alpha: 0.3)
-                        : Colors.transparent,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      cp.isEditorMode
-                          ? Icons.auto_awesome_rounded
-                          : Icons.code_rounded,
-                      size: 14,
-                      color: cp.isEditorMode
-                          ? const Color(0xFF6366F1)
-                          : (isDark ? Colors.white38 : Colors.black38),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'EDITOR',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                        color: cp.isEditorMode
-                            ? const Color(0xFF6366F1)
-                            : (isDark ? Colors.white38 : Colors.black38),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(width: 10),
-            GestureDetector(
-              onTap: _togglePanel, // ANIM FIX: Use controller toggle
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _showRightPanel
-                      ? const Color(0xFF6366F1).withValues(alpha: 0.15)
-                      : (isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.05)),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _showRightPanel
-                        ? const Color(0xFF6366F1).withValues(alpha: 0.3)
-                        : Colors.transparent,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.terminal_rounded,
-                      size: 14,
-                      color: _showRightPanel
-                          ? const Color(0xFF6366F1)
-                          : (isDark ? Colors.white38 : Colors.black38),
-                    ),
-                    if (isWide) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        'TERMINAL',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.1,
-                          color: _showRightPanel
-                              ? const Color(0xFF6366F1)
-                              : (isDark ? Colors.white38 : Colors.black38),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+            const Spacer(),
             const SizedBox(width: 8),
             IconButton(
               icon: Icon(Icons.star_outline_rounded, size: 20, color: isDark ? Colors.white24 : Colors.black26),
