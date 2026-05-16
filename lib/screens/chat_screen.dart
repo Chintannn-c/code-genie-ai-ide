@@ -21,6 +21,7 @@ import '../widgets/file_upload_bar.dart';
 import '../widgets/model_selector.dart';
 import '../widgets/attachment_button.dart';
 import '../widgets/planning_timeline.dart';
+import '../providers/planning_provider.dart';
 import 'dart:convert';
 import '../services/notification_service.dart';
 import 'settings_screen.dart';
@@ -392,11 +393,22 @@ class _ChatScreenState extends State<ChatScreen>
                                     ),
                               ),
                               onSend: ({required prompt, code = '', error = ''}) {
-                                chatProvider.sendMessage(
-                                  prompt: prompt,
-                                  code: code,
-                                  error: error,
-                                );
+                                if (chatProvider.isMissionMode) {
+                                  final auth = context.read<AuthProvider>();
+                                  final pp = context.read<PlanningProvider>();
+                                  pp.generatePlan(
+                                    prompt,
+                                    auth.user?.userId ?? 'anonymous',
+                                    auth.user?.token,
+                                    chatId: chatProvider.currentChatId,
+                                  );
+                                } else {
+                                  chatProvider.sendMessage(
+                                    prompt: prompt,
+                                    code: code,
+                                    error: error,
+                                  );
+                                }
                                 _scrollToBottom(force: true);
                               },
                             ),

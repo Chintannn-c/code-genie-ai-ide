@@ -44,3 +44,14 @@ class StreamRequest(BaseModel):
     provider: Literal["gemini", "openrouter", "huggingface"] = Field("gemini")
     model_name: str | None = Field(None, description="Specific model to use (for OpenRouter/HuggingFace)")
     file_ids: list[str] | None = Field(None, description="Optional file IDs to include as context")
+    
+class PlanRequest(BaseModel):
+    """Request schema for generating an autonomous plan."""
+    user_id: str = Field(..., min_length=1)
+    prompt: str = Field(..., min_length=1, max_length=10000, description="The mission goal")
+    chat_id: str | None = Field(None, description="Optional chat ID to tie the plan to")
+    
+class PlanExecuteRequest(BaseModel):
+    """Request schema for executing a generated plan."""
+    user_id: str = Field(..., min_length=1)
+    plan_data: dict = Field(..., description="The full plan JSON data to execute")

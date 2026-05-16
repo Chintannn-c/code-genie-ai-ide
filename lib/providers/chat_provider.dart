@@ -256,10 +256,23 @@ class ChatProvider extends ChangeNotifier {
   }
 
   bool _useParallelOrchestration = false;
+  bool _isMissionMode = false;
   bool get useParallelOrchestration => _useParallelOrchestration;
+  bool get isMissionMode => _isMissionMode;
 
   void toggleParallelOrchestration() {
     _useParallelOrchestration = !_useParallelOrchestration;
+    if (_useParallelOrchestration) {
+      _isMissionMode = false;
+    }
+    notifyListeners();
+  }
+
+  void toggleMissionMode() {
+    _isMissionMode = !_isMissionMode;
+    if (_isMissionMode) {
+      _useParallelOrchestration = false;
+    }
     notifyListeners();
   }
 

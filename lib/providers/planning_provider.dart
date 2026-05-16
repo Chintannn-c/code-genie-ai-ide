@@ -76,8 +76,42 @@ class PlanningProvider extends ChangeNotifier {
 
   void setCurrentPlan(PlanModel plan) {
     _currentPlan = plan;
-    _currentPlan!.isApproved = true; // Proactive Transformation: Auto-approve in state
+    // We removed auto-approve so the user can review it first
     notifyListeners();
+  }
+
+  Future<void> generatePlan(String prompt, String userId, String? token, {String? chatId}) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/plan');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'user_id': userId,
+          'prompt': prompt,
+          if (chatId != null) 'chat_id': chatId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final planData = jsonDecode(response.body);
+        final plan = PlanModel.fromJson(planData);
+        setCurrentPlan(plan);
+      } else {
+        debugPrint('❌ Plan Generation Failed: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error generating plan: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> approvePlan(String userId, String? token) async {

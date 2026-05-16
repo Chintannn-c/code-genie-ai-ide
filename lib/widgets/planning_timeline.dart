@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/plan_model.dart';
 import '../providers/planning_provider.dart';
+import '../providers/auth_provider.dart';
 import 'diff_viewer.dart';
 
 class PlanningTimeline extends StatelessWidget {
@@ -99,19 +100,43 @@ class PlanningTimeline extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => _showAddStepDialog(context, pp),
-              icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-              label: Text(
-                'Add Execution Step',
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () => _showAddStepDialog(context, pp),
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                label: Text(
+                  'Add Step',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF6366F1),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
               ),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF6366F1),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-            ),
+              if (!plan.isApproved) ...[
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final auth = context.read<AuthProvider>();
+                    pp.approvePlan(auth.user?.userId ?? 'anonymous', auth.user?.token);
+                  },
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                  label: Text(
+                    'Execute Mission',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),

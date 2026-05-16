@@ -336,6 +336,8 @@ class _ChatInputState extends State<ChatInput> {
                           ),
 
                           const Spacer(),
+                          _buildMissionToggle(),
+                          const SizedBox(width: 8),
                           _buildOrchestratorToggle(),
                           const SizedBox(width: 8),
                           _buildSendButton(),
@@ -369,6 +371,29 @@ class _ChatInputState extends State<ChatInput> {
             .tint(
               color: isActive
                   ? const Color(0xFF6366F1)
+                  : (widget.isDark ? Colors.white38 : Colors.black38),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildMissionToggle() {
+    final cp = context.watch<ChatProvider>();
+    final isActive = cp.isMissionMode;
+
+    return Tooltip(
+      message: 'Autonomous Mission (Agentic Planning)',
+      child: GestureDetector(
+        onTap: cp.toggleMissionMode,
+        child: const Icon(Icons.flag_rounded, size: 24)
+            .animate(target: isActive ? 1 : 0)
+            .shimmer(
+              duration: 1500.ms,
+              color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+            )
+            .tint(
+              color: isActive
+                  ? const Color(0xFF22C55E)
                   : (widget.isDark ? Colors.white38 : Colors.black38),
             ),
       ),
