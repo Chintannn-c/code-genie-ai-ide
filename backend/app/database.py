@@ -15,7 +15,11 @@ async def connect_to_mongo() -> None:
     settings = get_settings()
 
     logger.info(f"Connecting to MongoDB at {settings.MONGO_URI}...")
-    _client = AsyncIOMotorClient(settings.MONGO_URI)
+    _client = AsyncIOMotorClient(
+        settings.MONGO_URI,
+        serverSelectionTimeoutMS=5000,  # 5s timeout instead of infinite hang
+        connectTimeoutMS=5000
+    )
     _database = _client[settings.DB_NAME]
 
     # Create indexes for performance

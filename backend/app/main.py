@@ -79,6 +79,20 @@ app.add_middleware(
 )
 
 @app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    import time
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    
+    # Log slow requests
+    if process_time > 2.0:
+        logger.warning(f"🐢 Slow request: {request.method} {request.url.path} took {process_time:.2f}s")
+    
+    return response
+
+@app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -168,7 +182,12 @@ if os.path.exists(web_path):
     
     @app.exception_handler(404)
     async def not_found_handler(request: Request, exc):
-        """Catch-all to support Flutter Web routing."""
+        """Catch-all to support Flutter Web routing, but exclude API routes."""
+        if request.url.path.startswith("/api") or request.url.path.startswith("/ws"):
+            return JSONResponse(
+                status_code=404,
+                content={"detail": f"API route not found: {request.url.path}"}
+            )
         return FileResponse(os.path.join(web_path, "index.html"))
 
 
