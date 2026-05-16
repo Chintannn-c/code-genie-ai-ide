@@ -101,8 +101,20 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Code Genie API",
-        "timestamp": os.environ.get("RAILWAY_DEPLOY_TIMESTAMP", "local")
+        "timestamp": os.environ.get("RAILWAY_DEPLOY_TIMESTAMP", "local"),
+        "port": os.environ.get("PORT", "8000")
     }
+
+# 2. Global Exception Interceptor (Prints everything to Terminal)
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_details = traceback.format_exc()
+    logger.error(f"🔥 UNHANDLED ERROR: {exc}\n{error_details}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)}
+    )
 
 @app.get("/api/health/detailed")
 async def detailed_health_check():
