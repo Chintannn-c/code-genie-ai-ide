@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     GITHUB_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
     
+    @property
+    def gemini_keys(self) -> list[str]:
+        """Returns a list of Gemini API keys for rotation."""
+        if not self.GEMINI_API_KEY:
+            return []
+        return [k.strip() for k in self.GEMINI_API_KEY.split(",") if k.strip()]
+    
     # Google Auth
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_ID_WEB: Optional[str] = None

@@ -7,121 +7,127 @@ from app.prompts.templates import SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
-_client: genai.Client | None = None
+# Cache for multiple clients
+_clients: list[genai.Client] = []
 
-
-def get_gemini_client() -> genai.Client:
-    """Get or create the Gemini client."""
-    global _client
-    if _client is None:
+def get_gemini_clients() -> list[genai.Client]:
+    """Get or create the pool of Gemini clients based on rotated keys."""
+    global _clients
+    if not _clients:
         settings = get_settings()
-        # Use aio=True or similar if available, but usually we just use client.aio for async calls
-        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        logger.info("Gemini client initialized.")
-    return _client
-
+        keys = settings.gemini_keys
+        if not keys:
+            logger.error("No GEMINI_API_KEY found in settings!")
+            return []
+            
+        for key in keys:
+            try:
+                client = genai.Client(api_key=key)
+                _clients.append(client)
+            except Exception as e:
+                logger.error(f"Failed to initialize Gemini client for key ending in ...{key[-4:]}: {e}")
+        
+        logger.info(f"Initialized {len(_clients)} Gemini clients for rotation.")
+    return _clients
 
 async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
     """
-    Stream a response from Gemini API with automatic model failover.
-    If the primary model is unavailable (503/429), it tries fallback models.
+    Stream a response from Gemini API with automatic model AND key rotation failover.
     """
     settings = get_settings()
-    client = get_gemini_client()
+    clients = get_gemini_clients()
     
-    # Prioritized list of models to try
+    if not clients:
+        yield "\n[Error: No valid Gemini API keys configured. Check your Railway/Local variables.]"
+        return
+
+    # Failover strategy: Try each model with each key if necessary
     models_to_try = [
-        settings.GEMINI_MODEL,           # 1. Primary (gemini-3.1-pro)
-        "gemini-3.1-flash",              # 2. Fast Fallback
-        "gemini-3-pro",                  # 3. High-Reasoning Fallback
-        "gemini-3-flash",                 # 4. Fast Fallback
+        settings.GEMINI_MODEL,
+        "gemini-1.5-flash", 
+        "gemini-1.5-pro",
     ]
-    
-    # Remove duplicates while preserving order
     models_to_try = list(dict.fromkeys(models_to_try))
     
     last_error = None
     
+    # Outer loop: Rotate models
     for model_name in models_to_try:
-        try:
-            logger.info(f"Attempting stream with model: {model_name}")
-            response = await client.aio.models.generate_content_stream(
-                model=model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
-                    temperature=0.7,
-                    max_output_tokens=8192,
-                ),
-            )
+        # Inner loop: Rotate keys (clients) for the current model
+        for i, client in enumerate(clients):
+            try:
+                logger.info(f"Attempting stream with model {model_name} (Key #{i+1})")
+                response = await client.aio.models.generate_content_stream(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_INSTRUCTION,
+                        temperature=0.7,
+                        max_output_tokens=8192,
+                    ),
+                )
 
-            async for chunk in response:
-                try:
-                    text = chunk.text
-                    if text:
-                        yield text
-                except Exception:
+                async for chunk in response:
+                    try:
+                        text = chunk.text
+                        if text:
+                            yield text
+                    except Exception:
+                        continue
+                
+                logger.info(f"Stream completed successfully using {model_name} (Key #{i+1}).")
+                return # Success! Exit both loops
+
+            except Exception as e:
+                last_error = e
+                error_str = str(e).upper()
+                
+                # If rate limited (429) or overloaded (503), try next key/model
+                if "429" in error_str or "503" in error_str or "UNAVAILABLE" in error_str or "QUOTA" in error_str:
+                    logger.warning(f"Key #{i+1} failed with {model_name} ({error_str}). Rotating...")
                     continue
-            
-            logger.info(f"Stream completed successfully using {model_name}.")
-            return # Success! Exit the failover loop
+                else:
+                    # For fatal errors like 400 (Invalid Key), log and try next key
+                    logger.error(f"Error with key #{i+1} for model {model_name}: {e}")
+                    if "API KEY NOT VALID" in error_str or "400" in error_str:
+                        continue # Try next key
+                    break # Break inner loop and try next model
 
-        except Exception as e:
-            last_error = e
-            error_str = str(e).upper()
-            
-            # Check if we should retry with a different model
-            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
-                logger.warning(f"Model {model_name} failed ({error_str}). Trying next fallback...")
-                continue
-            else:
-                # If it's a different kind of error (e.g. 401 Unauthorized), don't bother retrying
-                logger.error(f"Fatal Gemini error with {model_name}: {e}")
-                break
-
-    # If we get here, all models failed
+    # Final fallback if everything fails
     error_msg = f"Code Genie failed to respond. (AI Engine Error: {last_error})"
-    logger.error(f"❌ ALL MODELS FAILED: {last_error}")
+    logger.error(f"❌ ALL KEYS AND MODELS FAILED: {last_error}")
     yield f"\n{error_msg}"
-
 
 async def generate(contents: list[dict]) -> str:
     """
-    Generate a complete response from Gemini API with automatic model failover.
+    Generate a complete response with key and model rotation.
     """
     settings = get_settings()
-    client = get_gemini_client()
+    clients = get_gemini_clients()
+    if not clients:
+        return "[Error: No valid Gemini API keys configured.]"
 
-    models_to_try = [
-        settings.GEMINI_MODEL,
-        "gemini-3.1-pro",
-        "gemini-3.1-flash",
-    ]
+    models_to_try = [settings.GEMINI_MODEL, "gemini-1.5-flash"]
     models_to_try = list(dict.fromkeys(models_to_try))
-
+    
     last_error = None
     for model_name in models_to_try:
-        try:
-            logger.info(f"Attempting generate with model: {model_name}")
-            response = await client.aio.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
-                    temperature=0.7,
-                    max_output_tokens=8192,
-                ),
-            )
-            return response.text or "No response generated."
-        except Exception as e:
-            last_error = e
-            error_str = str(e).upper()
-            if "503" in error_str or "429" in error_str or "UNAVAILABLE" in error_str:
-                logger.warning(f"Model {model_name} failed ({error_str}). Trying next fallback...")
-                continue
-            else:
-                logger.error(f"Fatal Gemini error with {model_name}: {e}")
+        for i, client in enumerate(clients):
+            try:
+                response = await client.aio.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_INSTRUCTION,
+                        temperature=0.7,
+                    ),
+                )
+                return response.text
+            except Exception as e:
                 last_error = e
+                if "429" in str(e) or "503" in str(e):
+                    continue
                 break
+    return f"Error: {last_error}"
 
-    raise RuntimeError(f"All AI engines are currently unavailable. Last error: {last_error}")
+    return f"Error: {last_error}"
