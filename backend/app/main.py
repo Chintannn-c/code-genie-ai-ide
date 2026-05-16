@@ -47,26 +47,7 @@ async def lifespan(app: FastAPI):
     heartbeat_task = asyncio.create_task(heartbeat())
     logger.info("✅ Heartbeat system active.")
 
-    # Static File Mounting (Moved to lifespan to prevent startup hangs)
-    try:
-        if os.path.exists(settings.ARTIFACTS_PATH):
-            app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
-            logger.info(f"📁 Artifacts mounted from: {settings.ARTIFACTS_PATH}")
-        else:
-            logger.warning(f"⚠️ Artifacts path not found: {settings.ARTIFACTS_PATH}")
-
-        web_path = os.path.join(os.path.dirname(__file__), "static_web")
-        if os.path.exists(web_path):
-            logger.info(f"🌐 Flutter Web detected at: {web_path}")
-            # Mount without html=True to avoid greedy root shadowing
-            app.mount("/web_static", StaticFiles(directory=web_path), name="web_static")
-        else:
-            logger.warning(f"⚠️ Flutter Web build not found at: {web_path}")
-
-    except Exception as e:
-        logger.error(f"❌ Static files mounting failed: {e}")
-
-    logger.info("✅ Application fully initialized — ready to serve requests.")
+    logger.info("✅ Lifespan startup sequence complete.")
     yield
     # Shutdown
     logger.info("🛑 Shutdown initiated.")
@@ -200,8 +181,30 @@ async def not_found_handler(request: Request, exc):
     return JSONResponse(status_code=404, content={"detail": "Not found"})
 
 
+# 4. Static File Mounting (Module level for correct routing)
+settings = get_settings()
+try:
+    # Ensure directories exist
+    os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
+    os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
+    
+    # Mount artifacts
+    app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
+    logger.info(f"📁 Artifacts mounted at /artifacts")
+
+    # Mount Flutter assets
+    web_path = os.path.join(os.path.dirname(__file__), "static_web")
+    if os.path.exists(web_path):
+        app.mount("/web_static", StaticFiles(directory=web_path), name="web_static")
+        logger.info(f"🌐 Flutter assets mounted at /web_static")
+except Exception as e:
+    logger.error(f"❌ Module-level mounting error: {e}")
+
+logger.info("🚀 Code Genie Module Loaded")
+
 if __name__ == "__main__":
     import uvicorn
     # Respect Railway's PORT environment variable
     port = int(os.environ.get("PORT", 8000))
+    logger.info(f"Starting server on port {port}")
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
