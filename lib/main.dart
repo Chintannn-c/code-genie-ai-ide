@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'providers/chat_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/orchestration_provider.dart';
 
 import 'services/notification_service.dart';
 import 'providers/notification_provider.dart';
@@ -41,6 +42,18 @@ void main() async {
         ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
           create: (_) => ChatProvider(),
           update: (_, auth, chat) => chat!..setUserId(auth.user?.userId, auth.user?.token),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, OrchestrationProvider>(
+          create: (_) => OrchestrationProvider(),
+          update: (_, auth, orch) {
+            orch!.setToken(auth.user?.token);
+            if (auth.status == AuthStatus.authenticated) {
+              orch.startPolling();
+            } else {
+              orch.stopPolling();
+            }
+            return orch;
+          },
         ),
         ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
           create: (_) => NotificationProvider(),

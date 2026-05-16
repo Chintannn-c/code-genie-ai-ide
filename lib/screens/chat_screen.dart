@@ -24,6 +24,7 @@ import '../widgets/planning_timeline.dart';
 import 'dart:convert';
 import '../services/notification_service.dart';
 import 'settings_screen.dart';
+import 'orchestration_dashboard.dart';
 
 /// Main chat screen with sidebar and chat area.
 class ChatScreen extends StatefulWidget {
@@ -939,6 +940,17 @@ class _ChatScreenState extends State<ChatScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+          _utilityIcon(
+            Icons.dashboard_rounded,
+            'Cockpit',
+            isDark,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrchestrationDashboard()),
               );
             },
           ),
