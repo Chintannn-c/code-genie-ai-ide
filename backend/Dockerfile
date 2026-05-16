@@ -19,5 +19,8 @@ COPY . .
 # Create data directories
 RUN mkdir -p ../data/artifacts ../data/uploads
 
-# Start the application using the Python runner (Ensures internal PORT logic is hit)
+# Expose the new port
+EXPOSE 3000
+
+# Start the application using the Python runner
 CMD ["python", "-m", "app.main"]

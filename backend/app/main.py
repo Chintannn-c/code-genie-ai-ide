@@ -267,7 +267,7 @@ if __name__ == "__main__":
     # Also check for RAILWAY_TCP_PROXY_PORT just in case
     proxy_port = os.environ.get("RAILWAY_TCP_PROXY_PORT")
     
-    final_port = 8000
+    final_port = 3000
     if env_port:
         final_port = int(env_port)
         print(f"🎯 [PORT_FOUND] Using PORT from environment: {final_port}")
