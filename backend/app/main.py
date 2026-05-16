@@ -5,8 +5,9 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+import asyncio
 from app.config import get_settings
-from app.database import connect_to_mongo, close_mongo_connection
+from app.database import connect_to_mongo, close_mongo_connection, get_db
 from app.routes import chat, history, upload, auth, execution
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
@@ -66,7 +67,6 @@ async def lifespan(app: FastAPI):
 
     # 4. Background Tasks
     logger.info("🚩 [STARTUP] Phase 5: Starting Background Workers...")
-    import asyncio
     async def heartbeat():
         try:
             while True:
