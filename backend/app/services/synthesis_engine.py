@@ -175,8 +175,10 @@ class SynthesisEngine:
                 from . import groq_service as groq_mod
                 # Pivot to Groq (Llama 3.3 70B) for high-speed emergency synthesis
                 final_content = await groq_mod.generate(
-                    prompt=synthesis_input,
-                    system_prompt=SYNTHESIS_SYSTEM_PROMPT,
+                    messages=[
+                        {"role": "system", "content": SYNTHESIS_SYSTEM_PROMPT},
+                        {"role": "user", "content": synthesis_input}
+                    ],
                     model="llama-3.3-70b-specdec"
                 )
                 strategy = "Emergency Groq Synthesis (Llama-3.3-70B)"
