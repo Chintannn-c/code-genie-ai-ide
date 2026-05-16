@@ -7,6 +7,15 @@ try:
 except ImportError:
     chromadb = None
 
+try:
+    import PyPDF2
+    import pytesseract
+    from PIL import Image
+except ImportError:
+    PyPDF2 = None
+    pytesseract = None
+    Image = None
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -45,13 +54,25 @@ class IndexerService:
             dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', 'build', '__pycache__', 'ios', 'android']]
             
             for file in files:
-                if file.endswith(('.dart', '.py', '.js', '.ts', '.html', '.css', '.md')):
+                if file.endswith(('.dart', '.py', '.js', '.ts', '.html', '.css', '.md', '.pdf', '.png', '.jpg', '.jpeg')):
                     file_path = os.path.join(root, file)
                     rel_path = os.path.relpath(file_path, self.workspace_root)
                     
                     try:
-                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                            content = f.read()
+                        content = ""
+                        # Text Files
+                        if file.endswith(('.dart', '.py', '.js', '.ts', '.html', '.css', '.md')):
+                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+                        # PDF Files
+                        elif file.endswith('.pdf') and PyPDF2:
+                            content = self._extract_pdf_text(file_path)
+                        # Image Files (OCR)
+                        elif file.endswith(('.png', '.jpg', '.jpeg')) and pytesseract and Image:
+                            content = self._extract_image_text(file_path)
+                            
+                        if not content.strip():
+                            continue
                             
                         # Split large files into chunks
                         chunks = self._chunk_text(content)
@@ -73,6 +94,30 @@ class IndexerService:
     def _chunk_text(self, text: str, size: int = 1000) -> List[str]:
         """Simple sliding window chunking."""
         return [text[i:i+size] for i in range(0, len(text), size)]
+
+    def _extract_pdf_text(self, file_path: str) -> str:
+        """Extracts text from a PDF file using PyPDF2."""
+        text = ""
+        try:
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    text += page.extract_text() + "\n"
+        except Exception as e:
+            logger.error(f"PDF Extraction Error: {e}")
+        return text
+
+    def _extract_image_text(self, file_path: str) -> str:
+        """Extracts text from an image using Tesseract OCR."""
+        text = ""
+        try:
+            # On Windows, you might need to specify the tesseract_cmd path if it's not in PATH
+            # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+            img = Image.open(file_path)
+            text = pytesseract.image_to_string(img)
+        except Exception as e:
+            logger.error(f"OCR Extraction Error: {e}")
+        return text
 
     async def search_context(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Searches for relevant code snippets."""

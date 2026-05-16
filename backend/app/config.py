@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # Database
     MONGO_URI: str = "mongodb://localhost:27017"
     DB_NAME: str = "ai_code_assistant"
+    REDIS_URL: Optional[str] = None
     GEMINI_MODEL: str = "gemini-3.1-pro"
     ALLOWED_ORIGINS: str = "*" 
     

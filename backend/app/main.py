@@ -37,6 +37,31 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
 
+    # Initialize Redis (Optional)
+    if settings.REDIS_URL:
+        try:
+            import redis.asyncio as redis
+            r = redis.from_url(settings.REDIS_URL)
+            await r.ping()
+            logger.info("✅ Redis connected successfully.")
+            app.state.redis = r
+        except Exception as e:
+            logger.error(f"⚠️ Redis connection failed (Optional): {e}")
+    else:
+        app.state.redis = None
+
+    # Handle Static Mounting & Directories (Inside Lifespan for Safety)
+    try:
+        os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
+        os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
+        
+        # We mount at module level usually, but we ensure directories exist here.
+        # If we need to mount dynamically:
+        if os.path.exists(settings.ARTIFACTS_PATH):
+             logger.info(f"📁 Artifacts directory verified at {settings.ARTIFACTS_PATH}")
+    except Exception as e:
+        logger.error(f"❌ Lifespan directory error: {e}")
+
     # Start Heartbeat Task
     import asyncio
     async def heartbeat():
@@ -184,22 +209,13 @@ async def not_found_handler(request: Request, exc):
     return JSONResponse(status_code=404, content={"detail": "Resource not found"})
 
 
-# 4. Static File Mounting (Optimized for Production)
-settings = get_settings()
-web_path = os.path.join(os.path.dirname(__file__), "static_web")
-
+# 4. Static File Mounting (Initial placeholders)
+# These remain at module level for routing, but the directories are ensured in lifespan
 try:
-    # Ensure mandatory data directories exist
-    os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
-    os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
-    
-    # Mount artifacts for web access (Dedicated path - SAFE)
-    if os.path.exists(settings.ARTIFACTS_PATH):
-        app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
-        logger.info(f"📁 Artifacts mounted at /artifacts")
-
+    app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
+    logger.info(f"📁 Artifacts route registered")
 except Exception as e:
-    logger.error(f"❌ Module-level mounting error: {e}")
+    logger.warning(f"⚠️ Initial mounting warning (expected if dir missing): {e}")
 
 logger.info("🚀 Code Genie Module Loaded Successfully")
 
