@@ -118,13 +118,16 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.middleware("http")(production_security_middleware)
 
 # CORS (Must be outer layer)
+settings = get_settings()
+origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",")] if settings.ALLOWED_ORIGINS != "*" else ["*"]
+
+# Also include defaults for local dev
+if "*" not in origins:
+    origins.extend(["http://localhost", "http://localhost:8000"])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://localhost:8000",
-        "https://code-genie.up.railway.app",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
