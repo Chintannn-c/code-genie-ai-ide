@@ -162,7 +162,14 @@ async def detailed_health_check():
 async def orchestration_stats():
     """Live orchestration metrics for the Cinematic Cockpit."""
     from app.services.orchestrator_service import orchestrator
-    return orchestrator.get_orchestration_stats()
+    from app.services.workflow_runtime import workflow_runtime
+    from app.services.agent_permissions import permission_manager
+    from app.services.approval_gates import approval_gate_manager
+    stats = orchestrator.get_orchestration_stats()
+    stats["workflows"] = workflow_runtime.get_stats()
+    stats["permissions"] = permission_manager.get_stats()
+    stats["approval_gates"] = approval_gate_manager.get_stats()
+    return stats
 
 @app.get("/api/orchestration/security")
 async def security_dashboard():
@@ -179,6 +186,28 @@ async def audit_trail():
         "stats": audit_logger.get_stats(),
         "chain_integrity": audit_logger.verify_chain_integrity(),
     }
+
+@app.get("/api/orchestration/workflows")
+async def list_workflows():
+    """List all active workflows."""
+    from app.services.workflow_runtime import workflow_runtime
+    return {"workflows": workflow_runtime.get_active_workflows()}
+
+@app.get("/api/orchestration/approvals")
+async def list_approvals():
+    """List pending approval requests."""
+    from app.services.approval_gates import approval_gate_manager
+    return {"pending": approval_gate_manager.get_pending()}
+
+@app.post("/api/orchestration/approvals/{request_id}")
+async def resolve_approval(request_id: str, approved: bool = True):
+    """Approve or deny a pending gate request."""
+    from app.services.approval_gates import approval_gate_manager
+    result = approval_gate_manager.resolve(request_id, approved)
+    if not result:
+        return JSONResponse(status_code=404, content={"detail": "Request not found"})
+    return result
+
 
 @app.get("/")
 async def root(request: Request):
