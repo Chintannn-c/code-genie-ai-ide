@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     CHROMADB_URL: Optional[str] = None
     
     # AI Config
-    GEMINI_MODEL: str = "gemini-3.1-pro"
+    GEMINI_MODEL: str = "gemini-1.5-pro"
     ALLOWED_ORIGINS: str = "*" 
     
     # Paths (Safe defaults that work in any environment)

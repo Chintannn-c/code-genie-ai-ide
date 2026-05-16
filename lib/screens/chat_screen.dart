@@ -260,6 +260,33 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  void _confirmDelete(ChatProvider cp, String chatId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? const Color(0xFF1E1E22) 
+            : Colors.white,
+        title: Text('Delete Chat', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to delete this conversation? This action cannot be undone.', 
+            style: GoogleFonts.inter()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              cp.deleteChat(chatId);
+              Navigator.pop(context);
+            },
+            child: Text('Delete', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -1175,32 +1202,6 @@ class _ChatScreenState extends State<ChatScreen>
             ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.1, end: 0),
           ],
         ),
-      ),
-    );
-  }
-
-  void _confirmDelete(ChatProvider cp, String chatId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Chat?'),
-        content: const Text(
-          'This will permanently delete this chat and all messages.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              cp.deleteChat(chatId);
-              Navigator.pop(ctx);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
       ),
     );
   }

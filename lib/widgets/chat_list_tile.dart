@@ -90,16 +90,27 @@ class ChatListTile extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            _formatTime(chat.updatedAt),
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? Colors.white38
-                                  : Colors.black38,
+                          
+                          // Delete Button (Visible on selection or hover simulated)
+                          if (isSelected) 
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                              onPressed: onDelete,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              tooltip: 'Delete Chat',
+                            )
+                          else
+                            Text(
+                              _formatTime(chat.updatedAt),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? Colors.white38
+                                    : Colors.black38,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),

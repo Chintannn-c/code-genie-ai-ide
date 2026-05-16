@@ -53,9 +53,8 @@ class AIOrchestrator:
     def __init__(self):
         # Legacy free_pool preserved for backward compatibility
         self.free_pool = [
-            "google/gemini-3.1-pro:free",
-            "google/gemini-3.1-flash:free",
             "google/gemini-2.0-flash-exp:free",
+            "google/gemini-flash-1.5:free",
             "google/gemini-pro-1.5:free",
             "meta-llama/llama-3.3-70b-instruct:free",
             "qwen/qwen-2.5-coder-32b-instruct:free",
