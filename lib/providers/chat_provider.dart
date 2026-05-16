@@ -554,20 +554,39 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _updateLatestCode() async {
     if (_messages.isEmpty) return;
+    
     final lastMessage = _messages.last;
-    if (!lastMessage.content.contains('```')) return;
-    final msgId = lastMessage.messageId ?? lastMessage.timestamp.toIso8601String();
-    List<Map<String, String>> blocks;
+    final content = lastMessage.content;
+    
+    // Only proceed if the message actually contains a code block
+    if (!content.contains('```')) {
+      return;
+    }
+    
+    final String msgId = lastMessage.messageId ?? lastMessage.timestamp.toIso8601String();
+    
     if (_codeCache.containsKey(msgId)) {
-      blocks = _codeCache[msgId]!;
-    } else {
-      blocks = await compute(_parseCodeBlocks, lastMessage.content);
-      _codeCache[msgId] = blocks;
+      final cachedBlocks = _codeCache[msgId]!;
+      if (cachedBlocks.isNotEmpty) {
+        _latestLanguage = cachedBlocks.last['language'] ?? 'python';
+        _latestCode = cachedBlocks.last['code'] ?? '';
+      }
+      return;
     }
+
+    // MEMORY FIX: Keep cache size reasonable
+    if (_codeCache.length > 20) {
+      _codeCache.remove(_codeCache.keys.first);
+    }
+    
+    final List<Map<String, String>> blocks = await compute(_parseCodeBlocks, content);
+    _codeCache[msgId] = blocks;
+    
     if (blocks.isNotEmpty) {
-      final lastBlock = blocks.last;
-      _latestLanguage = lastBlock['language']!;
-      _latestCode = lastBlock['code']!;
+      _latestLanguage = blocks.last['language'] ?? 'python';
+      _latestCode = blocks.last['code'] ?? '';
     }
+    
+    notifyListeners();
   }
 }

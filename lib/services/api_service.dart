@@ -246,16 +246,20 @@ class ApiService {
     required String fileId,
     String? chatId,
     String type = 'summary',
+    String difficulty = 'beginner',
+    String provider = 'gemini',
+    String? modelName,
   }) async {
-    final queryParams = {
-      'user_id': userId,
-      if (chatId != null) 'chat_id': chatId,
-    };
-
     final response = await _client.post(
-      _uri(ApiConfig.analyzeFile, queryParams),
+      _uri(ApiConfig.analyzeFile, chatId != null ? {'chat_id': chatId} : null),
       headers: _headers,
-      body: jsonEncode({'file_id': fileId, 'analysis_type': type}),
+      body: jsonEncode({
+        'file_id': fileId,
+        'analysis_type': type,
+        'difficulty': difficulty,
+        'provider': provider,
+        'model_name': modelName,
+      }),
     );
 
     if (response.statusCode != 200) {
@@ -270,16 +274,20 @@ class ApiService {
     required String fileId,
     required String error,
     String? chatId,
+    String difficulty = 'beginner',
+    String provider = 'gemini',
+    String? modelName,
   }) async {
-    final queryParams = {
-      'user_id': userId,
-      if (chatId != null) 'chat_id': chatId,
-    };
-
     final response = await _client.post(
-      _uri(ApiConfig.debugFile, queryParams),
+      _uri(ApiConfig.debugFile, chatId != null ? {'chat_id': chatId} : null),
       headers: _headers,
-      body: jsonEncode({'file_id': fileId, 'error': error}),
+      body: jsonEncode({
+        'file_id': fileId,
+        'error': error,
+        'difficulty': difficulty,
+        'provider': provider,
+        'model_name': modelName,
+      }),
     );
 
     if (response.statusCode != 200) {

@@ -22,18 +22,25 @@ class ExecutionResponse(BaseModel):
     error: Optional[str] = None
     execution_time: float
 
-# Initialize Docker client (Skip if in cloud environments to prevent startup hangs)
+# Initialize Docker client (Skip in cloud/remote environments)
 docker_client = None
-is_cloud = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("DYNO")
+# Robust cloud detection
+is_cloud = any([
+    os.getenv("RAILWAY_ENVIRONMENT"),
+    os.getenv("RAILWAY_PROJECT_ID"),
+    os.getenv("DYNO"),           # Heroku
+    os.getenv("K_SERVICE"),      # Google Cloud Run
+    os.environ.get("PORT") and not os.environ.get("LOCAL_DEV") # General cloud heuristic
+])
 
 if not is_cloud:
     try:
         docker_client = docker.from_env()
-        logger.info("✅ Docker client initialized for secure code execution.")
+        logger.info("✅ [EXECUTION] Docker client initialized for secure sandbox.")
     except Exception as e:
-        logger.warning(f"⚠️ Docker not available: {e}. Falling back to insecure execution (DEV ONLY).")
+        logger.warning(f"⚠️ [EXECUTION] Docker not found: {e}. Falling back to insecure mode (DEV ONLY).")
 else:
-    logger.info("ℹ️ Cloud environment detected: Skipping Docker initialization (native mode active).")
+    logger.info("ℹ️ [EXECUTION] Remote/Cloud environment detected: Skipping Docker initialization (native mode active).")
 
 @router.post("", response_model=ExecutionResponse)
 async def execute_code(

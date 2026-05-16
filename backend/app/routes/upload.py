@@ -78,8 +78,10 @@ async def upload_files(
 
 
 @router.get("/user-files")
-async def list_files(current_user_id: str = Depends(get_current_user_id)):
+@router.get("/user-files/{user_id}") # Support both path and JWT-only versions for compatibility
+async def list_files(user_id: str | None = None, current_user_id: str = Depends(get_current_user_id)):
     """List all files for the authenticated user."""
+    # Logic: Always prefer the authenticated user's ID
     return await chat_service.get_user_files(current_user_id)
 
 
@@ -335,6 +337,7 @@ async def generate_patch(request: PatchRequest, current_user_id: str = Depends(g
         return {"patch": patch, "file_name": file_meta["file_name"]}
     except Exception as e:
         logger.error(f"Patch error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate patch: {str(e)}")
 
 @router.get("/file/{file_id}")
 async def download_file(file_id: str, current_user_id: str = Depends(get_current_user_id)):

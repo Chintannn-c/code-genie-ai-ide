@@ -66,11 +66,11 @@ async def login(request: Request, user_in: UserCreate): # Using same schema for 
     
     user = await db.users.find_one({"email": user_in.email})
     
-    # Security: Reject empty passwords (often used by Google-only accounts)
-    if not user_in.password or not user.get("hashed_password"):
+    # Security: Check if user exists and reject empty passwords
+    if not user or not user_in.password or not user.get("hashed_password"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
+            detail="Invalid email or password",
         )
 
     if not auth_service.verify_password(user_in.password, user["hashed_password"]):

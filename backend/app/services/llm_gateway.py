@@ -101,6 +101,22 @@ async def stream_with_failover(
     except Exception as e:
         logger.error(f"LLM Gateway Error: {e}")
         error_msg = "AI engine encountered a temporary error. Please try again."
+        
+        # Save partial response if possible so it's not lost
+        if full_response:
+            try:
+                complete_text = "".join(full_response) + f"\n\n[STREAM INTERRUPTED: {e}]"
+                await chat_service.save_message(
+                    chat_id=chat_id, 
+                    role="ai", 
+                    content=complete_text,
+                    current_user_id=current_user_id,
+                    msg_type=msg_type, 
+                    language=language,
+                    model_name=final_model_name
+                )
+            except: pass
+
         yield ServerSentEvent(data=json.dumps({"text": error_msg, "done": False}))
         yield ServerSentEvent(
             event="message",
