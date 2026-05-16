@@ -47,6 +47,26 @@ async def lifespan(app: FastAPI):
     heartbeat_task = asyncio.create_task(heartbeat())
     logger.info("✅ Heartbeat system active.")
 
+    # Static File Mounting (Moved to lifespan to prevent startup hangs)
+    try:
+        if os.path.exists(settings.ARTIFACTS_PATH):
+            app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
+            logger.info(f"📁 Artifacts mounted from: {settings.ARTIFACTS_PATH}")
+        else:
+            logger.warning(f"⚠️ Artifacts path not found: {settings.ARTIFACTS_PATH}")
+
+        web_path = os.path.join(os.path.dirname(__file__), "static_web")
+        if os.path.exists(web_path):
+            logger.info(f"🌐 Flutter Web detected at: {web_path}")
+            # Mount without html=True to avoid greedy root shadowing
+            app.mount("/web_static", StaticFiles(directory=web_path), name="web_static")
+        else:
+            logger.warning(f"⚠️ Flutter Web build not found at: {web_path}")
+
+    except Exception as e:
+        logger.error(f"❌ Static files mounting failed: {e}")
+
+    logger.info("✅ Application fully initialized — ready to serve requests.")
     yield
     # Shutdown
     logger.info("🛑 Shutdown initiated.")
@@ -81,8 +101,13 @@ async def health_check():
     }
 
 @app.get("/")
-async def root():
-    return {"status": "ok", "service": "Code Genie API"}
+async def root(request: Request):
+    """Serve SPA index or API status."""
+    web_path = os.path.join(os.path.dirname(__file__), "static_web")
+    index_path = os.path.join(web_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "ok", "service": "Code Genie API", "message": "Flutter Web build not found"}
 
 # 2. Rate Limiting
 app.state.limiter = limiter
@@ -112,15 +137,6 @@ app.include_router(history.router)
 app.include_router(upload.router)
 app.include_router(auth.router)
 app.include_router(execution.router)
-
-# Mount artifacts for web access
-settings = get_settings()
-os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
-os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
-
-if os.path.exists(settings.ARTIFACTS_PATH):
-    app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
-    logger.info(f"📁 Artifacts mounted from: {settings.ARTIFACTS_PATH}")
 
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):
@@ -155,22 +171,30 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         logger.error(f"WebSocket Error for {user_id}: {e}")
         socket_manager.disconnect(websocket, user_id)
 
-
-# Serve Flutter Web Build
-web_path = os.path.join(os.path.dirname(__file__), "static_web")
-if os.path.exists(web_path):
-    logger.info(f"🌐 Mounting Flutter Web from: {web_path}")
-    app.mount("/", StaticFiles(directory=web_path, html=True), name="web")
+# Exception Handlers
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    """Catch-all to support Flutter Web routing, but exclude API and Docs."""
+    # 1. API/Docs should return JSON 404
+    if any(request.url.path.startswith(p) for p in ["/api", "/ws", "/docs", "/redoc", "/openapi.json"]):
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"Route not found: {request.url.path}"}
+        )
     
-    @app.exception_handler(404)
-    async def not_found_handler(request: Request, exc):
-        """Catch-all to support Flutter Web routing, but exclude API and Docs."""
-        if any(request.url.path.startswith(p) for p in ["/api", "/ws", "/docs", "/redoc", "/openapi.json"]):
-            return JSONResponse(
-                status_code=404,
-                content={"detail": f"Route not found: {request.url.path}"}
-            )
-        return FileResponse(os.path.join(web_path, "index.html"))
+    # 2. Check if it's a static file request that missed the /web_static mount
+    # (Flutter often expects files at root)
+    web_path = os.path.join(os.path.dirname(__file__), "static_web")
+    static_file = os.path.join(web_path, request.url.path.lstrip("/"))
+    if os.path.isfile(static_file):
+        return FileResponse(static_file)
+
+    # 3. Default to SPA index for all other routes
+    index_path = os.path.join(web_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+        
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
 
 
 if __name__ == "__main__":

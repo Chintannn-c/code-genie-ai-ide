@@ -25,7 +25,8 @@ def setup_logging():
     root_logger.addHandler(handler)
     
     # Suppress noisy logs
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
+    # Show Uvicorn logs for startup visibility
+    logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+    logging.getLogger("uvicorn.error").setLevel(logging.INFO)
     
     logging.info("🚀 Structured logging initialized.")
