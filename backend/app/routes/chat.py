@@ -274,14 +274,22 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
         # FILE CONTEXT INJECTION: Fetch and append file contents if provided
         file_context = ""
         if request.file_ids:
+            logger.info(f"📁 [FILE INJECTION] Processing {len(request.file_ids)} files for user {current_user_id}")
             for fid in request.file_ids:
                 meta = await chat_service.get_file_metadata(fid)
-                if meta and meta["user_id"] == current_user_id:
-                    try:
-                        content = await file_service.read_file_content(meta["file_path"])
-                        file_context += f"\n\n--- FILE: {meta['file_name']} ---\n{content}\n"
-                    except Exception as fe:
-                        logger.warning(f"Failed to read file {fid}: {fe}")
+                if meta:
+                    logger.info(f"📄 [FILE INJECTION] Found meta for {fid}: {meta.get('file_name')} (Owner: {meta.get('user_id')})")
+                    if meta["user_id"] == current_user_id:
+                        try:
+                            content = await file_service.read_file_content(meta["file_path"])
+                            file_context += f"\n\n--- FILE: {meta['file_name']} ---\n{content}\n"
+                            logger.info(f"✅ [FILE INJECTION] Successfully appended {len(content)} chars from {meta['file_name']}")
+                        except Exception as fe:
+                            logger.warning(f"❌ [FILE INJECTION] Failed to read file {fid}: {fe}")
+                    else:
+                        logger.warning(f"🚫 [FILE INJECTION] Ownership mismatch for {fid}: Requestor {current_user_id} != Owner {meta['user_id']}")
+                else:
+                    logger.warning(f"❓ [FILE INJECTION] No metadata found for file_id: {fid}")
 
         prompt_text = build_prompt(
             prompt=(request.prompt if request.prompt else f"Process this {request.type} request") + file_context,

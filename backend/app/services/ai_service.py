@@ -17,11 +17,14 @@ async def stream_generate(contents: list[dict], type: str = "generate") -> Async
         # 1. Try Gemini with a strict watchdog timer
         # If Gemini doesn't yield a single chunk in 10s, it's considered failed
         gemini_stream = gemini_service.stream_generate(contents)
+        iterator = gemini_stream.__aiter__()
         try:
-            async for chunk in asyncio.wait_for(gemini_stream.__aiter__(), timeout=10.0):
-                yield chunk
-            # Once started, continue the stream
-            async for chunk in gemini_stream:
+            # Wait for the first chunk to arrive to verify Gemini is healthy
+            first_chunk = await asyncio.wait_for(iterator.__anext__(), timeout=10.0)
+            yield first_chunk
+            
+            # Once started, continue the stream normally
+            async for chunk in iterator:
                 yield chunk
         except (asyncio.TimeoutError, Exception) as e:
             logger.error(f"⚠️ Gemini watchdog triggered or failed: {e}. Pivoting to Groq...")
