@@ -49,16 +49,16 @@ class MessageBubble extends StatelessWidget {
               children: [
                 // Role label
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 4, left: 4, right: 4),
+                  padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
                   child: Text(
                     isUser ? 'YOU' : 'CODE GENIE',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
+                      letterSpacing: 1.5,
                       color: isDark
-                          ? Colors.white.withValues(alpha: 0.4)
-                          : Colors.black.withValues(alpha: 0.4),
+                          ? Colors.white.withValues(alpha: 0.3)
+                          : Colors.black.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -80,42 +80,29 @@ class MessageBubble extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
-                        gradient: isUser
-                            ? const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
-                              )
-                            : null,
-                        color: !isUser
-                            ? (isDark
-                                ? const Color(0xFF1E293B).withValues(alpha: 0.5)
-                                : Colors.white.withValues(alpha: 0.8))
-                            : null,
+                        color: isUser
+                            ? const Color(0xFF2E234B)
+                            : (isDark
+                                ? const Color(0xFF1E1E21)
+                                : Colors.white),
                         borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(24),
-                          topRight: const Radius.circular(24),
-                          bottomLeft: Radius.circular(isUser ? 24 : 6),
-                          bottomRight: Radius.circular(isUser ? 6 : 24),
+                          topLeft: const Radius.circular(16),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: Radius.circular(isUser ? 16 : 4),
+                          bottomRight: Radius.circular(isUser ? 4 : 16),
                         ),
                         border: Border.all(
                           color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
+                              ? Colors.white.withValues(alpha: 0.08)
                               : Colors.black.withValues(alpha: 0.05),
-                          width: 1.5,
+                          width: 1.0,
                         ),
                         boxShadow: [
                           if (isUser)
                             BoxShadow(
-                              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                               blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          if (!isUser && !isDark)
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                              offset: const Offset(0, 4),
                             ),
                         ],
                       ),
@@ -141,21 +128,19 @@ class MessageBubble extends StatelessWidget {
                 // Actions row
                 if (!isUser && message.content.isNotEmpty && !isStreaming)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.only(top: 10),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _actionIcon(Icons.thumb_up_outlined),
-                          const SizedBox(width: 8),
-                          _actionIcon(Icons.thumb_down_outlined),
-                          const SizedBox(width: 8),
-                          _actionIcon(Icons.content_copy_rounded, onTap: () {
+                          _actionIconButton(Icons.thumb_up_outlined),
+                          const SizedBox(width: 6),
+                          _actionIconButton(Icons.thumb_down_outlined),
+                          const SizedBox(width: 6),
+                          _actionIconButton(Icons.content_copy_rounded, onTap: () {
                              Clipboard.setData(ClipboardData(text: message.content));
                           }),
-                          const SizedBox(width: 8),
-                          _actionIcon(Icons.open_in_new_rounded),
-                          const SizedBox(width: 8),
-                          _actionIcon(Icons.refresh_rounded),
+                          const SizedBox(width: 6),
+                          _actionIconButton(Icons.refresh_rounded),
                           if (message.modelName != null) ...[
                             const SizedBox(width: 12),
                             _modelBadge(message.modelName!),
@@ -200,44 +185,52 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildAvatar() {
     return Container(
-      width: 36,
-      height: 36,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(10),
+        color: const Color(0xFF1E1E21),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+          color: Colors.white.withValues(alpha: 0.08),
         ),
       ),
+      padding: const EdgeInsets.all(6),
       child: Image.asset(
         'assets/icon/app_icon.png',
-        width: 16,
-        height: 16,
         fit: BoxFit.contain,
       ),
-
     );
   }
 
   Widget _buildUserAvatar() {
     return Container(
-      width: 36,
-      height: 36,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(10),
+        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(Icons.person_rounded, size: 20, color: Color(0xFF6366F1)),
+      child: const Icon(Icons.person_rounded, size: 18, color: Color(0xFF6366F1)),
     );
   }
 
-  Widget _actionIcon(IconData icon, {VoidCallback? onTap}) {
+  Widget _actionIconButton(IconData icon, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
-      child: Icon(
-        icon,
-        size: 16,
-        color: isDark ? Colors.white38 : Colors.black38,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 14,
+          color: isDark ? Colors.white38 : Colors.black38,
+        ),
       ),
     );
   }

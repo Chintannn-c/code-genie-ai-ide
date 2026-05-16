@@ -7,8 +7,8 @@ class ThemeProvider extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
   static const primaryColor = Color(0xFF6366F1); // Indigo
   static const accentColor = Color(0xFF06B6D4);  // Cyan
-  static const darkBg = Color(0xFF0F172A);      // Deep Slate
-  static const darkSurface = Color(0xFF1E293B); // Surface
+  static const darkBg = Color(0xFF0B0B0C);      // Pitch Black
+  static const darkSurface = Color(0xFF121214); // Near Black
   static const darkText = Color(0xFFF1F5F9);    // Text
 
   ThemeMode _themeMode = ThemeMode.dark;

@@ -34,12 +34,12 @@ class CodeBlock extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF6F8FA),
+        color: isDark ? const Color(0xFF0B0B0C) : const Color(0xFFF6F8FA),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.1),
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
         ),
         boxShadow: [
           BoxShadow(
@@ -58,11 +58,11 @@ class CodeBlock extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF161B22)
+                  ? const Color(0xFF121214)
                   : const Color(0xFFEFF1F3),
               border: Border(
                 bottom: BorderSide(
-                  color: isDark ? Colors.white10 : Colors.black12,
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                 ),
               ),
             ),
