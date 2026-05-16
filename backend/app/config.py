@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
     HUGGINGFACE_API_KEY: str = ""
+    GITHUB_API_KEY: str = ""
+    MISTRAL_API_KEY: str = ""
     
     # Google Auth
     GOOGLE_CLIENT_ID: Optional[str] = None
@@ -19,7 +21,7 @@ class Settings(BaseSettings):
     # Database
     MONGO_URI: str = "mongodb://localhost:27017"
     DB_NAME: str = "ai_code_assistant"
-    GEMINI_MODEL: str = "gemini-2.0-flash-lite"
+    GEMINI_MODEL: str = "gemini-3.1-pro"
     ALLOWED_ORIGINS: str = "*" 
     
     # Paths (Safe defaults that work in any environment)

@@ -31,10 +31,10 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
     
     # Prioritized list of models to try
     models_to_try = [
-        settings.GEMINI_MODEL,           # 1. Primary from .env
-        "gemini-1.5-flash",              # 2. Fast Fallback
-        "gemini-2.0-flash-exp",          # 3. Next-Gen Fallback
-        "gemini-1.5-pro",                # 4. High-Reasoning Fallback
+        settings.GEMINI_MODEL,           # 1. Primary (gemini-3.1-pro)
+        "gemini-3.1-flash",              # 2. Fast Fallback
+        "gemini-3-pro",                  # 3. High-Reasoning Fallback
+        "gemini-3-flash",                 # 4. Fast Fallback
     ]
     
     # Remove duplicates while preserving order
@@ -94,8 +94,8 @@ async def generate(contents: list[dict]) -> str:
 
     models_to_try = [
         settings.GEMINI_MODEL,
+        "gemini-3.1-pro",
         "gemini-3.1-flash",
-        "gemini-3-flash",
     ]
     models_to_try = list(dict.fromkeys(models_to_try))
 

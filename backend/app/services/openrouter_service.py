@@ -12,6 +12,14 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Comprehensive list of currently available FREE models on OpenRouter
 FREE_MODELS = [
     "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen-2.5-coder-32b:free",
+    "openai/gpt-oss-120b:free",
+    "google/gemini-3.1-flash:free",
+    "google/gemini-3.1-pro:free",
+    "google/gemini-3-pro:free",
+    "google/gemini-3-flash:free",
+    "google/gemini-2.0-flash-exp:free",
+    "google/gemini-pro-1.5:free",
     "google/lyria-3-pro-preview",
     "qwen/qwen3-coder:free",
     "z-ai/glm-4.5-air:free",
@@ -28,8 +36,13 @@ FREE_MODELS = [
 
 # List of models that are free but might not have the :free suffix
 VERIFIED_FREE_MODELS = [
-    "google/gemini-pro-1.5",
+    "google/gemini-3.1-pro",
+    "google/gemini-3.1-flash",
+    "google/gemini-3-pro",
+    "google/gemini-3-flash",
     "google/gemini-2.0-flash-exp",
+    "google/gemini-pro-1.5",
+    "google/gemini-flash-1.5",
     "google/lyria-3-pro-preview"
 ]
 

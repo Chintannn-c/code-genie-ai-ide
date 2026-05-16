@@ -2,7 +2,7 @@ import json
 import logging
 from typing import AsyncGenerator, List, Dict, Optional
 from sse_starlette.sse import ServerSentEvent
-from app.services import chat_service, ai_service as gemini_service, groq_service, openrouter_service
+from app.services import chat_service, ai_service as gemini_service, groq_service, openrouter_service, github_service, mistral_service
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,16 @@ async def stream_with_failover(
                 model = model_name or "llama3-8b-8192"
                 messages = history + [{"role": "user", "content": prompt_text}]
                 stream = groq_service.stream_generate(messages, model=model)
+                final_model_name = model
+            elif provider == "github":
+                model = model_name or "gpt-4o-mini"
+                messages = history + [{"role": "user", "content": prompt_text}]
+                stream = github_service.stream_generate(messages, model=model)
+                final_model_name = model
+            elif provider == "mistral":
+                model = model_name or "mistral-large-latest"
+                messages = history + [{"role": "user", "content": prompt_text}]
+                stream = mistral_service.stream_generate(messages, model=model)
                 final_model_name = model
             else:
                 raise ValueError("Defaulting to Gemini")

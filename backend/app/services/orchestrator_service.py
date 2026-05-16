@@ -6,6 +6,8 @@ from typing import List, Dict, Any, Optional
 from . import gemini_service as gemini_mod
 from . import groq_service as groq_mod
 from . import openrouter_service as openrouter_mod
+from . import github_service as github_mod
+from . import mistral_service as mistral_mod
 from .agent_tools_service import agent_tools
 from .indexer_service import indexer
 from ..prompts.templates import SYSTEM_INSTRUCTION
@@ -22,19 +24,23 @@ class AIOrchestrator:
     
     def __init__(self):
         self.free_pool = [
+            "google/gemini-3.1-pro:free",
+            "google/gemini-3.1-flash:free",
+            "google/gemini-2.0-flash-exp:free",
+            "google/gemini-pro-1.5:free",
             "meta-llama/llama-3.3-70b-instruct:free",
             "qwen/qwen-2.5-coder-32b-instruct:free",
-            "google/gemini-2.0-flash-exp:free",
+            "openai/gpt-oss-120b:free",
             "deepseek/deepseek-chat:free",
             "microsoft/phi-3-medium-128k-instruct:free",
-            "openai/gpt-oss-120b:free",
             "qwen/qwen-2.5-coder-7b-instruct:free",
-            "google/gemini-pro-1.5:free",
             "nousresearch/hermes-3-llama-3.1-405b:free",
+            "mistralai/mistral-large-latest:free",
             "mistralai/mistral-7b-instruct:free",
             "gryphe/mythomax-l2-13b:free",
             "undi95/toppy-m-7b:free",
-            "openchat/openchat-7b:free"
+            "openchat/openchat-7b:free",
+            "microsoft/phi-4-instruct:free"
         ]
 
     async def get_parallel_response(self, prompt: str, history: List[Dict] = None, user_level: str = "intermediate") -> Dict[str, Any]:
@@ -48,11 +54,13 @@ class AIOrchestrator:
         # Always include the core services + top free models
         tasks = [
             self._call_model("gemini", prompt, history),
-            self._call_model("groq", prompt, history)
+            self._call_model("groq", prompt, history),
+            self._call_model("github", prompt, history),
+            self._call_model("mistral", prompt, history)
         ]
         
-        # Add top free models from OpenRouter
-        for model_id in self.free_pool[:2]: # Query top 2 free models in parallel
+        # Add EVERY free model from OpenRouter for a massive parallel ensemble
+        for model_id in self.free_pool: 
             tasks.append(self._call_model("openrouter", prompt, history, specific_model=model_id))
         
         # 2. Execute in parallel with a global timeout to prevent hanging on slow free models
@@ -361,7 +369,7 @@ class AIOrchestrator:
                 contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
             contents.append({"role": "user", "parts": [{"text": prompt}]})
             content = await gemini_mod.generate(contents)
-            final_model = "gemini-2.0-flash"
+            final_model = "gemini-3.1-pro"
         elif model_id == "groq":
             messages = history + [{"role": "user", "content": prompt}]
             content = await groq_mod.generate(messages)
@@ -371,6 +379,14 @@ class AIOrchestrator:
             target_model = specific_model or "meta-llama/llama-3.3-70b-instruct:free"
             content = await openrouter_mod.generate(messages, model=target_model)
             final_model = target_model
+        elif model_id == "github":
+            messages = history + [{"role": "user", "content": prompt}]
+            content = await github_mod.generate(messages)
+            final_model = "gpt-4o-mini"
+        elif model_id == "mistral":
+            messages = history + [{"role": "user", "content": prompt}]
+            content = await mistral_mod.generate(messages)
+            final_model = "mistral-large-latest"
         
         return {
             "model": final_model,

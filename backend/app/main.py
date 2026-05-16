@@ -10,7 +10,7 @@ from app.database import connect_to_mongo, close_mongo_connection
 from app.routes import chat, history, upload, auth, execution
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
-from app.middleware import production_security_middleware
+from app.middleware import ProductionSecurityMiddleware
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -95,8 +95,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 3. Middlewares
-# Security & Monitoring (Using stable BaseHTTPMiddleware approach)
-app.add_middleware(BaseHTTPMiddleware, dispatch=production_security_middleware)
+# Security & Monitoring (Using pure ASGI middleware to support file uploads)
+app.add_middleware(ProductionSecurityMiddleware)
 
 # CORS (Must be outer layer)
 settings = get_settings()
