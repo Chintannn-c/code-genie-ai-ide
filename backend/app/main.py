@@ -34,7 +34,14 @@ async def lifespan(app: FastAPI):
         logger.error("❌ INSECURE JWT_SECRET DETECTED! Use environment variables to set a secure secret in production.")
         # We don't raise here so the app can start and pass healthchecks, allowing logs to be seen.
     
-    await connect_to_mongo()
+    # Initialize Database with timeout protection
+    try:
+        await connect_to_mongo()
+        logger.info("✅ Database connected successfully.")
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
+        logger.warning("⚠️ App is starting WITHOUT database. Most features will fail until connection is restored.")
+
     logger.info("✅ API ready!")
     yield
     # Shutdown
