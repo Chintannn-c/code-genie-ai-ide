@@ -28,39 +28,41 @@ async def lifespan(app: FastAPI):
     
     settings = get_settings()
     
-    # 1. Database Connection
-    try:
-        logger.info(f"🚩 [STARTUP] Phase 2: Connecting to MongoDB (DB: {settings.DB_NAME})...")
-        await connect_to_mongo()
-        logger.info("✅ [STARTUP] MongoDB Connection: SUCCESS")
-    except Exception as e:
-        logger.error(f"❌ [STARTUP] MongoDB Connection: FAILED - {e}")
-        # We don't crash here; we let the app start so we can see logs
-
-    # 2. Redis Connection
-    if settings.REDIS_URL:
+    # --- NON-BLOCKING BACKGROUND INIT ---
+    async def initialize_infrastructure():
+        # 1. Database Connection
         try:
-            logger.info("🚩 [STARTUP] Phase 3: Connecting to Redis...")
-            import redis.asyncio as redis
-            r = redis.from_url(settings.REDIS_URL, socket_timeout=5.0)
-            await r.ping()
-            logger.info("✅ [STARTUP] Redis Connection: SUCCESS")
-            app.state.redis = r
+            logger.info(f"🚩 [STARTUP] Background: Connecting to MongoDB (DB: {settings.DB_NAME})...")
+            await connect_to_mongo()
+            logger.info("✅ [STARTUP] MongoDB Connection: SUCCESS")
         except Exception as e:
-            logger.warning(f"⚠️ [STARTUP] Redis Connection: OPTIONAL FAILURE - {e}")
-            app.state.redis = None
-    else:
-        logger.info("ℹ️ [STARTUP] Phase 3: Redis URL not provided, skipping.")
-        app.state.redis = None
+            logger.error(f"❌ [STARTUP] MongoDB Connection: FAILED - {e}")
 
-    # 3. Directories & Mounts
-    try:
-        logger.info("🚩 [STARTUP] Phase 4: Ensuring Data Directories...")
-        os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
-        os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
-        logger.info(f"✅ [STARTUP] Directories verified: {settings.ARTIFACTS_PATH}, {settings.UPLOAD_PATH}")
-    except Exception as e:
-        logger.error(f"❌ [STARTUP] Directory creation: FAILED - {e}")
+        # 2. Redis Connection
+        if settings.REDIS_URL:
+            try:
+                logger.info("🚩 [STARTUP] Background: Connecting to Redis...")
+                import redis.asyncio as redis
+                r = redis.from_url(settings.REDIS_URL, socket_timeout=5.0)
+                await r.ping()
+                logger.info("✅ [STARTUP] Redis Connection: SUCCESS")
+                app.state.redis = r
+            except Exception as e:
+                logger.warning(f"⚠️ [STARTUP] Redis Connection: OPTIONAL FAILURE - {e}")
+                app.state.redis = None
+        else:
+            app.state.redis = None
+
+        # 3. Directories
+        try:
+            os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
+            os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
+            logger.info("✅ [STARTUP] Directories verified.")
+        except Exception as e:
+            logger.error(f"❌ [STARTUP] Directory creation: FAILED - {e}")
+
+    # Start initialization in background
+    asyncio.create_task(initialize_infrastructure())
 
     # 4. Background Tasks
     logger.info("🚩 [STARTUP] Phase 5: Starting Background Workers...")
