@@ -27,7 +27,12 @@ try:
     docker_client = docker.from_env()
     logger.info("✅ Docker client initialized for secure code execution.")
 except Exception as e:
-    logger.warning(f"⚠️ Docker not available: {e}. Falling back to insecure execution (DEV ONLY).")
+    # Railway/Cloud detection
+    is_cloud = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("DYNO")
+    if is_cloud:
+        logger.info("ℹ️ Code execution sandbox: Using native mode (Docker unavailable in cloud container).")
+    else:
+        logger.warning(f"⚠️ Docker not available: {e}. Falling back to insecure execution (DEV ONLY).")
     docker_client = None
 
 @router.post("", response_model=ExecutionResponse)
