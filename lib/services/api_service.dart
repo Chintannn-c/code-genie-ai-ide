@@ -50,6 +50,7 @@ class ApiService {
     required String prompt,
     required String language,
     String? chatId,
+    List<String>? fileIds,
   }) async {
     final response = await _client.post(
       _uri(ApiConfig.generate),
@@ -59,6 +60,7 @@ class ApiService {
         'chat_id': chatId,
         'prompt': prompt,
         'language': language,
+        if (fileIds != null && fileIds.isNotEmpty) 'file_ids': fileIds,
       }),
     );
 
@@ -126,6 +128,7 @@ class ApiService {
     String? chatId,
     String provider = 'gemini',
     String? modelName,
+    List<String>? fileIds,
   }) async {
     final response = await _client.post(
       _uri(ApiConfig.orchestrate),
@@ -137,6 +140,7 @@ class ApiService {
         'language': language ?? 'python',
         'provider': provider,
         'model_name': modelName,
+        if (fileIds != null && fileIds.isNotEmpty) 'file_ids': fileIds,
       }),
     );
 

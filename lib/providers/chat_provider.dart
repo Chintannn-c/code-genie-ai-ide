@@ -287,11 +287,16 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final fileIds = _selectedFiles.map((f) => f.fileId).toList();
       if (_useParallelOrchestration) {
-        await _orchestrateMessage(prompt, code, error);
+        await _orchestrateMessage(prompt, code, error, fileIds: fileIds);
       } else {
-        await _streamMessage(prompt, code, error);
+        await _streamMessage(prompt, code, error, fileIds: fileIds);
       }
+      
+      // Clear files after successful send
+      _selectedFiles = [];
+      notifyListeners();
     } catch (e) {
       _messages.remove(userMessage);
       _errorMessage = 'Code Genie failed to respond. Try again...';
@@ -318,7 +323,7 @@ class ChatProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> _orchestrateMessage(String prompt, String code, String error) async {
+  Future<void> _orchestrateMessage(String prompt, String code, String error, {List<String>? fileIds}) async {
     _isOrchestrating = true;
     notifyListeners();
     try {
@@ -327,6 +332,7 @@ class ChatProvider extends ChangeNotifier {
         chatId: _currentChatId,
         prompt: prompt,
         language: _selectedLanguage,
+        fileIds: fileIds,
       );
       _currentChatId = result['chat_id'];
       _messages = await _apiService.getMessages(_currentChatId!);
@@ -338,7 +344,7 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _streamMessage(String prompt, String code, String error) async {
+  Future<void> _streamMessage(String prompt, String code, String error, {List<String>? fileIds}) async {
     final aiMessage = Message.aiStreaming(
       type: _selectedMode,
       language: _selectedLanguage,
@@ -363,6 +369,7 @@ class ChatProvider extends ChangeNotifier {
         difficulty: _selectedDifficulty,
         provider: _selectedProvider,
         modelName: _selectedModel,
+        fileIds: fileIds,
       );
 
       _streamSubscription = stream.timeout(

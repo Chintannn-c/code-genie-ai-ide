@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 from app.models.requests import GenerateRequest, DebugRequest, ExplainRequest, StreamRequest
 from app.models.responses import ChatResponse
-from app.services import chat_service, ai_service as gemini_service, groq_service, orchestrator_service
+from app.services import chat_service, file_service, ai_service as gemini_service, groq_service, orchestrator_service
 from app.services.socket_manager import manager as socket_manager
 from app.prompts.templates import build_prompt
 from app.routes.deps import get_current_user_id
@@ -270,8 +270,21 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
         )
 
         history = await chat_service.get_chat_context(chat_id, max_messages=10)
+        
+        # FILE CONTEXT INJECTION: Fetch and append file contents if provided
+        file_context = ""
+        if request.file_ids:
+            for fid in request.file_ids:
+                meta = await chat_service.get_file_metadata(fid)
+                if meta and meta["user_id"] == current_user_id:
+                    try:
+                        content = await file_service.read_file_content(meta["file_path"])
+                        file_context += f"\n\n--- FILE: {meta['file_name']} ---\n{content}\n"
+                    except Exception as fe:
+                        logger.warning(f"Failed to read file {fid}: {fe}")
+
         prompt_text = build_prompt(
-            prompt=request.prompt if request.prompt else f"Process this {request.type} request",
+            prompt=(request.prompt if request.prompt else f"Process this {request.type} request") + file_context,
             language=request.language,
             difficulty=request.difficulty,
             type=request.type,

@@ -86,7 +86,6 @@ class StreamService {
     }
   }
 
-  /// Stream standard chat AI response
   Stream<StreamChunk> streamResponse({
     required String userId,
     required String type,
@@ -98,6 +97,7 @@ class StreamService {
     String difficulty = 'beginner',
     String provider = 'gemini',
     String? modelName,
+    List<String>? fileIds,
   }) {
     return _postStream(ApiConfig.stream, {
       'user_id': userId,
@@ -110,6 +110,7 @@ class StreamService {
       'difficulty': difficulty,
       'provider': provider,
       if (modelName != null) 'model_name': modelName,
+      if (fileIds != null && fileIds.isNotEmpty) 'file_ids': fileIds,
     });
   }
 

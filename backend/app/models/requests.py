@@ -9,6 +9,7 @@ class GenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000, description="User's prompt")
     language: str = Field("python", description="Target programming language")
     difficulty: Literal["beginner", "intermediate", "advanced"] = Field("beginner")
+    file_ids: list[str] | None = Field(None, description="Optional file IDs to include as context")
 
 
 class DebugRequest(BaseModel):
@@ -42,3 +43,4 @@ class StreamRequest(BaseModel):
     type: Literal["generate", "debug", "explain", "file_analysis", "file_debug"] = Field("generate")
     provider: Literal["gemini", "openrouter", "huggingface"] = Field("gemini")
     model_name: str | None = Field(None, description="Specific model to use (for OpenRouter/HuggingFace)")
+    file_ids: list[str] | None = Field(None, description="Optional file IDs to include as context")

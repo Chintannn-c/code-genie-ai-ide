@@ -43,7 +43,13 @@ class Settings(BaseSettings):
     )
 
 
+import os
+
 @lru_cache()
 def get_settings() -> Settings:
     """Cached settings singleton."""
+    # Diagnostic: Print environment keys to find where 'hacked' is coming from
+    print(f"DEBUG: Environment keys: {list(os.environ.keys())}")
+    if 'hacked' in os.environ:
+        print(f"DEBUG: 'hacked' value: {os.environ['hacked']}")
     return Settings()
