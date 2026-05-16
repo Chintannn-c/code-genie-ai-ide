@@ -50,7 +50,7 @@ AGENT_PERSONAS: Dict[str, Dict[str, Any]] = {
         "name": "Planner Agent",
         "icon": "🗺️",
         "preferred_model": "gemini",
-        "preferred_model_name": "gemini-3.1-flash",
+        "preferred_model_name": "gemini-1.5-flash-latest",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Task decomposition, goal analysis, dependency graph creation",
         "system_prompt": """You are the PLANNER AGENT in a collaborative AI engineering team.
@@ -87,7 +87,7 @@ OUTPUT FORMAT:
         "name": "Architect Agent",
         "icon": "🏗️",
         "preferred_model": "gemini",
-        "preferred_model_name": "gemini-3.1-pro",
+        "preferred_model_name": "gemini-1.5-pro-latest",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "System design, API architecture, scalability, design patterns",
         "system_prompt": """You are the ARCHITECT AGENT in a collaborative AI engineering team.
@@ -148,7 +148,7 @@ RULES:
         "name": "Compliance Agent",
         "icon": "📋",
         "preferred_model": "openrouter",
-        "preferred_model_name": "google/gemini-3.1-flash:free",
+        "preferred_model_name": "gemini-1.5-flash-latest",
         "permission": ToolPermission.SCAN_ONLY,
         "specialization": "OWASP compliance, GDPR, license compatibility, policy enforcement",
         "system_prompt": """You are the COMPLIANCE AGENT in a collaborative AI engineering team.
@@ -248,7 +248,7 @@ RULES:
         "name": "Code Reviewer Agent",
         "icon": "👀",
         "preferred_model": "openrouter",
-        "preferred_model_name": "google/gemini-3.1-pro:free",
+        "preferred_model_name": "gemini-1.5-pro-latest",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Code review, maintainability, architecture consistency",
         "system_prompt": """You are the CODE REVIEWER AGENT in a collaborative AI engineering team.
@@ -268,7 +268,7 @@ RULES:
         "name": "Synthesis Judge",
         "icon": "🧬",
         "preferred_model": "gemini",
-        "preferred_model_name": "gemini-3.1-pro",
+        "preferred_model_name": "gemini-1.5-pro-latest",
         "permission": ToolPermission.NONE,
         "specialization": "Response merging, deduplication, final quality synthesis",
         "system_prompt": """You are the SYNTHESIS JUDGE in a collaborative AI engineering team.
