@@ -253,6 +253,8 @@ logger.info("🚀 Code Genie Module Loaded Successfully")
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    # Strict Port Enforcement for Railway
     port = int(os.environ.get("PORT", 8000))
-    logger.info(f"Starting production server on port {port}")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
+    logger.info(f"🚀 [INIT] Manual Uvicorn start on port {port}")
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, log_level="info")

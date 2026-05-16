@@ -19,5 +19,5 @@ COPY . .
 # Create data directories
 RUN mkdir -p ../data/artifacts ../data/uploads
 
-# Start with Uvicorn (Forcing the use of the dynamic Railway PORT)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+# Start the application using the Python runner (Ensures internal PORT logic is hit)
+CMD ["python", "-m", "app.main"]
