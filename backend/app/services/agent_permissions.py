@@ -1,6 +1,10 @@
 """
-Agent Permissions — Least-Privilege Access Control
+Agent Permissions — Least-Privilege Access Control (Hardened)
+=============================================================
+Deny-by-default permission system with regex-based command blocking
+and proper audit logging of all access decisions.
 """
+import re
 import logging
 from typing import Dict, Any, List, Set
 from enum import Enum
@@ -28,7 +32,36 @@ PERMISSION_MATRIX = {
 }
 
 APPROVAL_REQUIRED = {ToolAction.DELETE_FILE, ToolAction.GIT_PUSH, ToolAction.DEPLOY}
-BLOCKED_COMMANDS = ["rm -rf", "rmdir /s", "format ", "mkfs", "dd if=", ":(){:|:&};:", "shutdown", "reboot"]
+
+# Regex-based blocked command patterns (matches shell obfuscation)
+BLOCKED_COMMAND_PATTERNS = [
+    r"rm\s+(-\w+\s+)*-r",
+    r"rmdir\s+/s",
+    r"del\s+/[sfq]",
+    r"format\s+[a-z]:",
+    r"mkfs\b",
+    r"dd\s+if=",
+    r"\bshutdown\b",
+    r"\breboot\b",
+    r":\(\)\s*\{",
+    r"\bnc\s+-[elp]",
+    r"reverse.?shell",
+    r"bind.?shell",
+    r"bash\s+-i\s+>&",
+    r"/dev/tcp/",
+    r"\bprintenv\b",
+    r"\benv\b\s*$",
+    r"\bset\b\s*$",
+    r"echo\s+\$\w*(KEY|SECRET|TOKEN|PASSWORD|URI)",
+    r"cat\s+.*\.(env|pem|key)",
+    r"curl\s+.*\|\s*(ba)?sh",
+    r"wget\s+.*\|\s*(ba)?sh",
+    r"\bsudo\b",
+    r"\bsu\s+-",
+]
+
+COMPILED_BLOCKED = [re.compile(p, re.IGNORECASE) for p in BLOCKED_COMMAND_PATTERNS]
+
 
 class AgentPermissionManager:
     def __init__(self):
@@ -40,6 +73,7 @@ class AgentPermissionManager:
         config = get_agent_config(agent_role)
         if not config:
             self._denied += 1
+            self._record(agent_role.value if isinstance(agent_role, AgentRole) else str(agent_role), action.value, False, "Unknown role")
             return {"allowed": False, "reason": f"Unknown role: {agent_role}"}
 
         perm = config.get("permission", ToolPermission.NONE)
@@ -47,21 +81,37 @@ class AgentPermissionManager:
 
         if action not in allowed:
             self._denied += 1
-            r = {"allowed": False, "reason": f"'{agent_role.value}' cannot '{action.value}'", "requires_approval": action in APPROVAL_REQUIRED}
-            logger.warning(f"🚫 [PERMISSIONS] DENIED: {r['reason']}")
-            return r
+            reason = f"'{agent_role.value}' with '{perm.value}' cannot '{action.value}'"
+            self._record(agent_role.value, action.value, False, reason)
+            logger.warning(f"🚫 [PERMISSIONS] DENIED: {reason}")
+            return {"allowed": False, "reason": reason, "requires_approval": action in APPROVAL_REQUIRED}
 
+        # Regex-based command blocking (not simple substring)
         if action == ToolAction.RUN_COMMAND and details:
-            cmd = details.get("command", "").lower()
-            for blocked in BLOCKED_COMMANDS:
-                if blocked in cmd:
+            cmd = details.get("command", "")
+            for i, pattern in enumerate(COMPILED_BLOCKED):
+                if pattern.search(cmd):
                     self._denied += 1
-                    return {"allowed": False, "reason": f"Blocked: '{blocked}'"}
+                    reason = f"Blocked dangerous pattern: {BLOCKED_COMMAND_PATTERNS[i]}"
+                    self._record(agent_role.value, action.value, False, reason)
+                    logger.warning(f"🚫 [PERMISSIONS] {reason} in: {cmd[:60]}")
+                    return {"allowed": False, "reason": reason}
 
         self._approved += 1
+        self._record(agent_role.value, action.value, True, f"Permitted under '{perm.value}'")
         return {"allowed": True, "reason": f"Permitted under '{perm.value}'", "requires_approval": action in APPROVAL_REQUIRED}
 
+    def _record(self, agent: str, action: str, allowed: bool, reason: str):
+        self._log.append({"agent": agent, "action": action, "allowed": allowed, "reason": reason})
+        if len(self._log) > 500:
+            self._log = self._log[-250:]
+
     def get_stats(self):
-        return {"approved": self._approved, "denied": self._denied}
+        return {
+            "approved": self._approved,
+            "denied": self._denied,
+            "total_checks": self._approved + self._denied,
+            "recent_decisions": self._log[-10:],
+        }
 
 permission_manager = AgentPermissionManager()

@@ -104,12 +104,14 @@ class SecurityGateway:
         # Pass 3: Anomaly scoring
         anomaly_score = self._compute_anomaly_score(cleaned)
 
-        # Determine verdict
+        # Determine verdict — FAIL-CLOSED policy
+        # Any injection pattern match = immediate BLOCK
+        # High anomaly without pattern = FLAGGED for review
         verdict = "CLEAN"
-        if len(threats) > 0 and anomaly_score > 0.7:
+        if len(threats) > 0:
             verdict = "BLOCKED"
             self.blocked_count += 1
-        elif len(threats) > 0 or anomaly_score > 0.5:
+        elif anomaly_score > 0.5:
             verdict = "FLAGGED"
             self.flagged_count += 1
 

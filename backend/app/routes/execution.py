@@ -53,11 +53,29 @@ async def execute_code(
     lang = request.language.lower()
     code = request.code
     start_time = time.time()
-    
-    if not docker_client:
+
+    # Security: Code size limit (prevent resource exhaustion)
+    MAX_CODE_SIZE = 10240  # 10KB
+    if len(code) > MAX_CODE_SIZE:
         return ExecutionResponse(
             output="",
-            error="Runtime Error: Docker sandbox is not initialized. Execution blocked for security.",
+            error=f"Code size ({len(code)} bytes) exceeds the {MAX_CODE_SIZE} byte limit.",
+            execution_time=round(time.time() - start_time, 3)
+        )
+
+    # Security: Reject null bytes and control characters
+    if "\x00" in code:
+        return ExecutionResponse(
+            output="",
+            error="Code contains invalid null bytes.",
+            execution_time=round(time.time() - start_time, 3)
+        )
+
+    if not docker_client:
+        logger.warning(f"🚨 [EXECUTION] Blocked: User {current_user_id} attempted code execution without Docker sandbox.")
+        return ExecutionResponse(
+            output="",
+            error="Security: Code execution requires Docker sandbox. Execution blocked in this environment.",
             execution_time=round(time.time() - start_time, 3)
         )
 

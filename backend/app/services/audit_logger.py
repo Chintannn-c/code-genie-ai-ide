@@ -39,17 +39,22 @@ class AuditEvent:
         self.workflow_id = workflow_id
         self.hash = self._compute_hash()
 
-    def _compute_hash(self) -> str:
-        """Creates a SHA-256 hash of the event for integrity verification."""
+    def _compute_hash(self, prev_hash: str = "GENESIS") -> str:
+        """
+        Creates a SHA-256 hash of the full event including details and chain link.
+        This ensures content-addressable integrity — any modification breaks the chain.
+        """
         payload = json.dumps({
             "timestamp": self.timestamp,
             "event_type": self.event_type,
             "agent_name": self.agent_name,
             "action": self.action,
+            "details": self.details,
             "user_id": self.user_id,
             "workflow_id": self.workflow_id,
-        }, sort_keys=True)
-        return hashlib.sha256(payload.encode()).hexdigest()[:16]
+            "prev_hash": prev_hash,
+        }, sort_keys=True, default=str)
+        return hashlib.sha256(payload.encode()).hexdigest()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -111,7 +116,8 @@ class AuditLogger:
             workflow_id=workflow_id,
         )
 
-        # Chain integrity: link to previous event
+        # Chain integrity: recompute hash with the chain link included
+        event.hash = event._compute_hash(prev_hash=self._chain_hash)
         record = event.to_dict()
         record["prev_hash"] = self._chain_hash
         self._chain_hash = event.hash
