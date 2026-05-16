@@ -109,7 +109,14 @@ async def health_check():
         "port": os.environ.get("PORT", "8000")
     }
 
-# 2. Global Exception Interceptor (Prints everything to Terminal)
+# 2. Public Traffic Tracker
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"🌐 [REQUEST] {request.method} {request.url.path} | Host: {request.headers.get('host')}")
+    response = await call_next(request)
+    return response
+
+# 3. Global Exception Interceptor (Prints everything to Terminal)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
