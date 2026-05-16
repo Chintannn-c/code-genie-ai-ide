@@ -61,10 +61,15 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Configuration
-# Temporarily relaxing to "*" to rule out CORS as cause of 502/Gateway issues
+# SECURITY: "allow_origins=['*']" is incompatible with "allow_credentials=True".
+# We use explicit origins for production stability.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost",
+        "http://localhost:8000",
+        "https://code-genie.up.railway.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -163,9 +168,21 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint."""
-    from app.models.responses import HealthResponse
-    return HealthResponse()
+    """Detailed health check including database status."""
+    from app.database import get_db
+    db_status = "disconnected"
+    try:
+        db = await get_db()
+        await db.command("ping")
+        db_status = "connected"
+    except Exception as e:
+        logger.error(f"Healthcheck DB failure: {e}")
+
+    return {
+        "status": "healthy",
+        "service": "Code Genie API",
+        "database": db_status
+    }
 
 
 # Serve Flutter Web Build
@@ -186,4 +203,6 @@ if os.path.exists(web_path):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Respect Railway's PORT environment variable
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
