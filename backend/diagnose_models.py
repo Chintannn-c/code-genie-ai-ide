@@ -22,7 +22,10 @@ for i, key in enumerate(keys):
     client = genai.Client(api_key=key)
     try:
         # Just try to list models to verify the key
+        print("Available Models:")
         models = client.models.list()
+        for model in models:
+            print(f"  - {model.name}")
         print(f"[VALID] Key #{i+1} is VALID.")
     except Exception as e:
         print(f"[INVALID] Key #{i+1} is INVALID. Error: {e}")

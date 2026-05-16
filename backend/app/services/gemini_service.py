@@ -45,10 +45,12 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
     # Using more stable model aliases to avoid 404s
     models_to_try = [
         settings.GEMINI_MODEL, 
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-3.1-pro-preview",
+        "gemini-3.1-flash-lite",
+        "gemini-pro-latest",
+        "gemini-flash-latest",
     ]
     models_to_try = list(dict.fromkeys(models_to_try))
     
@@ -112,10 +114,10 @@ async def generate(contents: list[dict]) -> str:
 
     models_to_try = [
         settings.GEMINI_MODEL, 
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro"
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-3.1-pro-preview",
+        "gemini-pro-latest",
     ]
     models_to_try = list(dict.fromkeys(models_to_try))
     
