@@ -54,9 +54,9 @@ async def verify_google_token(token: str) -> dict:
     """Verify a Google ID token asynchronously."""
     try:
         # If no client ID is set, we can't verify
-        if not settings.GOOGLE_CLIENT_ID:
-            logger.warning("GOOGLE_CLIENT_ID not set. Skipping verification (DEV ONLY!)")
-            raise ValueError("GOOGLE_CLIENT_ID is not configured on backend")
+        if not settings.GOOGLE_CLIENT_ID and not settings.GOOGLE_CLIENT_ID_WEB:
+            logger.warning("Neither GOOGLE_CLIENT_ID nor GOOGLE_CLIENT_ID_WEB is set. Skipping verification (DEV ONLY!)")
+            raise ValueError("Google Client IDs are not configured on the backend")
 
         # Support both Android and Web client IDs
         audiences = [settings.GOOGLE_CLIENT_ID, settings.GOOGLE_CLIENT_ID_WEB]
