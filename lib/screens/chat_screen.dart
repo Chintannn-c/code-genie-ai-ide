@@ -257,7 +257,7 @@ class _ChatScreenState extends State<ChatScreen>
       key: _scaffoldKey,
       backgroundColor: isDark
           ? themeProvider.darkTheme.scaffoldBackgroundColor
-          : const Color(0xFFFAFBFC),
+          : themeProvider.lightTheme.scaffoldBackgroundColor,
       drawer: isWide
           ? null
           : Drawer(

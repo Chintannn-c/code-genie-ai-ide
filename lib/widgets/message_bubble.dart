@@ -29,156 +29,199 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 700;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) _buildAvatar(),
-          if (!isUser) const SizedBox(width: 12),
-          
-          // ADDED: Left spacer for User messages to push them to the right and limit their width
-          if (isUser) Spacer(flex: isWide ? 4 : 2),
 
-          Flexible(
-            flex: isWide ? 6 : 8,
-            child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                // Role label
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
-                  child: Text(
-                    isUser ? 'YOU' : 'CODE GENIE',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.5,
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.3)
-                          : Colors.black.withValues(alpha: 0.3),
-                    ),
-                  ),
-                ),
-                // Message content
-                ClipRRect(
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(24),
-                    topRight: const Radius.circular(24),
-                    bottomLeft: Radius.circular(isUser ? 24 : 6),
-                    bottomRight: Radius.circular(isUser ? 6 : 24),
-                  ),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: isUser ? 0 : 12, sigmaY: isUser ? 0 : 12),
-                    child: Container(
-                      constraints: BoxConstraints(
-                        // Reduced maxWidth to avoid stretching too much
-                        maxWidth: MediaQuery.of(context).size.width * (isWide ? 0.6 : 0.75),
-                        minWidth: 80, // Ensure bubbles aren't too thin
+    // PERFORMANCE FIX: Wrap bubble in RepaintBoundary to isolate BackdropFilter & Animation
+    // This prevents the entire message list from repainting when the cursor or shimmer animates.
+    return RepaintBoundary(
+      child: Semantics(
+        label: isUser ? 'User message' : 'AI Assistant message',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            mainAxisAlignment: isUser
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isUser) _buildAvatar(),
+              if (!isUser) const SizedBox(width: 12),
+
+              // ADDED: Left spacer for User messages to push them to the right and limit their width
+              if (isUser) Spacer(flex: isWide ? 4 : 2),
+
+              Flexible(
+                flex: isWide ? 6 : 8,
+                child: Column(
+                  crossAxisAlignment: isUser
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
+                  children: [
+                    // Role label
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: 6,
+                        left: 4,
+                        right: 4,
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: isUser
-                            ? const Color(0xFF2E234B)
-                            : (isDark
-                                ? const Color(0xFF1E1E21)
-                                : Colors.white),
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(16),
-                          topRight: const Radius.circular(16),
-                          bottomLeft: Radius.circular(isUser ? 16 : 4),
-                          bottomRight: Radius.circular(isUser ? 4 : 16),
-                        ),
-                        border: Border.all(
+                      child: Text(
+                        isUser ? 'YOU' : 'CODE GENIE',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
                           color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.05),
-                          width: 1.0,
+                              ? Colors.white.withValues(alpha: 0.3)
+                              : Colors.black.withValues(alpha: 0.3),
                         ),
-                        boxShadow: [
-                          if (isUser)
-                            BoxShadow(
-                              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                        ],
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      ..._buildContent(context),
-                      if (isStreaming && !isUser) _buildCursor(),
-                    ],
-                  ),
+                    ),
+                    // Message content
+                    ClipRRect(
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(24),
+                            topRight: const Radius.circular(24),
+                            bottomLeft: Radius.circular(isUser ? 24 : 6),
+                            bottomRight: Radius.circular(isUser ? 6 : 24),
+                          ),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(
+                              sigmaX: isUser ? 0 : 12,
+                              sigmaY: isUser ? 0 : 12,
+                            ),
+                            child: Container(
+                              constraints: BoxConstraints(
+                                // Reduced maxWidth to avoid stretching too much
+                                maxWidth:
+                                    MediaQuery.of(context).size.width *
+                                    (isWide ? 0.6 : 0.75),
+                                minWidth: 80, // Ensure bubbles aren't too thin
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isUser
+                                    ? const Color(0xFF6366F1).withValues(
+                                        alpha: 0.9,
+                                      ) // Use primary accent for user
+                                    : (isDark
+                                          ? const Color(
+                                              0xFF1E1E21,
+                                            ).withValues(alpha: 0.8)
+                                          : Colors.white.withValues(
+                                              alpha: 0.8,
+                                            )),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(16),
+                                  topRight: const Radius.circular(16),
+                                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                                ),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : Colors.black.withValues(alpha: 0.05),
+                                  width: 1.0,
+                                ),
+                                boxShadow: [
+                                  if (isUser)
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF6366F1,
+                                      ).withValues(alpha: 0.1),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ..._buildContent(context),
+                                  if (isStreaming && !isUser) _buildCursor(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                        .animate(
+                          target: isStreaming
+                              ? 1
+                              : 1, // Always stay at end state for history
+                        )
+                        .fadeIn(duration: isStreaming ? 400.ms : 0.ms)
+                        .slideY(
+                          begin: isStreaming ? 0.05 : 0,
+                          end: 0,
+                          duration: isStreaming ? 400.ms : 0.ms,
+                          curve: Curves.easeOutCubic,
+                        ),
+                    // Actions row
+                    if (!isUser && message.content.isNotEmpty && !isStreaming)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _actionIconButton(Icons.thumb_up_outlined),
+                            const SizedBox(width: 6),
+                            _actionIconButton(Icons.thumb_down_outlined),
+                            const SizedBox(width: 6),
+                            _actionIconButton(
+                              Icons.content_copy_rounded,
+                              onTap: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: message.content),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 6),
+                            _actionIconButton(Icons.refresh_rounded),
+                            if (message.modelName != null) ...[
+                              const SizedBox(width: 12),
+                              _modelBadge(message.modelName!),
+                            ],
+                          ],
+                        ),
+                      ),
+                    if (isUser)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              DateFormat.jm().format(
+                                message.timestamp.toLocal(),
+                              ),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                color: isDark ? Colors.white38 : Colors.black38,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.done_all_rounded,
+                              size: 12,
+                              color: const Color(
+                                0xFF6366F1,
+                              ).withValues(alpha: 0.6),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ).animate(
-                  target: isStreaming ? 1 : 1, // Always stay at end state for history
-                ).fadeIn(
-                  duration: isStreaming ? 400.ms : 0.ms,
-                ).slideY(
-                  begin: isStreaming ? 0.05 : 0, 
-                  end: 0, 
-                  duration: isStreaming ? 400.ms : 0.ms, 
-                  curve: Curves.easeOutCubic
-                ),
-                // Actions row
-                if (!isUser && message.content.isNotEmpty && !isStreaming)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _actionIconButton(Icons.thumb_up_outlined),
-                          const SizedBox(width: 6),
-                          _actionIconButton(Icons.thumb_down_outlined),
-                          const SizedBox(width: 6),
-                          _actionIconButton(Icons.content_copy_rounded, onTap: () {
-                             Clipboard.setData(ClipboardData(text: message.content));
-                          }),
-                          const SizedBox(width: 6),
-                          _actionIconButton(Icons.refresh_rounded),
-                          if (message.modelName != null) ...[
-                            const SizedBox(width: 12),
-                            _modelBadge(message.modelName!),
-                          ],
-                        ],
-                      ),
-                    ),
-                if (isUser)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          DateFormat.jm().format(message.timestamp.toLocal()),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            color: isDark ? Colors.white38 : Colors.black38,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.done_all_rounded,
-                          size: 12,
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.6),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // ADDED: Right spacer for AI messages to push them to the left and limit their width
-          if (!isUser) Spacer(flex: isWide ? 4 : 2),
+              // ADDED: Right spacer for AI messages to push them to the left and limit their width
+              if (!isUser) Spacer(flex: isWide ? 4 : 2),
 
-          if (isUser) const SizedBox(width: 12),
-          if (isUser) _buildUserAvatar(),
-        ],
+              if (isUser) const SizedBox(width: 12),
+              if (isUser) _buildUserAvatar(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -190,15 +233,10 @@ class MessageBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E21),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       padding: const EdgeInsets.all(6),
-      child: Image.asset(
-        'assets/icon/app_icon.png',
-        fit: BoxFit.contain,
-      ),
+      child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.contain),
     );
   }
 
@@ -210,7 +248,11 @@ class MessageBubble extends StatelessWidget {
         color: const Color(0xFF6366F1).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(Icons.person_rounded, size: 18, color: Color(0xFF6366F1)),
+      child: const Icon(
+        Icons.person_rounded,
+        size: 18,
+        color: Color(0xFF6366F1),
+      ),
     );
   }
 
@@ -220,10 +262,14 @@ class MessageBubble extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.03)
+              : Colors.black.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
         child: Icon(
@@ -266,7 +312,10 @@ class MessageBubble extends StatelessWidget {
                 height: 100,
                 color: Colors.redAccent.withValues(alpha: 0.1),
                 child: const Center(
-                  child: Icon(Icons.broken_image_rounded, color: Colors.redAccent),
+                  child: Icon(
+                    Icons.broken_image_rounded,
+                    color: Colors.redAccent,
+                  ),
                 ),
               ),
             ),
@@ -277,8 +326,13 @@ class MessageBubble extends StatelessWidget {
 
     // Purify content: remove technical model attribution lines
     String purifiedContent = message.content;
-    purifiedContent = purifiedContent.split('\n')
-        .where((line) => !line.contains('Model: AI Orchestrator') && !line.startsWith('[Error:'))
+    purifiedContent = purifiedContent
+        .split('\n')
+        .where(
+          (line) =>
+              !line.contains('Model: AI Orchestrator') &&
+              !line.startsWith('[Error:'),
+        )
         .join('\n')
         .trim();
 
@@ -299,44 +353,47 @@ class MessageBubble extends StatelessWidget {
 
     final segments = CodeParser.parse(purifiedContent);
 
-    children.addAll(segments.asMap().entries.map((entry) {
-      final index = entry.key;
-      final segment = entry.value;
-      
-      Widget child;
-      if (segment.isCode) {
-        child = CodeBlock(
-          code: segment.content,
-          language: segment.language,
-          isDark: isDark,
-        );
-      } else {
-        child = Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: SelectableText(
-            segment.content,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              height: 1.6,
-              color: isUser
-                  ? Colors.white
-                  : isDark
-                      ? Colors.white.withValues(alpha: 0.9)
-                      : Colors.black.withValues(alpha: 0.85),
-            ),
-          ),
-        );
-      }
+    children.addAll(
+      segments.asMap().entries.map((entry) {
+        final index = entry.key;
+        final segment = entry.value;
 
-      // Only animate segments if we are currently streaming the message
-      if (isStreaming) {
-        return child.animate(
-          key: ValueKey('${message.messageId}_segment_$index'),
-        ).fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
-      }
-      
-      return child;
-    }).toList());
+        Widget child;
+        if (segment.isCode) {
+          child = CodeBlock(
+            code: segment.content,
+            language: segment.language,
+            isDark: isDark,
+          );
+        } else {
+          child = Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: SelectableText(
+              segment.content,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                height: 1.6,
+                color: isUser
+                    ? Colors.white
+                    : isDark
+                    ? Colors.white.withValues(alpha: 0.9)
+                    : Colors.black.withValues(alpha: 0.85),
+              ),
+            ),
+          );
+        }
+
+        // Only animate segments if we are currently streaming the message
+        if (isStreaming) {
+          return child
+              .animate(key: ValueKey('${message.messageId}_segment_$index'))
+              .fadeIn(duration: 300.ms)
+              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
+        }
+
+        return child;
+      }).toList(),
+    );
 
     return children;
   }
@@ -350,16 +407,37 @@ class MessageBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(width: 150, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
+            Container(
+              width: 150,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
             const SizedBox(height: 8),
-            Container(width: 250, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
+            Container(
+              width: 250,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
             const SizedBox(height: 8),
-            Container(width: 100, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
+            Container(
+              width: 100,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
           ],
         ),
       );
     }
-    
+
     // Typing cursor
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -388,7 +466,9 @@ class MessageBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF6366F1).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -405,46 +485,6 @@ class MessageBubble extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _actionButton(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onTap,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.4)
-                    : Colors.black.withValues(alpha: 0.4),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.4)
-                      : Colors.black.withValues(alpha: 0.4),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

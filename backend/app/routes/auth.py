@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.database import get_db
-from app.main import limiter
+from app.limiter import limiter
 from app.models.user import UserCreate, Token
 from app.services import auth_service
 from uuid import uuid4

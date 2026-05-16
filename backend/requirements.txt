@@ -23,3 +23,4 @@ cryptography
 certifi
 docker==7.0.0
 slowapi==0.1.9
+dnspython==2.7.0

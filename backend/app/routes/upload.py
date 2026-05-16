@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api", tags=["files"])
 
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends
-from app.main import limiter
+from app.limiter import limiter
 import aiofiles
 
 @router.post("/upload", response_model=list[UploadResponse])
