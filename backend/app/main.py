@@ -87,7 +87,7 @@ async def root(request: Request):
     index_path = os.path.join(web_path, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"status": "ok", "service": "Code Genie API", "message": "Flutter Web build not found"}
+    return {"status": "ok", "service": "Code Genie API", "message": "SPA Index not found"}
 
 # 2. Rate Limiting
 app.state.limiter = limiter
@@ -198,9 +198,9 @@ try:
         logger.info(f"📁 Artifacts mounted at /artifacts")
 
 except Exception as e:
-    logger.error(f"❌ Final mounting polish error: {e}")
+    logger.error(f"❌ Module-level mounting error: {e}")
 
-logger.info("🚀 Code Genie Architecture - Ready for Production")
+logger.info("🚀 Code Genie Module Loaded Successfully")
 
 if __name__ == "__main__":
     import uvicorn

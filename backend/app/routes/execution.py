@@ -22,18 +22,18 @@ class ExecutionResponse(BaseModel):
     error: Optional[str] = None
     execution_time: float
 
-# Initialize Docker client
-try:
-    docker_client = docker.from_env()
-    logger.info("✅ Docker client initialized for secure code execution.")
-except Exception as e:
-    # Railway/Cloud detection
-    is_cloud = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("DYNO")
-    if is_cloud:
-        logger.info("ℹ️ Code execution sandbox: Using native mode (Docker unavailable in cloud container).")
-    else:
+# Initialize Docker client (Skip if in cloud environments to prevent startup hangs)
+docker_client = None
+is_cloud = os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("DYNO")
+
+if not is_cloud:
+    try:
+        docker_client = docker.from_env()
+        logger.info("✅ Docker client initialized for secure code execution.")
+    except Exception as e:
         logger.warning(f"⚠️ Docker not available: {e}. Falling back to insecure execution (DEV ONLY).")
-    docker_client = None
+else:
+    logger.info("ℹ️ Cloud environment detected: Skipping Docker initialization (native mode active).")
 
 @router.post("", response_model=ExecutionResponse)
 async def execute_code(
