@@ -19,8 +19,5 @@ COPY . .
 # Create data directories
 RUN mkdir -p ../data/artifacts ../data/uploads
 
-# Expose the default port (Railway will override this)
-EXPOSE 8000
-
 # Start with Uvicorn (Forcing the use of the dynamic Railway PORT)
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

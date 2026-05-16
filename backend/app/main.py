@@ -22,6 +22,10 @@ from app.limiter import limiter
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# STARTUP DIAGNOSTICS
+logger.info(f"🔍 [DIAGNOSTIC] RAILWAY_PORT: {os.environ.get('PORT')}")
+logger.info(f"🔍 [DIAGNOSTIC] ENVIRONMENT: {os.environ.get('RAILWAY_ENVIRONMENT', 'unknown')}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle: startup and shutdown."""
