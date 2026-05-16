@@ -1,31 +1,33 @@
 import logging
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from app.config import get_settings
 from app.database import connect_to_mongo, close_mongo_connection
 from app.routes import chat, history, upload, auth, execution
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
 from app.middleware import production_security_middleware
-from fastapi import WebSocket, WebSocketDisconnect
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
 
 # Initialize Production Logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle: startup and shutdown."""
+    import asyncio
+
     # Startup
     logger.info("🚀 Booting Code Genie Architecture...")
-    
+
     settings = get_settings()
     os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
     os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
@@ -37,17 +39,50 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
 
+    # Mount artifacts directory (deferred to lifespan so errors are caught cleanly)
+    logger.info(f"📁 Mounting artifacts from: {settings.ARTIFACTS_PATH}")
+    try:
+        if os.path.isdir(settings.ARTIFACTS_PATH):
+            app.mount(
+                "/artifacts",
+                StaticFiles(directory=settings.ARTIFACTS_PATH),
+                name="artifacts",
+            )
+            logger.info("✅ Artifacts directory mounted.")
+        else:
+            logger.warning(
+                f"⚠️  Artifacts directory not found, skipping mount: {settings.ARTIFACTS_PATH}"
+            )
+    except Exception as e:
+        logger.error(f"❌ Failed to mount artifacts directory: {e}")
+
+    # Mount Flutter Web build (deferred to lifespan so errors are caught cleanly)
+    web_path = os.path.join(os.path.dirname(__file__), "static_web")
+    logger.info(f"🌐 Checking Flutter Web build at: {web_path}")
+    try:
+        if os.path.isdir(web_path):
+            app.mount("/", StaticFiles(directory=web_path, html=True), name="web")
+            logger.info(f"✅ Flutter Web mounted from: {web_path}")
+        else:
+            logger.warning(
+                f"⚠️  Flutter Web directory not found, skipping mount: {web_path}"
+            )
+    except Exception as e:
+        logger.error(f"❌ Failed to mount Flutter Web directory: {e}")
+
     # Start Heartbeat Task
-    import asyncio
     async def heartbeat():
         while True:
             await asyncio.sleep(30)
             await socket_manager.send_heartbeat()
-    
+
     heartbeat_task = asyncio.create_task(heartbeat())
     logger.info("✅ Heartbeat system active.")
 
+    logger.info("✅ Application fully initialized — ready to serve requests.")
+
     yield
+
     # Shutdown
     logger.info("🛑 Shutdown initiated.")
     heartbeat_task.cancel()
@@ -61,7 +96,36 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 1. Immediate Health Check (High Priority)
+# ---------------------------------------------------------------------------
+# Rate Limiting
+# ---------------------------------------------------------------------------
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ---------------------------------------------------------------------------
+# Middlewares
+# ---------------------------------------------------------------------------
+# Security & Monitoring
+app.middleware("http")(production_security_middleware)
+
+# CORS (must be outermost layer)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost",
+        "http://localhost:8000",
+        "https://code-genie.up.railway.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+# ---------------------------------------------------------------------------
+# API Routes (registered before any catch-all static mount)
+# ---------------------------------------------------------------------------
+
 @app.get("/api/health")
 async def health_check():
     """Detailed health check including database status."""
@@ -77,50 +141,22 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Code Genie API",
-        "database": db_status
+        "database": db_status,
     }
 
-@app.get("/")
-async def root():
+
+@app.get("/api/ready")
+async def readiness_check():
+    """Lightweight readiness probe — returns 200 as soon as the app is up."""
     return {"status": "ok", "service": "Code Genie API"}
 
-# 2. Rate Limiting
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# 3. Middlewares
-# Security & Monitoring (Using stable decorator approach)
-app.middleware("http")(production_security_middleware)
-
-# CORS (Must be outer layer)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://localhost:8000",
-        "https://code-genie.up.railway.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
-
-# Register routes
 app.include_router(chat.router)
 app.include_router(history.router)
 app.include_router(upload.router)
 app.include_router(auth.router)
 app.include_router(execution.router)
 
-# Mount artifacts for web access
-settings = get_settings()
-os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
-os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
-
-if os.path.exists(settings.ARTIFACTS_PATH):
-    app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
-    logger.info(f"📁 Artifacts mounted from: {settings.ARTIFACTS_PATH}")
 
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):
@@ -129,7 +165,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         logger.warning(f"❌ WebSocket connection rejected for {user_id}: Missing token")
         await websocket.close(code=1008)  # Policy Violation
         return
-        
+
     try:
         from jose import jwt
         settings = get_settings()
@@ -156,25 +192,33 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         socket_manager.disconnect(websocket, user_id)
 
 
-# Serve Flutter Web Build
-web_path = os.path.join(os.path.dirname(__file__), "static_web")
-if os.path.exists(web_path):
-    logger.info(f"🌐 Mounting Flutter Web from: {web_path}")
-    app.mount("/", StaticFiles(directory=web_path, html=True), name="web")
-    
-    @app.exception_handler(404)
-    async def not_found_handler(request: Request, exc):
-        """Catch-all to support Flutter Web routing, but exclude API and Docs."""
-        if any(request.url.path.startswith(p) for p in ["/api", "/ws", "/docs", "/redoc", "/openapi.json"]):
-            return JSONResponse(
-                status_code=404,
-                content={"detail": f"Route not found: {request.url.path}"}
-            )
-        return FileResponse(os.path.join(web_path, "index.html"))
+# ---------------------------------------------------------------------------
+# Flutter Web catch-all 404 handler
+# (registered here so it is available regardless of whether the static mount
+#  succeeded; the actual mount happens inside lifespan above)
+# ---------------------------------------------------------------------------
 
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    """Serve Flutter Web index.html for unknown paths; return JSON for API routes."""
+    api_prefixes = ("/api", "/ws", "/docs", "/redoc", "/openapi.json", "/artifacts")
+    if any(request.url.path.startswith(p) for p in api_prefixes):
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"Route not found: {request.url.path}"},
+        )
+    web_path = os.path.join(os.path.dirname(__file__), "static_web")
+    index = os.path.join(web_path, "index.html")
+    if os.path.isfile(index):
+        return FileResponse(index)
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+
+# ---------------------------------------------------------------------------
+# Direct entrypoint
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import uvicorn
-    # Respect Railway's PORT environment variable
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
