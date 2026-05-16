@@ -24,60 +24,65 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle: startup and shutdown."""
-    # Startup
-    logger.info("🚀 Booting Code Genie Architecture...")
+    logger.info("🚩 [STARTUP] Phase 1: Initializing Lifecycle...")
     
     settings = get_settings()
-    # Path creation is handled at module level for safety
-
-    # Initialize Database
+    
+    # 1. Database Connection
     try:
+        logger.info(f"🚩 [STARTUP] Phase 2: Connecting to MongoDB (DB: {settings.DB_NAME})...")
         await connect_to_mongo()
-        logger.info("✅ Database connected successfully.")
+        logger.info("✅ [STARTUP] MongoDB Connection: SUCCESS")
     except Exception as e:
-        logger.error(f"❌ Database connection failed: {e}")
+        logger.error(f"❌ [STARTUP] MongoDB Connection: FAILED - {e}")
+        # We don't crash here; we let the app start so we can see logs
 
-    # Initialize Redis (Optional)
+    # 2. Redis Connection
     if settings.REDIS_URL:
         try:
+            logger.info("🚩 [STARTUP] Phase 3: Connecting to Redis...")
             import redis.asyncio as redis
-            r = redis.from_url(settings.REDIS_URL)
+            r = redis.from_url(settings.REDIS_URL, socket_timeout=5.0)
             await r.ping()
-            logger.info("✅ Redis connected successfully.")
+            logger.info("✅ [STARTUP] Redis Connection: SUCCESS")
             app.state.redis = r
         except Exception as e:
-            logger.error(f"⚠️ Redis connection failed (Optional): {e}")
+            logger.warning(f"⚠️ [STARTUP] Redis Connection: OPTIONAL FAILURE - {e}")
+            app.state.redis = None
     else:
+        logger.info("ℹ️ [STARTUP] Phase 3: Redis URL not provided, skipping.")
         app.state.redis = None
 
-    # Handle Static Mounting & Directories (Inside Lifespan for Safety)
+    # 3. Directories & Mounts
     try:
+        logger.info("🚩 [STARTUP] Phase 4: Ensuring Data Directories...")
         os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
         os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
-        
-        # We mount at module level usually, but we ensure directories exist here.
-        # If we need to mount dynamically:
-        if os.path.exists(settings.ARTIFACTS_PATH):
-             logger.info(f"📁 Artifacts directory verified at {settings.ARTIFACTS_PATH}")
+        logger.info(f"✅ [STARTUP] Directories verified: {settings.ARTIFACTS_PATH}, {settings.UPLOAD_PATH}")
     except Exception as e:
-        logger.error(f"❌ Lifespan directory error: {e}")
+        logger.error(f"❌ [STARTUP] Directory creation: FAILED - {e}")
 
-    # Start Heartbeat Task
+    # 4. Background Tasks
+    logger.info("🚩 [STARTUP] Phase 5: Starting Background Workers...")
     import asyncio
     async def heartbeat():
-        while True:
-            await asyncio.sleep(30)
-            await socket_manager.send_heartbeat()
+        try:
+            while True:
+                await asyncio.sleep(30)
+                await socket_manager.send_heartbeat()
+        except asyncio.CancelledError:
+            pass
     
     heartbeat_task = asyncio.create_task(heartbeat())
-    logger.info("✅ Heartbeat system active.")
+    logger.info("✅ [STARTUP] Heartbeat system: ACTIVE")
 
-    logger.info("✅ Lifespan startup sequence complete.")
+    logger.info("🚀 [STARTUP] COMPLETE: Application fully initialized - ready to serve requests.")
     yield
     # Shutdown
-    logger.info("🛑 Shutdown initiated.")
+    logger.info("🛑 [SHUTDOWN] Cleanup initiated.")
     heartbeat_task.cancel()
     await close_mongo_connection()
+    logger.info("🛑 [SHUTDOWN] Finished.")
 
 
 app = FastAPI(
@@ -87,10 +92,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 1. Immediate Health Check (High Priority)
+# 1. Immediate Health Check (High Priority & Non-Blocking)
 @app.get("/api/health")
 async def health_check():
-    """Detailed health check including database status."""
+    """Lightweight health check for Railway."""
+    return {
+        "status": "healthy",
+        "service": "Code Genie API",
+        "timestamp": os.environ.get("RAILWAY_DEPLOY_TIMESTAMP", "local")
+    }
+
+@app.get("/api/health/detailed")
+async def detailed_health_check():
+    """Deep health check for manual diagnostics."""
     from app.database import get_db
     db_status = "disconnected"
     try:
@@ -98,12 +112,12 @@ async def health_check():
         await db.command("ping")
         db_status = "connected"
     except Exception as e:
-        logger.error(f"Healthcheck DB failure: {e}")
+        db_status = f"error: {e}"
 
     return {
-        "status": "healthy",
-        "service": "Code Genie API",
-        "database": db_status
+        "status": "online",
+        "database": db_status,
+        "redis": "connected" if hasattr(app.state, 'redis') and app.state.redis else "not_configured"
     }
 
 @app.get("/")
