@@ -10,7 +10,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/message.dart';
-import '../config/api_config.dart';
 import '../utils/code_parser.dart';
 import 'code_block.dart';
 
