@@ -333,6 +333,8 @@ class ChatProvider extends ChangeNotifier {
         prompt: prompt,
         language: _selectedLanguage,
         fileIds: fileIds,
+        provider: _selectedProvider,
+        modelName: _selectedModel,
       );
       _currentChatId = result['chat_id'];
       _messages = await _apiService.getMessages(_currentChatId!);

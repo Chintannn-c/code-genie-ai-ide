@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/chat_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -12,6 +13,7 @@ class SettingsScreen extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDark;
     final ap = context.watch<AuthProvider>();
+    final chatProvider = context.watch<ChatProvider>();
     final user = ap.user;
 
     return Scaffold(
@@ -53,9 +55,10 @@ class SettingsScreen extends StatelessWidget {
           _settingsItem(
             icon: Icons.smart_toy_outlined,
             title: 'AI Settings',
-            subtitle: 'Model, temperature, response length',
+            subtitle: 'Model: ${chatProvider.selectedModel}, Provider: ${chatProvider.selectedProvider}',
             color: Colors.deepPurpleAccent,
             isDark: isDark,
+            onTap: () => _showAiSettings(context, chatProvider, isDark),
           ),
           _settingsItem(
             icon: Icons.code_rounded,
@@ -67,9 +70,10 @@ class SettingsScreen extends StatelessWidget {
           _settingsItem(
             icon: Icons.palette_outlined,
             title: 'Appearance',
-            subtitle: 'Theme, accent color, animations',
+            subtitle: isDark ? 'Dark Mode' : 'Light Mode',
             color: Colors.pinkAccent,
             isDark: isDark,
+            onTap: () => themeProvider.toggleTheme(),
           ),
           _settingsItem(
             icon: Icons.notifications_none_rounded,
@@ -230,6 +234,7 @@ class SettingsScreen extends StatelessWidget {
     required String subtitle,
     required Color color,
     required bool isDark,
+    VoidCallback? onTap,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -261,8 +266,126 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         trailing: Icon(Icons.chevron_right_rounded, size: 20, color: isDark ? Colors.white10 : Colors.black12),
-        onTap: () {},
+        onTap: onTap,
       ),
+    );
+  }
+
+  void _showAiSettings(BuildContext context, ChatProvider cp, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF121214) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('AI Configuration', style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: isDark ? Colors.white : Colors.black)),
+              const SizedBox(height: 20),
+              
+              _modalDropdown(
+                label: 'Provider',
+                value: cp.selectedProvider,
+                items: ['gemini', 'openrouter', 'groq'],
+                onChanged: (val) {
+                  if (val != null) {
+                    cp.setProvider(val);
+                    // Reset model to default for new provider
+                    if (val == 'gemini') {
+                      cp.setModel('gemini-1.5-pro');
+                    } else if (val == 'groq') {
+                      cp.setModel('llama3-70b-8192');
+                    } else {
+                      cp.setModel('meta-llama/llama-3.3-70b-instruct:free');
+                    }
+                    setModalState(() {});
+                  }
+                },
+                isDark: isDark,
+              ),
+              const SizedBox(height: 16),
+              
+              _modalDropdown(
+                label: 'Model',
+                value: cp.selectedModel ?? 'gemini-1.5-pro',
+                items: cp.selectedProvider == 'gemini' 
+                    ? ['gemini-1.5-pro', 'gemini-1.5-flash'] 
+                    : cp.selectedProvider == 'groq'
+                        ? ['llama3-70b-8192', 'mixtral-8x7b-32768']
+                        : ['meta-llama/llama-3.3-70b-instruct:free', 'google/learnlm-1.5-pro-experimental:free'],
+                onChanged: (val) {
+                  if (val != null) {
+                    cp.setModel(val);
+                    setModalState(() {});
+                  }
+                },
+                isDark: isDark,
+              ),
+              const SizedBox(height: 16),
+              
+              _modalDropdown(
+                label: 'Difficulty',
+                value: cp.selectedDifficulty,
+                items: ['beginner', 'intermediate', 'advanced'],
+                onChanged: (val) {
+                  if (val != null) {
+                    cp.setDifficulty(val);
+                    setModalState(() {});
+                  }
+                },
+                isDark: isDark,
+              ),
+              
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Text('Save Settings', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modalDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+    required bool isDark,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white38 : Colors.black38)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              dropdownColor: isDark ? const Color(0xFF1E1E21) : Colors.white,
+              style: GoogleFonts.plusJakartaSans(color: isDark ? Colors.white : Colors.black),
+              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
