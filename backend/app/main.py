@@ -12,6 +12,7 @@ from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
 from app.middleware import production_security_middleware
 from fastapi import WebSocket, WebSocketDisconnect
+from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
@@ -94,8 +95,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 3. Middlewares
-# Security & Monitoring (Using stable decorator approach)
-app.middleware("http")(production_security_middleware)
+# Security & Monitoring (Using stable BaseHTTPMiddleware approach)
+app.add_middleware(BaseHTTPMiddleware, dispatch=production_security_middleware)
 
 # CORS (Must be outer layer)
 settings = get_settings()
