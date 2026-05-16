@@ -245,8 +245,8 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
-    final chatProvider = context.watch<ChatProvider>();
-    final ap = context.watch<AuthProvider>();
+    final chatProvider = context.read<ChatProvider>(); // OPTIMIZATION: Read, don't watch
+    final ap = context.read<AuthProvider>(); // OPTIMIZATION: Read, don't watch
     final isDark = themeProvider.isDark;
     final isWide = MediaQuery.of(context).size.width > 700;
 
@@ -259,7 +259,9 @@ class _ChatScreenState extends State<ChatScreen>
           ? null
           : Drawer(
               backgroundColor: isDark ? const Color(0xFF121214) : Colors.white,
-              child: _buildSidebar(chatProvider, ap, isDark),
+              child: Consumer<ChatProvider>(
+                builder: (context, cp, _) => _buildSidebar(cp, ap, isDark),
+              ),
             ),
       floatingActionButton: _showScrollButton
           ? _buildScrollButton(isDark)
@@ -269,7 +271,10 @@ class _ChatScreenState extends State<ChatScreen>
           : FloatingActionButtonLocation.centerFloat,
       body: Row(
         children: [
-          if (isWide) _buildSidebar(chatProvider, ap, isDark),
+          if (isWide)
+            Consumer<ChatProvider>(
+              builder: (context, cp, _) => _buildSidebar(cp, ap, isDark),
+            ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
@@ -278,39 +283,56 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
                 child: Column(
                   children: [
-                    _buildHeader(
-                      chatProvider,
-                      ap,
-                      themeProvider,
-                      isDark,
-                      isWide,
+                    Selector<ChatProvider, String?>(
+                      selector: (_, cp) => cp.currentChatId,
+                      builder: (context, _, __) => _buildHeader(
+                        chatProvider,
+                        ap,
+                        themeProvider,
+                        isDark,
+                        isWide,
+                      ),
                     ),
                     Expanded(
                       child: Column(
                         children: [
                           const PlanningTimeline(),
                           Expanded(
-                            child: chatProvider.messages.isEmpty
-                                ? _buildEmptyState(isDark)
-                                : _buildMessageList(chatProvider, isDark),
+                            child: Selector<ChatProvider, String>(
+                              selector:
+                                  (_, cp) =>
+                                      '${cp.messages.length}_${cp.isStreaming ? cp.messages.last.content.length : 0}',
+                              builder: (context, _, __) =>
+                                  chatProvider.messages.isEmpty
+                                      ? _buildEmptyState(isDark)
+                                      : _buildMessageList(chatProvider, isDark),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    FileUploadBar(
-                      files: chatProvider.selectedFiles,
-                      isDark: isDark,
-                      onRemove: chatProvider.removeFile,
-                      onAnalyze: (id) => chatProvider.analyzeFile(id),
-                      onAnalyzeProject: chatProvider.analyzeProject,
-                      onClearAll: chatProvider.clearFiles,
+                    Selector<ChatProvider, String>(
+                      selector: (_, cp) => '${cp.selectedFiles.length}_${cp.isUploading}',
+                      builder:
+                          (context, _, __) => FileUploadBar(
+                            files: chatProvider.selectedFiles,
+                            isDark: isDark,
+                            onRemove: chatProvider.removeFile,
+                            onAnalyze: (id) => chatProvider.analyzeFile(id),
+                            onAnalyzeProject: chatProvider.analyzeProject,
+                            onClearAll: chatProvider.clearFiles,
+                          ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: OrchestrationIndicator(
-                        isActive:
-                            chatProvider.isStreaming ||
-                            chatProvider.isOrchestrating,
+                      child: Selector<ChatProvider, bool>(
+                        selector:
+                            (_, cp) =>
+                                cp.isStreaming || cp.isOrchestrating,
+                        builder:
+                            (context, isActive, _) => OrchestrationIndicator(
+                              isActive: isActive,
+                            ),
                       ),
                     ),
                     Padding(
@@ -318,57 +340,65 @@ class _ChatScreenState extends State<ChatScreen>
                         horizontal: isWide ? 40 : 12,
                         vertical: 12,
                       ),
-                      child: ChatInput(
-                        mode: chatProvider.selectedMode,
-                        isStreaming: chatProvider.isStreaming,
-                        onToggleTerminal: _togglePanel,
-                        isTerminalOpen: _showRightPanel,
-                        isDark: isDark,
-                        onStop: chatProvider.stopStreaming,
-                        attachmentButton: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            AttachmentButton(
+                      child: Selector<ChatProvider, String>(
+                        selector: (_, cp) => cp.selectedMode,
+                        builder:
+                            (context, mode, _) => ChatInput(
+                              mode: mode,
+                              isStreaming: chatProvider.isStreaming,
+                              onToggleTerminal: _togglePanel,
+                              isTerminalOpen: _showRightPanel,
                               isDark: isDark,
-                              isLoading: chatProvider.isUploading,
-                              onFilesSelected: chatProvider.uploadFiles,
-                            ),
-                            if (chatProvider.selectedFiles.isNotEmpty)
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF6366F1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 14,
-                                    minHeight: 14,
-                                  ),
-                                  child: Text(
-                                    chatProvider.selectedFiles.length
-                                        .toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
+                              onStop: chatProvider.stopStreaming,
+                              attachmentButton: Selector<ChatProvider, int>(
+                                selector: (_, cp) => cp.selectedFiles.length,
+                                builder:
+                                    (context, fileCount, _) => Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        AttachmentButton(
+                                          isDark: isDark,
+                                          isLoading: chatProvider.isUploading,
+                                          onFilesSelected:
+                                              chatProvider.uploadFiles,
+                                        ),
+                                        if (fileCount > 0)
+                                          Positioned(
+                                            right: -2,
+                                            top: -2,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF6366F1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              constraints: const BoxConstraints(
+                                                minWidth: 14,
+                                                minHeight: 14,
+                                              ),
+                                              child: Text(
+                                                fileCount.toString(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
                               ),
-                          ],
-                        ),
-                        onSend: ({required prompt, code = '', error = ''}) {
-                          chatProvider.sendMessage(
-                            prompt: prompt,
-                            code: code,
-                            error: error,
-                          );
-                          _scrollToBottom(force: true);
-                        },
+                              onSend: ({required prompt, code = '', error = ''}) {
+                                chatProvider.sendMessage(
+                                  prompt: prompt,
+                                  code: code,
+                                  error: error,
+                                );
+                                _scrollToBottom(force: true);
+                              },
+                            ),
                       ),
                     ),
                   ],
@@ -377,21 +407,22 @@ class _ChatScreenState extends State<ChatScreen>
             ),
           ),
           // ANIM FIX: Replaced AnimatedContainer with SizeTransition + RepaintBoundary
-          // Why RepaintBoundary works: It isolates the expensive CodePanel from the main render layer.
-          // During the animation, only the boundary needs to be recomposited, not repainted.
           if (isWide)
             SizeTransition(
               sizeFactor: _panelAnimation,
               axis: Axis.horizontal,
               axisAlignment: 1.0,
               child: RepaintBoundary(
-                // ANIM FIX: Stops rebuild cascade
                 child: SizedBox(
                   width: MediaQuery.of(context).size.width * 0.30,
-                  child: CodePanel(
-                    code: chatProvider.latestCode,
-                    language: chatProvider.latestLanguage,
-                    isDark: isDark,
+                  child: Selector<ChatProvider, String>(
+                    selector: (_, cp) => cp.latestCode,
+                    builder:
+                        (context, code, _) => CodePanel(
+                          code: code,
+                          language: chatProvider.latestLanguage,
+                          isDark: isDark,
+                        ),
                   ),
                 ),
               ),
