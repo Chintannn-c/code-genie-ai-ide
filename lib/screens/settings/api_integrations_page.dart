@@ -168,7 +168,7 @@ class ApiIntegrationsPage extends StatelessWidget {
                 Text(name, style: GoogleFonts.plusJakartaSans(
                   fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
                 Text(model, style: GoogleFonts.jetBrainsMono(
-                  fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white30 : Colors.black30)),
+                  fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white30 : Colors.black26)),
               ],
             ),
           ),
@@ -219,7 +219,7 @@ class ApiIntegrationsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-                Text(desc, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white30 : Colors.black30)),
+                Text(desc, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white30 : Colors.black26)),
               ],
             ),
           ),
@@ -249,7 +249,7 @@ class ApiIntegrationsPage extends StatelessWidget {
             fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white60 : Colors.black54))),
           Text(value, style: GoogleFonts.jetBrainsMono(
             fontSize: 11, fontWeight: FontWeight.w500,
-            color: configured ? (isDark ? Colors.white30 : Colors.black30) : Colors.redAccent.withValues(alpha: 0.5))),
+            color: configured ? (isDark ? Colors.white30 : Colors.black26) : Colors.redAccent.withValues(alpha: 0.5))),
         ],
       ),
     );
