@@ -70,6 +70,14 @@ class RedisService:
         except Exception:
             return False
 
+    async def get_semantic(self, prompt_hash: str) -> Optional[str]:
+        """Retrieve answer from semantic cache."""
+        return await self.get(f"semantic_cache:{prompt_hash}")
+
+    async def set_semantic(self, prompt_hash: str, answer: str, ttl: int = 86400):
+        """Store answer in semantic cache for 24 hours."""
+        await self.set(f"semantic_cache:{prompt_hash}", answer, expire_seconds=ttl)
+
     async def close(self):
         if self._redis:
             await self._redis.close()
