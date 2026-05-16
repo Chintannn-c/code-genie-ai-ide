@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     HUGGINGFACE_API_KEY: str = ""
     GITHUB_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
+    TOGETHER_API_KEY: str = ""
     
     @property
     def gemini_keys(self) -> list[str]:
