@@ -56,3 +56,4 @@ backend/.pytest_cache/
 chroma_db/
 backend/chroma_db/
 artifacts/
+.vercel

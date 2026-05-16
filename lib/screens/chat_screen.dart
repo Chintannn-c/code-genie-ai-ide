@@ -1023,9 +1023,17 @@ class _ChatScreenState extends State<ChatScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        itemCount: cp.messages.length + (cp.isStreaming ? 1 : 0),
+        itemCount: cp.messages.length + ((cp.isStreaming || cp.isOrchestrating) ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == cp.messages.length && cp.isStreaming) {
+          if (index == cp.messages.length) {
+            // Only show dots if we don't have a streaming AI message bubble already
+            final hasStreamingBubble = cp.messages.isNotEmpty && 
+                                      cp.messages.last.role == 'ai' && 
+                                      cp.messages.last.content.isEmpty;
+            
+            if (hasStreamingBubble && cp.isStreaming) {
+              return const SizedBox.shrink(); 
+            }
             return const TypingIndicator();
           }
           final msg = cp.messages[index];
@@ -1344,11 +1352,11 @@ class TypingIndicator extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFF1E1E21),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: const Color(0xFF6366F1).withValues(alpha: 0.3),
               ),
