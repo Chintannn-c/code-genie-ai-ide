@@ -46,6 +46,7 @@ app.*.map.json
 
 
 # Backend & AI Ignored Files
+.venv/
 backend/venv/
 backend/env/
 backend/.env
