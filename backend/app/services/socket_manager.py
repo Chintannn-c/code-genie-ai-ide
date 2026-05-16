@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Dict, List, Any
 from fastapi import WebSocket
 
@@ -34,6 +35,16 @@ class ConnectionManager:
                     except Exception as e:
                         logger.error(f"Error broadcasting to {user_id}: {e}")
                         # We don't remove here, the disconnect handler will catch it
+
+    async def send_heartbeat(self):
+        """Send a ping to all active connections to prevent timeouts."""
+        for user_id, connections in list(self.active_connections.items()):
+            for connection in connections:
+                try:
+                    await connection.send_json({"type": "ping", "timestamp": time.time()})
+                except Exception:
+                    # Connection likely closed
+                    pass
 
 # Global instance
 manager = ConnectionManager()

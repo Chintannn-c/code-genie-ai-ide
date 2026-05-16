@@ -9,30 +9,30 @@ from app.config import get_settings
 from app.database import connect_to_mongo, close_mongo_connection
 from app.routes import chat, history, upload, auth, execution
 from app.services.socket_manager import manager as socket_manager
+from app.logging_config import setup_logging
+from app.middleware import ProductionMiddleware
 from fastapi import WebSocket, WebSocketDisconnect
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
 
+# Initialize Production Logging
+setup_logging()
 logger = logging.getLogger(__name__)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle: startup and shutdown."""
     # Startup
-    logger.info("🚀 Starting AI Code Assistant API...")
+    logger.info("🚀 Booting Code Genie Architecture...")
     
-    # Ensure data directories exist
     settings = get_settings()
     os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
     os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
-    logger.info(f"📁 Data directories initialized: {settings.ARTIFACTS_PATH}, {settings.UPLOAD_PATH}")
 
     # SECURITY CHECK: Enforce strong JWT secret in production
     if settings.JWT_SECRET == "genie-dev-secret-key-change-in-production":
-        logger.error("❌ INSECURE JWT_SECRET DETECTED! Use environment variables to set a secure secret in production.")
-        # We don't raise here so the app can start and pass healthchecks, allowing logs to be seen.
+        logger.error("❌ INSECURE JWT_SECRET DETECTED! Deploy blocked if this were a hard check.")
     
     # Initialize Database with timeout protection
     try:
@@ -42,17 +42,28 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Database connection failed: {e}")
         logger.warning("⚠️ App is starting WITHOUT database. Most features will fail until connection is restored.")
 
-    logger.info("✅ API ready!")
+    # Start Heartbeat Task
+    import asyncio
+    async def heartbeat():
+        while True:
+            await asyncio.sleep(30)
+            await socket_manager.send_heartbeat()
+    
+    heartbeat_task = asyncio.create_task(heartbeat())
+    logger.info("✅ Heartbeat system active (30s interval).")
+
     yield
     # Shutdown
-    logger.info("🛑 Shutdown complete.")
+    logger.info("🛑 Shutdown initiated.")
+    heartbeat_task.cancel()
     await close_mongo_connection()
+    logger.info("🛑 Shutdown complete.")
 
 
 app = FastAPI(
     title="Code Genie API",
     description="Real-time AI coding assistant powered by Google Gemini",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -61,8 +72,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Configuration
-# SECURITY: "allow_origins=['*']" is incompatible with "allow_credentials=True".
-# We use explicit origins for production stability.
+# SECURITY: Specific origins + credentials allowed.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -76,40 +86,8 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    import time
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    
-    # Log slow requests
-    if process_time > 2.0:
-        logger.warning(f"🐢 Slow request: {request.method} {request.url.path} took {process_time:.2f}s")
-    
-    return response
-
-@app.middleware("http")
-async def add_security_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    return response
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    import uuid
-    error_id = str(uuid.uuid4())
-    logger.error(f"Global error [{error_id}]: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": "An unexpected internal server error occurred. Our engineers have been notified.",
-            "error_id": error_id
-        },
-    )
+# Production Security & Monitoring Middleware
+app.add_middleware(ProductionMiddleware)
 
 # Register routes
 app.include_router(chat.router)
