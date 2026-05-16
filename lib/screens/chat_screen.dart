@@ -18,8 +18,8 @@ import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/orchestration_indicator.dart';
 import '../widgets/file_upload_bar.dart';
-import '../widgets/model_selector.dart';
 import '../widgets/attachment_button.dart';
+
 import '../widgets/planning_timeline.dart';
 import '../providers/planning_provider.dart';
 import 'dart:convert';
@@ -521,8 +521,7 @@ class _ChatScreenState extends State<ChatScreen>
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const ModelSelector(),
-                      const SizedBox(width: 8),
+
                       Container(
                         width: 3,
                         height: 3,
