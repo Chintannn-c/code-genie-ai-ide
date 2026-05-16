@@ -1,5 +1,5 @@
 import logging
-from datetime import DateTime
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from app.database import get_db
 from bson import ObjectId
@@ -21,7 +21,7 @@ class MemoryService:
         await self._ensure_db()
         await self.db.messages.insert_one({
             "chat_id": chat_id,
-            "timestamp": DateTime.now(),
+            "timestamp": datetime.now(),
             **message
         })
         # Trigger vector indexing in background
@@ -39,7 +39,7 @@ class MemoryService:
         await self._ensure_db()
         await self.db.workflows.update_one(
             {"workflow_id": workflow_id},
-            {"$set": {"state": state, "updated_at": DateTime.now()}},
+            {"$set": {"state": state, "updated_at": datetime.now()}},
             upsert=True
         )
 
@@ -53,7 +53,7 @@ class MemoryService:
         await self._ensure_db()
         await self.db.orchestration_logs.insert_one({
             "event": event_type,
-            "timestamp": DateTime.now(),
+            "timestamp": datetime.now(),
             **data
         })
 
