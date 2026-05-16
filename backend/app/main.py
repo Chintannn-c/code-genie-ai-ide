@@ -10,7 +10,7 @@ from app.database import connect_to_mongo, close_mongo_connection
 from app.routes import chat, history, upload, auth, execution
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
-from app.middleware import ProductionMiddleware
+from app.middleware import production_security_middleware
 from fastapi import WebSocket, WebSocketDisconnect
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -30,17 +30,12 @@ async def lifespan(app: FastAPI):
     os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
     os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
 
-    # SECURITY CHECK: Enforce strong JWT secret in production
-    if settings.JWT_SECRET == "genie-dev-secret-key-change-in-production":
-        logger.error("❌ INSECURE JWT_SECRET DETECTED! Deploy blocked if this were a hard check.")
-    
-    # Initialize Database with timeout protection
+    # Initialize Database
     try:
         await connect_to_mongo()
         logger.info("✅ Database connected successfully.")
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
-        logger.warning("⚠️ App is starting WITHOUT database. Most features will fail until connection is restored.")
 
     # Start Heartbeat Task
     import asyncio
@@ -50,14 +45,13 @@ async def lifespan(app: FastAPI):
             await socket_manager.send_heartbeat()
     
     heartbeat_task = asyncio.create_task(heartbeat())
-    logger.info("✅ Heartbeat system active (30s interval).")
+    logger.info("✅ Heartbeat system active.")
 
     yield
     # Shutdown
     logger.info("🛑 Shutdown initiated.")
     heartbeat_task.cancel()
     await close_mongo_connection()
-    logger.info("🛑 Shutdown complete.")
 
 
 app = FastAPI(
@@ -67,12 +61,38 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Setup Rate Limiting
+# 1. Immediate Health Check (High Priority)
+@app.get("/api/health")
+async def health_check():
+    """Detailed health check including database status."""
+    from app.database import get_db
+    db_status = "disconnected"
+    try:
+        db = await get_db()
+        await db.command("ping")
+        db_status = "connected"
+    except Exception as e:
+        logger.error(f"Healthcheck DB failure: {e}")
+
+    return {
+        "status": "healthy",
+        "service": "Code Genie API",
+        "database": db_status
+    }
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "Code Genie API"}
+
+# 2. Rate Limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS Configuration
-# SECURITY: Specific origins + credentials allowed.
+# 3. Middlewares
+# Security & Monitoring (Using stable decorator approach)
+app.middleware("http")(production_security_middleware)
+
+# CORS (Must be outer layer)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -85,9 +105,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
-# Production Security & Monitoring Middleware
-app.add_middleware(ProductionMiddleware)
 
 # Register routes
 app.include_router(chat.router)
@@ -139,33 +156,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         socket_manager.disconnect(websocket, user_id)
 
 
-@app.get("/")
-async def root():
-    """Root endpoint for health checks."""
-    return {"status": "ok", "service": "Code Genie API"}
-
-@app.get("/api/health")
-async def health_check():
-    """Detailed health check including database status."""
-    from app.database import get_db
-    db_status = "disconnected"
-    try:
-        db = await get_db()
-        await db.command("ping")
-        db_status = "connected"
-    except Exception as e:
-        logger.error(f"Healthcheck DB failure: {e}")
-
-    return {
-        "status": "healthy",
-        "service": "Code Genie API",
-        "database": db_status
-    }
-
-
 # Serve Flutter Web Build
 web_path = os.path.join(os.path.dirname(__file__), "static_web")
 if os.path.exists(web_path):
+    logger.info(f"🌐 Mounting Flutter Web from: {web_path}")
     app.mount("/", StaticFiles(directory=web_path, html=True), name="web")
     
     @app.exception_handler(404)
