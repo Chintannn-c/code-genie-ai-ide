@@ -47,10 +47,10 @@ class MessageBubble extends StatelessWidget {
               if (!isUser) const SizedBox(width: 12),
 
               // ADDED: Left spacer for User messages to push them to the right and limit their width
-              if (isUser) Spacer(flex: isWide ? 4 : 2),
+              if (isUser) Spacer(flex: isWide ? 1 : 2),
 
               Flexible(
-                flex: isWide ? 6 : 8,
+                flex: isWide ? 12 : 8,
                 child: Column(
                   crossAxisAlignment: isUser
                       ? CrossAxisAlignment.end
@@ -93,7 +93,7 @@ class MessageBubble extends StatelessWidget {
                                 // Reduced maxWidth to avoid stretching too much
                                 maxWidth:
                                     MediaQuery.of(context).size.width *
-                                    (isWide ? 0.6 : 0.75),
+                                    (isWide ? 0.85 : 0.85),
                                 minWidth: 80, // Ensure bubbles aren't too thin
                               ),
                               padding: const EdgeInsets.symmetric(
@@ -215,7 +215,7 @@ class MessageBubble extends StatelessWidget {
                 ),
               ),
               // ADDED: Right spacer for AI messages to push them to the left and limit their width
-              if (!isUser) Spacer(flex: isWide ? 4 : 2),
+              if (!isUser) Spacer(flex: isWide ? 1 : 2),
 
               if (isUser) const SizedBox(width: 12),
               if (isUser) _buildUserAvatar(),
