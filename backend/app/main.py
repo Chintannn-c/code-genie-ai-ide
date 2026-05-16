@@ -61,24 +61,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Configuration
-settings = get_settings()
-# Explicit origins are required when allow_credentials=True
-origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://192.168.1.7:8000",
-    "https://code-genie.up.railway.app",
-]
-
-# Add any extra origins from environment
-if settings.ALLOWED_ORIGINS != "*":
-    extra_origins = settings.ALLOWED_ORIGINS.split(",")
-    origins.extend([o.strip() for o in extra_origins if o.strip() not in origins])
-
+# Temporarily relaxing to "*" to rule out CORS as cause of 502/Gateway issues
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -189,11 +175,11 @@ if os.path.exists(web_path):
     
     @app.exception_handler(404)
     async def not_found_handler(request: Request, exc):
-        """Catch-all to support Flutter Web routing, but exclude API routes."""
-        if request.url.path.startswith("/api") or request.url.path.startswith("/ws"):
+        """Catch-all to support Flutter Web routing, but exclude API and Docs."""
+        if any(request.url.path.startswith(p) for p in ["/api", "/ws", "/docs", "/redoc", "/openapi.json"]):
             return JSONResponse(
                 status_code=404,
-                content={"detail": f"API route not found: {request.url.path}"}
+                content={"detail": f"Route not found: {request.url.path}"}
             )
         return FileResponse(os.path.join(web_path, "index.html"))
 
