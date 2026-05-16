@@ -42,10 +42,16 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
         return
 
     # Failover strategy: Try each model with each key if necessary
+    # Expanded list from 3.1 Pro down to 1.5 Flash
     models_to_try = [
-        settings.GEMINI_MODEL,
-        "gemini-1.5-flash", 
+        settings.GEMINI_MODEL,           # Primary (e.g., gemini-3.1-pro)
+        "gemini-3.1-pro",
+        "gemini-3.1-flash",
+        "gemini-3.0-pro",
+        "gemini-3.0-flash",
+        "gemini-2.0-flash",
         "gemini-1.5-pro",
+        "gemini-1.5-flash",
     ]
     models_to_try = list(dict.fromkeys(models_to_try))
     
@@ -107,7 +113,13 @@ async def generate(contents: list[dict]) -> str:
     if not clients:
         return "[Error: No valid Gemini API keys configured.]"
 
-    models_to_try = [settings.GEMINI_MODEL, "gemini-1.5-flash"]
+    models_to_try = [
+        settings.GEMINI_MODEL, 
+        "gemini-3.1-pro",
+        "gemini-3.1-flash",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash"
+    ]
     models_to_try = list(dict.fromkeys(models_to_try))
     
     last_error = None
