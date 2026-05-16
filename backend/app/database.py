@@ -17,10 +17,18 @@ async def connect_to_mongo() -> None:
     logger.info(f"Connecting to MongoDB at {settings.MONGO_URI}...")
     _client = AsyncIOMotorClient(
         settings.MONGO_URI,
-        serverSelectionTimeoutMS=5000,  # 5s timeout instead of infinite hang
+        serverSelectionTimeoutMS=5000,
         connectTimeoutMS=5000
     )
     _database = _client[settings.DB_NAME]
+
+    # Verify connection with a ping
+    try:
+        await _client.admin.command('ping')
+        logger.info("📡 Database Ping Successful!")
+    except Exception as e:
+        logger.error(f"❌ Database Ping Failed: {e}")
+        raise e
 
     # Create indexes for performance
     await _database.chats.create_index(
