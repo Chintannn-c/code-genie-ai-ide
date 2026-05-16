@@ -374,7 +374,7 @@ class AIOrchestrator:
         """
 
         try:
-            raw_response = await self._call_provider("gemini", planning_prompt, history, "gemini-3.1-pro")
+            raw_response = await self._call_provider("gemini", planning_prompt, history, "gemini-1.5-pro-latest")
             content = raw_response
 
             if "```json" in content:

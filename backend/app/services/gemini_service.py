@@ -112,10 +112,10 @@ async def generate(contents: list[dict]) -> str:
 
     models_to_try = [
         settings.GEMINI_MODEL, 
-        "gemini-3.1-pro",
-        "gemini-3.1-flash",
-        "gemini-1.5-pro",
-        "gemini-1.5-flash"
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro"
     ]
     models_to_try = list(dict.fromkeys(models_to_try))
     
@@ -123,6 +123,7 @@ async def generate(contents: list[dict]) -> str:
     for model_name in models_to_try:
         for i, client in enumerate(clients):
             try:
+                logger.info(f"Attempting generate with model {model_name} (Key #{i+1})")
                 response = await client.aio.models.generate_content(
                     model=model_name,
                     contents=contents,
@@ -134,9 +135,11 @@ async def generate(contents: list[dict]) -> str:
                 return response.text
             except Exception as e:
                 last_error = e
-                if "429" in str(e) or "503" in str(e):
+                error_str = str(e).upper()
+                if "429" in error_str or "503" in error_str or "404" in error_str or "UNAVAILABLE" in error_str:
+                    logger.warning(f"Generate Key #{i+1} failed with {model_name} ({error_str}). Rotating...")
                     continue
                 break
-    return f"Error: {last_error}"
+    return f"Error: All Gemini models failed. Last error: {last_error}"
 
     return f"Error: {last_error}"
