@@ -1,28 +1,56 @@
+"""
+Orchestrator Service v2.0 — Collaborative Multi-Agent Engine
+=============================================================
+The central nervous system of Code Genie 2.0.
+
+Replaces the old failover-based architecture with a parallel,
+collaborative multi-LLM intelligence system where specialized
+agents work together simultaneously.
+
+Architecture:
+1. Security Gateway scans the prompt
+2. Task Analyzer classifies intent and selects expert team
+3. Agents execute in parallel with role-specific system prompts
+4. Synthesis Engine (Judge) merges outputs
+5. Audit Logger records the entire workflow
+"""
+
 import asyncio
 import logging
 import time
 import json
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
+
+# Core Services
 from . import gemini_service as gemini_mod
 from . import groq_service as groq_mod
 from . import openrouter_service as openrouter_mod
 from . import github_service as github_mod
 from . import mistral_service as mistral_mod
+
+# 2.0 Modules
+from .agent_roles import AgentRole, AGENT_PERSONAS, get_agent_config
+from .task_analyzer import task_analyzer
+from .security_gateway import security_gateway
+from .synthesis_engine import synthesis_engine
+from .audit_logger import audit_logger
 from .agent_tools_service import agent_tools
 from .indexer_service import indexer
 from ..prompts.templates import SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
+
 class AIOrchestrator:
     """
-    Advanced AI Orchestration System:
-    - Parallel execution across multiple models.
-    - Response evaluation and synthesis.
-    - Context-aware and user-level adapted.
+    Code Genie 2.0 — Collaborative Multi-Agent Orchestration Engine.
+
+    Lifecycle: SCAN → ANALYZE → ROUTE → EXECUTE → SYNTHESIZE → AUDIT
     """
-    
+
     def __init__(self):
+        # Legacy free_pool preserved for backward compatibility
         self.free_pool = [
             "google/gemini-3.1-pro:free",
             "google/gemini-3.1-flash:free",
@@ -40,147 +68,266 @@ class AIOrchestrator:
             "gryphe/mythomax-l2-13b:free",
             "undi95/toppy-m-7b:free",
             "openchat/openchat-7b:free",
-            "microsoft/phi-4-instruct:free"
+            "microsoft/phi-4-instruct:free",
         ]
 
-    async def get_parallel_response(self, prompt: str, history: List[Dict] = None, user_level: str = "intermediate") -> Dict[str, Any]:
+        # Orchestration metrics
+        self._total_orchestrations = 0
+        self._total_agent_calls = 0
+
+    # ============================================================
+    # PRIMARY ENTRY POINT: Collaborative Response
+    # ============================================================
+
+    async def get_collaborative_response(
+        self,
+        prompt: str,
+        history: List[Dict] = None,
+        user_id: str = "anonymous",
+        user_level: str = "intermediate",
+    ) -> Dict[str, Any]:
         """
-        Calls multiple models in parallel, evaluates, and returns the best refined answer.
+        The v2.0 orchestration pipeline:
+        1. SECURITY SCAN → 2. TASK ANALYSIS → 3. RAG CONTEXT →
+        4. PARALLEL AGENTS → 5. SYNTHESIS → 6. AUDIT
         """
         history = history or []
+        workflow_id = f"wf_{int(time.time())}_{self._total_orchestrations}"
+        self._total_orchestrations += 1
         start_time = time.time()
-        
-        # 1. Define tasks for parallel execution
-        # Always include the core services + top free models
-        tasks = [
-            self._call_model("gemini", prompt, history),
-            self._call_model("groq", prompt, history),
-            self._call_model("github", prompt, history),
-            self._call_model("mistral", prompt, history)
-        ]
-        
-        # Add EVERY free model from OpenRouter for a massive parallel ensemble
-        for model_id in self.free_pool: 
-            tasks.append(self._call_model("openrouter", prompt, history, specific_model=model_id))
-        
-        # 2. Execute in parallel with a global timeout to prevent hanging on slow free models
-        try:
-            results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=20.0)
-        except asyncio.TimeoutError:
-            logger.error("🛑 [Orchestrator] Parallel orchestration TIMEOUT after 20s. Using partial results.")
-            results = []
-        except Exception as e:
-            logger.error(f"❌ [Orchestrator] Parallel gather failed: {e}")
-            results = []
-        
-        # 3. Filter successful responses
-        successful_responses = []
-        for i, res in enumerate(results):
-            model_id = res.get("model", "unknown") if isinstance(res, dict) else "unknown"
-            if isinstance(res, dict) and "error" not in res:
-                logger.info(f"✅ [Orchestrator] {model_id.upper()} succeeded in {res.get('latency', 0):.2f}s")
-                successful_responses.append(res)
-            else:
-                err_msg = str(res) if not isinstance(res, dict) else res.get("error", "Unknown error")
-                logger.warning(f"⚠️ [Orchestrator] Model failed: {err_msg}")
 
-        if not successful_responses:
-            # Retry mechanism
-            logger.warning("All models failed. Retrying with a secondary free model...")
-            try:
-                res = await self._call_model("openrouter", prompt, history, specific_model="meta-llama/llama-3.3-70b-instruct:free")
-                if "error" not in res:
-                    successful_responses.append(res)
-            except:
-                pass
-                
-        if not successful_responses:
+        await audit_logger.log("THINK", "orchestrator", "workflow_started",
+                               {"prompt_length": len(prompt), "user_id": user_id},
+                               user_id=user_id, workflow_id=workflow_id)
+
+        # ── Step 1: Security Gateway ──
+        security_result = await security_gateway.scan_prompt(prompt, user_id)
+        if security_result["verdict"] == "BLOCKED":
+            await audit_logger.log("SECURITY", "security_gateway", "prompt_blocked",
+                                   {"threats": security_result["threats_detected"]},
+                                   user_id=user_id, workflow_id=workflow_id)
             return {
-                "answer": "Code Genie failed to respond. Try again...",
-                "strategy": "failed_all",
-                "models_participated": []
+                "answer": "⚠️ Your request was blocked by the Security Gateway due to potentially unsafe content.",
+                "strategy": "blocked_by_security",
+                "models_participated": [],
+                "security_verdict": "BLOCKED",
+                "workflow_id": workflow_id,
+                "latency": round(time.time() - start_time, 2),
             }
 
-        # 4. Evaluation & Synthesis Logic
-        is_code = "```" in (successful_responses[0]["content"] if successful_responses else "") or any(kw in prompt.lower() for kw in ["code", "function", "fix", "error"])
-        
-        # Sort by speed
-        successful_responses.sort(key=lambda x: x["latency"])
-        fastest = successful_responses[0]
-        
-        # Find a high-reasoning response (Gemini or Llama 70B)
-        best_res = next((r for r in successful_responses if "gemini" in r["model"] or "70b" in r["model"]), successful_responses[0])
-        
-        final_answer = ""
-        strategy = ""
-        models_participated = [r["model"] for r in successful_responses]
+        clean_prompt = security_result["cleaned_prompt"]
 
-        if is_code:
-            final_answer = best_res["content"]
-            strategy = f"Selected high-reasoning {best_res['model']} output for code task."
-        elif len(successful_responses) > 1:
-            # Pick the longest/most complete response
-            best = max(successful_responses, key=lambda x: len(x["content"]))
-            final_answer = best["content"]
-            strategy = f"Synthesized best response from {len(successful_responses)} parallel free models."
+        # ── Step 2: Task Analysis ──
+        analysis = await task_analyzer.analyze(clean_prompt)
+        task_type = analysis["task_type"]
+        selected_agents = analysis["selected_agents"]
+
+        await audit_logger.log("PLAN", "task_analyzer", f"classified_as_{task_type}",
+                               {"agents": selected_agents, "confidence": analysis["confidence"]},
+                               user_id=user_id, workflow_id=workflow_id)
+
+        # ── Step 3: RAG Context Retrieval ──
+        context_snippets = await indexer.search_context(clean_prompt)
+        context_str = "\n".join(
+            [f"--- FILE: {c['path']} ---\n{c['content']}" for c in context_snippets]
+        ) if context_snippets else ""
+
+        # ── Step 4: Parallel Agent Execution ──
+        agent_tasks = []
+        for agent_role_name in selected_agents:
+            if agent_role_name == AgentRole.SYNTHESIZER.value:
+                continue  # Synthesizer runs after all agents
+            try:
+                role_enum = AgentRole(agent_role_name)
+                agent_tasks.append(
+                    self._execute_agent(role_enum, clean_prompt, history, context_str, workflow_id)
+                )
+            except ValueError:
+                logger.warning(f"Unknown agent role: {agent_role_name}")
+
+        # Execute all agents in parallel with a global timeout
+        agent_outputs = []
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*agent_tasks, return_exceptions=True),
+                timeout=25.0,
+            )
+            for result in results:
+                if isinstance(result, dict) and "error" not in result:
+                    agent_outputs.append(result)
+                elif isinstance(result, Exception):
+                    logger.warning(f"⚠️ Agent failed: {result}")
+        except asyncio.TimeoutError:
+            logger.error("🛑 Agent parallel execution timed out after 25s.")
+            await audit_logger.log("ERROR", "orchestrator", "parallel_timeout",
+                                   workflow_id=workflow_id)
+
+        # ── Step 5: Synthesis ──
+        if agent_outputs:
+            synthesis_result = await synthesis_engine.synthesize(
+                clean_prompt, agent_outputs, workflow_id
+            )
+            final_answer = synthesis_result["content"]
+            strategy = synthesis_result["strategy"]
+            agents_contributed = synthesis_result["agents_contributed"]
         else:
-            final_answer = fastest["content"]
-            strategy = f"Delivered fastest response from {fastest['model']}."
+            # Emergency fallback: Direct Gemini call
+            logger.warning("⚠️ No agent outputs. Falling back to direct Gemini.")
+            final_answer = await self._emergency_fallback(clean_prompt, history)
+            strategy = "emergency_gemini_fallback"
+            agents_contributed = ["gemini-direct"]
 
-        # 5. Adapt to user level (Post-processing)
+        # ── Step 6: Adapt to user level ──
         final_answer = self._adapt_to_level(final_answer, user_level)
 
-        total_latency = time.time() - start_time
-        
+        total_latency = round(time.time() - start_time, 2)
+
+        await audit_logger.log("COMPLETE", "orchestrator", "workflow_finished",
+                               {"latency": total_latency, "agents": agents_contributed,
+                                "strategy": strategy},
+                               user_id=user_id, workflow_id=workflow_id)
+
         return {
             "answer": final_answer,
             "strategy": strategy,
-            "models_participated": models_participated,
-            "latency": round(total_latency, 2),
-            "parallel_execution": True
+            "models_participated": agents_contributed,
+            "task_type": task_type,
+            "security_verdict": security_result["verdict"],
+            "workflow_id": workflow_id,
+            "latency": total_latency,
+            "parallel_execution": True,
         }
 
-    async def ensemble_consensus(self, prompt: str, min_agree: int = 2) -> Optional[dict]:
+    # Backward compatibility alias
+    async def get_parallel_response(self, prompt: str, history=None, user_level="intermediate"):
+        return await self.get_collaborative_response(prompt, history, user_level=user_level)
+
+    # ============================================================
+    # AGENT EXECUTION
+    # ============================================================
+
+    async def _execute_agent(
+        self,
+        role: AgentRole,
+        prompt: str,
+        history: List[Dict],
+        context: str,
+        workflow_id: str,
+    ) -> Dict[str, Any]:
         """
-        Consensus mechanism using the top free models.
+        Executes a single agent with its role-specific system prompt,
+        preferred model, and workspace context.
         """
-        models = self.free_pool[:3] # Use top 3 free models
+        config = get_agent_config(role)
+        if not config:
+            return {"error": f"No config for role {role}"}
 
-        print(f"[ENSEMBLE] Launching {len(models)} models in parallel...")
-        
-        tasks = [self._call_model("openrouter", prompt, [], specific_model=mid) for mid in models]
-        responses = await asyncio.gather(*tasks)
+        agent_name = config["name"]
+        model_provider = config["preferred_model"]
+        model_name = config["preferred_model_name"]
+        system_prompt = config["system_prompt"]
 
-        results = [r for r in responses if r is not None and "error" not in r]
-        models_tried = [r["model"] for r in results]
+        self._total_agent_calls += 1
+        start = time.time()
 
-        if not results: return None
-        
-        # Simplified consensus: Return the one with highest "confidence" or longest content
-        results.sort(key=lambda x: len(x["content"]), reverse=True)
-        best = results[0]
-        best['consensus'] = len(results) >= min_agree
-        best['ensemble_models'] = models_tried
-        best['model_used'] = f"Ensemble ({len(results)} models)"
-        
-        return best
+        await audit_logger.log("ACT", agent_name, f"executing_with_{model_provider}",
+                               {"model": model_name}, workflow_id=workflow_id)
+
+        # Build the agent's enhanced prompt
+        enhanced_prompt = f"{system_prompt}\n\n"
+        if context:
+            enhanced_prompt += f"WORKSPACE CONTEXT:\n{context}\n\n"
+        enhanced_prompt += f"USER REQUEST:\n{prompt}"
+
+        try:
+            content = await asyncio.wait_for(
+                self._call_provider(model_provider, enhanced_prompt, history, model_name),
+                timeout=15.0,
+            )
+
+            latency = round(time.time() - start, 2)
+
+            await audit_logger.log("OBSERVE", agent_name, "execution_success",
+                                   {"latency": latency, "content_length": len(content)},
+                                   workflow_id=workflow_id)
+
+            return {
+                "agent_name": agent_name,
+                "role": role.value,
+                "content": content,
+                "model": model_name,
+                "latency": latency,
+            }
+
+        except asyncio.TimeoutError:
+            logger.warning(f"🕒 Agent {agent_name} timed out (15s)")
+            await audit_logger.log("ERROR", agent_name, "timeout",
+                                   workflow_id=workflow_id)
+            return {"agent_name": agent_name, "error": "Timeout"}
+
+        except Exception as e:
+            logger.error(f"❌ Agent {agent_name} failed: {e}")
+            await audit_logger.log("ERROR", agent_name, f"failed: {e}",
+                                   workflow_id=workflow_id)
+            return {"agent_name": agent_name, "error": str(e)}
+
+    async def _call_provider(
+        self, provider: str, prompt: str, history: List[Dict], model_name: str
+    ) -> str:
+        """Routes to the correct LLM provider."""
+        if provider == "gemini":
+            contents = []
+            for msg in history:
+                contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+            contents.append({"role": "user", "parts": [{"text": prompt}]})
+            return await gemini_mod.generate(contents)
+
+        elif provider == "groq":
+            messages = history + [{"role": "user", "content": prompt}]
+            return await groq_mod.generate(messages)
+
+        elif provider == "openrouter":
+            messages = history + [{"role": "user", "content": prompt}]
+            return await openrouter_mod.generate(messages, model=model_name)
+
+        elif provider == "github":
+            messages = history + [{"role": "user", "content": prompt}]
+            return await github_mod.generate(messages)
+
+        elif provider == "mistral":
+            messages = history + [{"role": "user", "content": prompt}]
+            return await mistral_mod.generate(messages)
+
+        else:
+            raise ValueError(f"Unknown provider: {provider}")
+
+    async def _emergency_fallback(self, prompt: str, history: List[Dict]) -> str:
+        """Last-resort direct call to Gemini."""
+        try:
+            contents = []
+            for msg in history:
+                contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+            contents.append({"role": "user", "parts": [{"text": prompt}]})
+            return await gemini_mod.generate(contents)
+        except Exception as e:
+            return f"Code Genie failed to respond. (Error: {e})"
+
+    # ============================================================
+    # PLAN GENERATION (Preserved from v1)
+    # ============================================================
 
     async def generate_plan(self, prompt: str, history: List[Dict] = None) -> Dict[str, Any]:
-        """
-        Decomposes a complex goal into a multi-step execution plan with autonomous tool calls and workspace context.
-        """
+        """Decomposes a complex goal into a multi-step execution plan."""
         history = history or []
-        
-        # 1. Fetch Semantic Workspace Context
+
         context_snippets = await indexer.search_context(prompt)
         context_str = "\n".join([f"--- FILE: {c['path']} ---\n{c['content']}" for c in context_snippets])
-        
-        # 2. Specialized Planning Prompt with Tooling and Context Support
+
         planning_prompt = f"""
         YOU ARE AN ADVANCED PROJECT ARCHITECT WITH AUTONOMOUS TOOLS AND WORKSPACE AWARENESS.
         GOAL: {prompt}
         
-        WORKSPACE CONTEXT (Relevant snippets from your project):
+        WORKSPACE CONTEXT:
         {context_str}
         
         AVAILABLE TOOLS:
@@ -190,8 +337,6 @@ class AIOrchestrator:
         - list_files(path): Explore directory structure.
         
         TASK: Decompose this goal into 3-6 actionable engineering steps.
-        If a step requires action, include a "tool_call" object.
-        
         FORMAT: RETURN ONLY VALID JSON.
         JSON STRUCTURE:
         {{
@@ -211,41 +356,25 @@ class AIOrchestrator:
                 }}
             ]
         }}
-        
-        RULES:
-        1. Be technical and precise.
-        2. Steps must be sequential and proactive.
-        3. No conversational text. Only JSON.
         """
-        
+
         try:
-            # Use Gemini for its deep reasoning capabilities
-            raw_response = await self._call_model("gemini", planning_prompt, history)
-            
-            if "error" in raw_response:
-                raise Exception(raw_response["error"])
-                
-            content = raw_response["content"]
-            
-            # 2. Extract and Parse JSON
+            raw_response = await self._call_provider("gemini", planning_prompt, history, "gemini-3.1-pro")
+            content = raw_response
+
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
-                
+
             plan_data = json.loads(content)
-            
-            # 3. Add metadata
-            from datetime import datetime, timezone
             plan_data["id"] = f"plan_{int(time.time())}"
             plan_data["created_at"] = datetime.now(timezone.utc).isoformat()
             plan_data["is_approved"] = False
-            
             return plan_data
-            
+
         except Exception as e:
             logger.error(f"Planning Error: {e}")
-            # Fallback remains standard
             return {
                 "id": f"plan_{int(time.time())}",
                 "goal": prompt,
@@ -254,50 +383,44 @@ class AIOrchestrator:
                 "steps": [
                     {"id": "step_1", "title": "Analyze Requirements", "description": f"Decompose: {prompt}", "status": "pending"},
                     {"id": "step_2", "title": "Implementation Phase", "description": "Execute the core logic.", "status": "pending"},
-                    {"id": "step_3", "title": "Verification & Tests", "description": "Verify code against goal.", "status": "pending"}
-                ]
+                    {"id": "step_3", "title": "Verification & Tests", "description": "Verify code against goal.", "status": "pending"},
+                ],
             }
 
+    # ============================================================
+    # AUTONOMOUS PLAN EXECUTION (Preserved from v1)
+    # ============================================================
+
     async def run_autonomous_plan(self, user_id: str, plan_id: str, plan_data: Dict[str, Any]):
-        """
-        Iteratively executes a multi-step plan, performing real-world actions.
-        """
+        """Iteratively executes a multi-step plan using real-world tools."""
         from app.services.socket_manager import manager as socket_manager
-        
-        logger.info(f"🚀 Starting autonomous execution for Plan {plan_id} (User: {user_id})")
-        
+
+        workflow_id = f"auto_{plan_id}"
+        await audit_logger.log("ACT", "orchestrator", "autonomous_plan_started",
+                               {"plan_id": plan_id}, user_id=user_id, workflow_id=workflow_id)
+
         steps = plan_data.get("steps", [])
-        
+
         for step in steps:
             step_id = step["id"]
-            
-            # 1. Broadcast: Step is RUNNING
-            await socket_manager.broadcast_to_user(
-                user_id,
-                {
-                    "type": "plan_step_update",
-                    "step_id": step_id,
-                    "status": "running"
-                }
-            )
-            
-            # 2. Execute Step Logic (Real Tools)
-            logger.info(f"⚙️ Executing Step {step_id}: {step['title']}")
-            
+
+            await socket_manager.broadcast_to_user(user_id, {
+                "type": "plan_step_update",
+                "step_id": step_id,
+                "status": "running",
+            })
+
             tool_call = step.get("tool_call")
             output = ""
             diff = None
-            
+
             if tool_call:
                 action = tool_call.get("action")
                 try:
                     if action == "write_file":
                         res = await agent_tools.write_file(tool_call.get("path"), tool_call.get("content", ""))
-                        if res["status"] == "success":
-                            output = f"✅ File written: {tool_call.get('path')}"
-                            diff = res.get("diff")
-                        else:
-                            output = f"❌ Error: {res['message']}"
+                        output = f"✅ File written: {tool_call.get('path')}" if res["status"] == "success" else f"❌ Error: {res['message']}"
+                        diff = res.get("diff")
                     elif action == "run_command":
                         res = await agent_tools.run_command(tool_call.get("command", ""))
                         output = res.get("stdout", "") + res.get("stderr", "")
@@ -312,98 +435,82 @@ class AIOrchestrator:
                 except Exception as e:
                     output = f"⚠️ Tool Execution Error: {e}"
 
-                # 3. Broadcast Logs to the Console
-                await socket_manager.broadcast_to_user(
-                    user_id,
-                    {
-                        "type": "execution_log",
-                        "step_id": step_id,
-                        "output": output
-                    }
-                )
-
-            # Natural delay for UI visibility
-            await asyncio.sleep(2) 
-            
-            # 4. Broadcast: Step is COMPLETED
-            await socket_manager.broadcast_to_user(
-                user_id,
-                {
-                    "type": "plan_step_update",
+                await socket_manager.broadcast_to_user(user_id, {
+                    "type": "execution_log",
                     "step_id": step_id,
-                    "status": "completed",
                     "output": output,
-                    "diff": diff
-                }
-            )
-            
-        logger.info(f"✅ Autonomous execution finished for Plan {plan_id}")
-        await socket_manager.broadcast_to_user(
-            user_id,
-            {
-                "type": "mission_complete",
-                "title": "Mission Complete 🚀",
-                "body": f"AI has successfully finished the orchestration plan.",
-                "plan_id": plan_id
-            }
-        )
+                })
 
-    async def _call_model(self, model_id: str, prompt: str, history: List[Dict], specific_model: str = None) -> Dict[str, Any]:
-        start = time.time()
+            await asyncio.sleep(2)
+
+            await socket_manager.broadcast_to_user(user_id, {
+                "type": "plan_step_update",
+                "step_id": step_id,
+                "status": "completed",
+                "output": output,
+                "diff": diff,
+            })
+
+        await audit_logger.log("COMPLETE", "orchestrator", "autonomous_plan_finished",
+                               {"plan_id": plan_id}, user_id=user_id, workflow_id=workflow_id)
+
+        await socket_manager.broadcast_to_user(user_id, {
+            "type": "mission_complete",
+            "title": "Mission Complete 🚀",
+            "body": "AI has successfully finished the orchestration plan.",
+            "plan_id": plan_id,
+        })
+
+    # ============================================================
+    # CONSENSUS (Enhanced from v1)
+    # ============================================================
+
+    async def ensemble_consensus(self, prompt: str, min_agree: int = 2) -> Optional[dict]:
+        """Consensus mechanism using top free models."""
+        models = self.free_pool[:3]
+        tasks = [self._call_provider("openrouter", prompt, [], mid) for mid in models]
+
         try:
-            # Add internal timeout per model call to ensure one stuck model doesn't block others
-            return await asyncio.wait_for(self._execute_model_call(model_id, prompt, history, specific_model), timeout=12.0)
+            responses = await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True), timeout=15.0
+            )
         except asyncio.TimeoutError:
-            logger.warning(f"🕒 [Orchestrator] Model {model_id} timed out after 12s")
-            return {"model": model_id, "error": "Timeout", "latency": 12.0}
-        except Exception as e:
-            logger.error(f"Parallel Task Error ({model_id}): {e}")
-            return {"model": model_id, "error": str(e), "latency": time.time() - start}
+            return None
 
-    async def _execute_model_call(self, model_id: str, prompt: str, history: List[Dict], specific_model: str = None) -> Dict[str, Any]:
-        start = time.time()
-        # Convert history to service-specific format if needed
-        if model_id == "gemini":
-            contents = []
-            for msg in history:
-                contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
-            contents.append({"role": "user", "parts": [{"text": prompt}]})
-            content = await gemini_mod.generate(contents)
-            final_model = "gemini-3.1-pro"
-        elif model_id == "groq":
-            messages = history + [{"role": "user", "content": prompt}]
-            content = await groq_mod.generate(messages)
-            final_model = "llama-3.3-70b-specdec"
-        elif model_id == "openrouter":
-            messages = history + [{"role": "user", "content": prompt}]
-            target_model = specific_model or "meta-llama/llama-3.3-70b-instruct:free"
-            content = await openrouter_mod.generate(messages, model=target_model)
-            final_model = target_model
-        elif model_id == "github":
-            messages = history + [{"role": "user", "content": prompt}]
-            content = await github_mod.generate(messages)
-            final_model = "gpt-4o-mini"
-        elif model_id == "mistral":
-            messages = history + [{"role": "user", "content": prompt}]
-            content = await mistral_mod.generate(messages)
-            final_model = "mistral-large-latest"
-        
-        return {
-            "model": final_model,
-            "content": content,
-            "latency": time.time() - start
-        }
+        results = []
+        for i, resp in enumerate(responses):
+            if isinstance(resp, str) and resp:
+                results.append({"model": models[i], "content": resp})
+
+        if not results:
+            return None
+
+        results.sort(key=lambda x: len(x["content"]), reverse=True)
+        best = results[0]
+        best["consensus"] = len(results) >= min_agree
+        best["ensemble_models"] = [r["model"] for r in results]
+        best["model_used"] = f"Ensemble ({len(results)} models)"
+        return best
+
+    # ============================================================
+    # UTILITIES
+    # ============================================================
 
     def _adapt_to_level(self, text: str, level: str) -> str:
-        """
-        Simulated level adaptation. In a future update, this could be a small model pass.
-        """
         if level == "beginner":
             return f"**[Beginner-Friendly Explanation]**\n\n{text}"
-        elif level == "advanced":
-            # Potentially strip verbose parts (simulated)
-            return text
         return text
+
+    def get_orchestration_stats(self) -> Dict[str, Any]:
+        """Returns live orchestration metrics for the dashboard."""
+        return {
+            "total_orchestrations": self._total_orchestrations,
+            "total_agent_calls": self._total_agent_calls,
+            "security_stats": security_gateway.get_stats(),
+            "audit_stats": audit_logger.get_stats(),
+            "synthesis_count": synthesis_engine.synthesis_count,
+        }
+
 
 # Global instance
 orchestrator = AIOrchestrator()

@@ -69,6 +69,18 @@ async def lifespan(app: FastAPI):
     # Start initialization in background
     asyncio.create_task(initialize_infrastructure())
 
+    # 4.5 Initialize Audit Logger with DB
+    async def init_audit():
+        try:
+            await asyncio.sleep(3)  # Wait for DB to connect
+            db = await get_db()
+            from app.services.audit_logger import audit_logger
+            await audit_logger.initialize(db)
+        except Exception as e:
+            logger.warning(f"⚠️ Audit logger DB init deferred: {e}")
+    
+    asyncio.create_task(init_audit())
+
     # 4. Background Tasks
     logger.info("🚩 [STARTUP] Phase 5: Starting Background Workers...")
     async def heartbeat():
@@ -82,7 +94,7 @@ async def lifespan(app: FastAPI):
     heartbeat_task = asyncio.create_task(heartbeat())
     logger.info("✅ [STARTUP] Heartbeat system: ACTIVE")
 
-    logger.info("🚀 [STARTUP] COMPLETE: Application fully initialized - ready to serve requests.")
+    logger.info("🚀 [STARTUP] COMPLETE: Code Genie 2.0 — Collaborative Multi-Agent Engine ready.")
     yield
     # Shutdown
     logger.info("🛑 [SHUTDOWN] Cleanup initiated.")
@@ -143,6 +155,29 @@ async def detailed_health_check():
         "status": "online",
         "database": db_status,
         "redis": "connected" if hasattr(app.state, 'redis') and app.state.redis else "not_configured"
+    }
+
+# ── Orchestration Dashboard APIs ──
+@app.get("/api/orchestration/stats")
+async def orchestration_stats():
+    """Live orchestration metrics for the Cinematic Cockpit."""
+    from app.services.orchestrator_service import orchestrator
+    return orchestrator.get_orchestration_stats()
+
+@app.get("/api/orchestration/security")
+async def security_dashboard():
+    """Security Operations Center (SOC) data."""
+    from app.services.security_gateway import security_gateway
+    return security_gateway.get_stats()
+
+@app.get("/api/orchestration/audit")
+async def audit_trail():
+    """Recent audit events for forensic inspection."""
+    from app.services.audit_logger import audit_logger
+    return {
+        "recent_events": audit_logger.get_recent(30),
+        "stats": audit_logger.get_stats(),
+        "chain_integrity": audit_logger.verify_chain_integrity(),
     }
 
 @app.get("/")
