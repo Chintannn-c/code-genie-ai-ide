@@ -22,5 +22,5 @@ RUN mkdir -p ../data/artifacts ../data/uploads
 # Expose the default port (Railway will override this)
 EXPOSE 8000
 
-# Start with Uvicorn (Ensuring we use the port assigned by Railway)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start with Uvicorn (Forcing the use of the dynamic Railway PORT)
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT
