@@ -27,8 +27,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Booting Code Genie Architecture...")
     
     settings = get_settings()
-    os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
-    os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
+    # Path creation is handled at module level for safety
 
     # Initialize Database
     try:
@@ -181,30 +180,33 @@ async def not_found_handler(request: Request, exc):
     return JSONResponse(status_code=404, content={"detail": "Not found"})
 
 
-# 4. Static File Mounting (Module level for correct routing)
+# 4. Static File Mounting (Optimized for Production)
 settings = get_settings()
+web_path = os.path.join(os.path.dirname(__file__), "static_web")
+
 try:
-    # Ensure directories exist
+    # Ensure mandatory data directories exist
     os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
     os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
     
-    # Mount artifacts
-    app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
-    logger.info(f"📁 Artifacts mounted at /artifacts")
+    # Mount artifacts for web access (Dedicated path)
+    if os.path.exists(settings.ARTIFACTS_PATH):
+        app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
+        logger.info(f"📁 Artifacts mounted at /artifacts")
 
-    # Mount Flutter assets
-    web_path = os.path.join(os.path.dirname(__file__), "static_web")
+    # Mount Flutter assets at root (Non-greedy)
+    # By setting html=False, it only serves real files, allowing our routes to handle the rest
     if os.path.exists(web_path):
-        app.mount("/web_static", StaticFiles(directory=web_path), name="web_static")
-        logger.info(f"🌐 Flutter assets mounted at /web_static")
-except Exception as e:
-    logger.error(f"❌ Module-level mounting error: {e}")
+        app.mount("/", StaticFiles(directory=web_path, html=False), name="flutter_assets")
+        logger.info(f"🌐 Flutter assets mounted at root")
 
-logger.info("🚀 Code Genie Module Loaded")
+except Exception as e:
+    logger.error(f"❌ Final mounting polish error: {e}")
+
+logger.info("🚀 Code Genie Architecture - Ready for Production")
 
 if __name__ == "__main__":
     import uvicorn
-    # Respect Railway's PORT environment variable
     port = int(os.environ.get("PORT", 8000))
-    logger.info(f"Starting server on port {port}")
+    logger.info(f"Starting production server on port {port}")
     uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
