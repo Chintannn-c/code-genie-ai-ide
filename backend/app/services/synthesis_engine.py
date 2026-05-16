@@ -170,11 +170,21 @@ class SynthesisEngine:
             strategy = f"Judge synthesis from {len(clean_outputs)} agents"
 
         except Exception as e:
-            logger.error(f"❌ [SYNTHESIS] Judge model failed: {e}. Using best single output.")
-            # Fallback: Pick the longest/most complete response
-            best = max(clean_outputs, key=lambda x: len(x.get("content", "")))
-            final_content = best["content"]
-            strategy = f"Fallback to best single output ({best.get('agent_name', 'unknown')})"
+            logger.error(f"❌ [SYNTHESIS] Gemini Judge failed: {e}. Pivoting to Groq/Llama for emergency synthesis.")
+            try:
+                from . import groq_service as groq_mod
+                # Pivot to Groq (Llama 3.3 70B) for high-speed emergency synthesis
+                final_content = await groq_mod.generate(
+                    prompt=synthesis_input,
+                    system_prompt=SYNTHESIS_SYSTEM_PROMPT,
+                    model="llama-3.3-70b-specdec"
+                )
+                strategy = "Emergency Groq Synthesis (Llama-3.3-70B)"
+            except Exception as groq_err:
+                logger.error(f"❌ [SYNTHESIS] Emergency Groq fallback also failed: {groq_err}. Using best single output.")
+                best = max(clean_outputs, key=lambda x: len(x.get("content", "")))
+                final_content = best["content"]
+                strategy = f"Final Fallback to best single output ({best.get('agent_name', 'unknown')})"
 
         latency = round(time.time() - start, 2)
         agents_contributed = [o.get("agent_name", "unknown") for o in clean_outputs]
