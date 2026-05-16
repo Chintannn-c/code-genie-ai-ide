@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:math' as math;
 
 import 'package:ai_coding/providers/chat_provider.dart';
 import 'package:flutter/material.dart';
@@ -6,14 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../models/message.dart';
 import '../config/api_config.dart';
 import '../utils/code_parser.dart';
 import 'code_block.dart';
 
-/// Chat message bubble widget that renders text and code blocks.
+/// Futuristic AI message bubble that renders as a holographic intelligence interface.
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isDark;
@@ -28,505 +29,321 @@ class MessageBubble extends StatelessWidget {
 
   bool get isUser => message.role == 'user';
 
+  // Model-specific color mapping for cinematic glows
+  Color _getAgentColor() {
+    if (isUser) return const Color(0xFF6366F1);
+    final m = (message.modelName ?? '').toLowerCase();
+    if (m.contains('gemini')) return const Color(0xFF4285F4); // Electric Blue
+    if (m.contains('qwen')) return const Color(0xFF00F2FF); // Cyber Cyan
+    if (m.contains('mistral')) return const Color(0xFFFF4B4B); // Security Red
+    if (m.contains('llama') || m.contains('groq')) return const Color(0xFF00FF88); // Optimizer Green
+    if (m.contains('gpt') || m.contains('oss')) return const Color(0xFFFFD700); // Holographic Gold
+    return const Color(0xFF6366F1); // Default Neural Purple
+  }
+
   @override
   Widget build(BuildContext context) {
+    final agentColor = _getAgentColor();
     final isWide = MediaQuery.of(context).size.width > 700;
 
-    // PERFORMANCE FIX: Wrap bubble in RepaintBoundary to isolate BackdropFilter & Animation
-    // This prevents the entire message list from repainting when the cursor or shimmer animates.
     return RepaintBoundary(
-      child: Semantics(
-        label: isUser ? 'User message' : 'AI Assistant message',
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(
-            mainAxisAlignment: isUser
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isUser) Spacer(flex: isWide ? 1 : 2),
+            
+            Flexible(
+              flex: isWide ? 12 : 10,
+              child: Column(
+                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(agentColor),
+                  const SizedBox(height: 8),
+                  _buildMainBubble(context, agentColor),
+                  if (!isUser && !isStreaming) _buildFooter(context, agentColor),
+                ],
+              ),
+            ),
+
+            if (!isUser) Spacer(flex: isWide ? 1 : 2),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(Color agentColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isUser) ...[
+            _PulseIndicator(color: agentColor),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            (isUser ? 'LOCAL OPERATOR' : (message.modelName?.toUpperCase() ?? 'CODE GENIE')),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              color: agentColor.withValues(alpha: 0.6),
+            ),
+          ),
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.person_outline_rounded, size: 12, color: agentColor.withValues(alpha: 0.4)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainBubble(BuildContext context, Color agentColor) {
+    return ClipRRect(
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(isUser ? 24 : 4),
+        topRight: Radius.circular(isUser ? 4 : 24),
+        bottomLeft: const Radius.circular(24),
+        bottomRight: const Radius.circular(24),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isUser 
+                ? agentColor.withValues(alpha: 0.15) 
+                : (isDark ? const Color(0xFF161618).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.8)),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(isUser ? 24 : 4),
+              topRight: Radius.circular(isUser ? 4 : 24),
+              bottomLeft: const Radius.circular(24),
+              bottomRight: const Radius.circular(24),
+            ),
+            border: Border.all(
+              color: agentColor.withValues(alpha: isStreaming ? 0.3 : 0.1),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: agentColor.withValues(alpha: isStreaming ? 0.15 : 0.05),
+                blurRadius: 30,
+                spreadRadius: -10,
+              ),
+            ],
+          ),
+          child: Stack(
             children: [
-              if (!isUser) _buildAvatar(),
-              if (!isUser) const SizedBox(width: 12),
-
-              // ADDED: Left spacer for User messages to push them to the right and limit their width
-              if (isUser) Spacer(flex: isWide ? 1 : 2),
-
-              Flexible(
-                flex: isWide ? 12 : 8,
+              if (!isUser) Positioned.fill(child: CustomPaint(painter: _NeuralBackgroundPainter(color: agentColor))),
+              Padding(
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment: isUser
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Role label
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: 6,
-                        left: 4,
-                        right: 4,
-                      ),
-                      child: Text(
-                        isUser ? 'YOU' : 'CODE GENIE',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.3)
-                              : Colors.black.withValues(alpha: 0.3),
-                        ),
-                      ),
-                    ),
-                    // Message content
-                    ClipRRect(
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(24),
-                            topRight: const Radius.circular(24),
-                            bottomLeft: Radius.circular(isUser ? 24 : 6),
-                            bottomRight: Radius.circular(isUser ? 6 : 24),
-                          ),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(
-                              sigmaX: isUser ? 0 : 12,
-                              sigmaY: isUser ? 0 : 12,
-                            ),
-                            child: Container(
-                              constraints: BoxConstraints(
-                                // Reduced maxWidth to avoid stretching too much
-                                maxWidth:
-                                    MediaQuery.of(context).size.width *
-                                    (isWide ? 0.85 : 0.85),
-                                minWidth: 80, // Ensure bubbles aren't too thin
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isUser
-                                    ? const Color(0xFF6366F1).withValues(
-                                        alpha: 0.9,
-                                      ) // Use primary accent for user
-                                    : (isDark
-                                          ? const Color(
-                                              0xFF1E1E21,
-                                            ).withValues(alpha: 0.8)
-                                          : Colors.white.withValues(
-                                              alpha: 0.8,
-                                            )),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: const Radius.circular(16),
-                                  topRight: const Radius.circular(16),
-                                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                                  bottomRight: Radius.circular(isUser ? 4 : 16),
-                                ),
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.black.withValues(alpha: 0.05),
-                                  width: 1.0,
-                                ),
-                                boxShadow: [
-                                  if (isUser)
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF6366F1,
-                                      ).withValues(alpha: 0.1),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                ],
-                              ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ..._buildContent(context),
-                                    if (isStreaming && !isUser) _buildCursor(),
-                                    if (!isUser && !isStreaming && message.content.isNotEmpty) 
-                                      _buildPremiumActions(context),
-                                  ],
-                                ),
-                            ),
-                          ),
-                        )
-                        .animate(
-                          target: isStreaming
-                              ? 1
-                              : 1, // Always stay at end state for history
-                        )
-                        .fadeIn(duration: isStreaming ? 400.ms : 0.ms)
-                        .slideY(
-                          begin: isStreaming ? 0.05 : 0,
-                          end: 0,
-                          duration: isStreaming ? 400.ms : 0.ms,
-                          curve: Curves.easeOutCubic,
-                        ),
-                    // Actions row (Simplified for history, premium buttons handled in bubble)
-                    if (!isUser && message.content.isNotEmpty && !isStreaming)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (message.modelName != null) ...[
-                              _modelBadge(message.modelName!),
-                            ],
-                          ],
-                        ),
-                      ),
-                    if (isUser)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              DateFormat.jm().format(
-                                message.timestamp.toLocal(),
-                              ),
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: isDark ? Colors.white38 : Colors.black38,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.done_all_rounded,
-                              size: 12,
-                              color: const Color(
-                                0xFF6366F1,
-                              ).withValues(alpha: 0.6),
-                            ),
-                          ],
-                        ),
-                      ),
+                    ..._buildContent(context, agentColor),
+                    if (isStreaming && !isUser) _buildStreamingIndicator(agentColor),
                   ],
                 ),
               ),
-              // ADDED: Right spacer for AI messages to push them to the left and limit their width
-              if (!isUser) Spacer(flex: isWide ? 1 : 2),
-
-              if (isUser) const SizedBox(width: 12),
-              if (isUser) _buildUserAvatar(),
             ],
           ),
         ),
       ),
-    );
+    ).animate(target: 1).fadeIn(duration: 400.ms).slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad);
   }
 
-  Widget _buildAvatar() {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E21),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      padding: const EdgeInsets.all(6),
-      child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.contain),
-    );
-  }
-
-  Widget _buildUserAvatar() {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Icon(
-        Icons.person_rounded,
-        size: 18,
-        color: Color(0xFF6366F1),
-      ),
-    );
-  }
-
-  List<Widget> _buildContent(BuildContext context) {
-    List<Widget> children = [];
-
-    // Add image if present
-    if (message.isImage && message.fileId != null) {
-      final imageUrl = "${ApiConfig.baseUrl}${ApiConfig.file(message.fileId!)}";
-      children.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: 200,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  height: 200,
-                  width: double.infinity,
-                  color: isDark ? Colors.white10 : Colors.black12,
-                  child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 100,
-                color: Colors.redAccent.withValues(alpha: 0.1),
-                child: const Center(
-                  child: Icon(
-                    Icons.broken_image_rounded,
-                    color: Colors.redAccent,
-                  ),
-                ),
-              ),
+  Widget _buildStreamingIndicator(Color agentColor) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(agentColor),
             ),
           ),
-        ),
-      );
-    }
+          const SizedBox(width: 12),
+          Text(
+            "Orchestrating response...",
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+              color: agentColor.withValues(alpha: 0.5),
+            ),
+          ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1500.ms),
+        ],
+      ),
+    );
+  }
 
-    // Purify content: remove technical model attribution lines
-    String purifiedContent = message.content;
-    purifiedContent = purifiedContent
+  List<Widget> _buildContent(BuildContext context, Color agentColor) {
+    List<Widget> children = [];
+
+    // Purify content
+    String purified = message.content
         .split('\n')
-        .where(
-          (line) =>
-              !line.contains('Model: AI Orchestrator') &&
-              !line.startsWith('[Error:'),
-        )
+        .where((line) => !line.contains('Model: AI Orchestrator') && !line.startsWith('[Error:'))
         .join('\n')
         .trim();
 
-    if (purifiedContent.isEmpty && !message.isImage) {
-      children.add(
-        Text(
-          'Thinking...',
-          style: GoogleFonts.inter(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.4)
-                : Colors.black.withValues(alpha: 0.4),
-            fontStyle: FontStyle.italic,
+    if (purified.isEmpty && !message.isImage) {
+      return [
+        Shimmer.fromColors(
+          baseColor: agentColor.withValues(alpha: 0.1),
+          highlightColor: agentColor.withValues(alpha: 0.2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(width: 200, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+              const SizedBox(height: 8),
+              Container(width: 150, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+            ],
           ),
         ),
-      );
-      return children;
+      ];
     }
 
-    final segments = CodeParser.parse(purifiedContent);
-
-    children.addAll(
-      segments.asMap().entries.map((entry) {
-        final index = entry.key;
-        final segment = entry.value;
-
-        Widget child;
-        if (segment.isCode) {
-          child = CodeBlock(
-            code: segment.content,
-            language: segment.language,
-            isDark: isDark,
-          );
-        } else {
-          child = Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: SelectableText(
-              segment.content,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                height: 1.6,
-                color: isUser
-                    ? Colors.white
-                    : isDark
-                    ? Colors.white.withValues(alpha: 0.9)
-                    : Colors.black.withValues(alpha: 0.85),
-              ),
+    final segments = CodeParser.parse(purified);
+    children.addAll(segments.map((s) {
+      if (s.isCode) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: CodeBlock(code: s.content, language: s.language, isDark: isDark),
+        );
+      } else {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: SelectableText(
+            s.content,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              height: 1.6,
+              color: isUser ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.85)),
+              letterSpacing: 0.2,
             ),
-          );
-        }
-
-        // Only animate segments if we are currently streaming the message
-        if (isStreaming) {
-          return child
-              .animate(key: ValueKey('${message.messageId}_segment_$index'))
-              .fadeIn(duration: 300.ms)
-              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
-        }
-
-        return child;
-      }).toList(),
-    );
+          ),
+        );
+      }
+    }));
 
     return children;
   }
 
-  Widget _buildCursor() {
-    if (message.content.isEmpty) {
-      // Premium Skeleton Loading
-      return Shimmer.fromColors(
-        baseColor: isDark ? Colors.white10 : Colors.black12,
-        highlightColor: isDark ? Colors.white24 : Colors.black26,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 150,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: 250,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: 100,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Typing cursor
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value > 0.5 ? 1.0 : 0.0,
-          child: Container(
-            width: 8,
-            height: 18,
-            margin: const EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6366F1),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        );
-      },
-      onEnd: () {},
-    );
-  }
-
-  Widget _buildPremiumActions(BuildContext context) {
+  Widget _buildFooter(BuildContext context, Color agentColor) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      padding: const EdgeInsets.only(top: 12, left: 8, right: 8),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          _premiumActionButton(
-            icon: Icons.auto_fix_high_rounded,
-            label: 'Generate Full Code',
-            onTap: () {
-              final cp = context.read<ChatProvider>();
-              cp.sendMessage(prompt: "Generate the complete, production-ready code for this architecture.");
-            },
-          ),
-          _premiumActionButton(
-            icon: Icons.picture_as_pdf_rounded,
-            label: 'Export as PDF',
-            onTap: () {
-               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Exporting to PDF...'), behavior: SnackBarBehavior.floating),
-              );
-            },
-          ),
-          _premiumActionButton(
-            icon: Icons.refresh_rounded,
-            label: 'Regenerate',
-            onTap: () {
-              final cp = context.read<ChatProvider>();
-              cp.sendMessage(prompt: "Regenerate this response with more detail.");
-            },
-          ),
+          if (!isUser) ...[
+            _AgentContributionIcon(agentColor: agentColor),
+            const SizedBox(width: 12),
+            Text(
+              DateFormat.jm().format(message.timestamp.toLocal()),
+              style: GoogleFonts.inter(fontSize: 10, color: agentColor.withValues(alpha: 0.4)),
+            ),
+            const Spacer(),
+            _ActionIcon(icon: Icons.copy_rounded, color: agentColor, onTap: () {
+              Clipboard.setData(ClipboardData(text: message.content));
+            }),
+            const SizedBox(width: 12),
+            _ActionIcon(icon: Icons.auto_fix_high_rounded, color: agentColor, onTap: () {
+               context.read<ChatProvider>().sendMessage(prompt: "Explain the architecture of your previous response.");
+            }),
+          ],
+          if (isUser) 
+            Text(
+              DateFormat.jm().format(message.timestamp.toLocal()),
+              style: GoogleFonts.inter(fontSize: 10, color: agentColor.withValues(alpha: 0.4)),
+            ),
         ],
       ),
     );
   }
+}
 
-  Widget _premiumActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+class _PulseIndicator extends StatelessWidget {
+  final Color color;
+  const _PulseIndicator({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: [
+        BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1),
+      ]),
+    ).animate(onPlay: (c) => c.repeat()).scale(duration: 1000.ms, begin: const Offset(1, 1), end: const Offset(1.5, 1.5), curve: Curves.easeInOut).fadeOut();
+  }
+}
+
+class _AgentContributionIcon extends StatelessWidget {
+  final Color agentColor;
+  const _AgentContributionIcon({required this.agentColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: agentColor.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+        border: Border.all(color: agentColor.withValues(alpha: 0.2)),
+      ),
+      child: Icon(Icons.hub_rounded, size: 10, color: agentColor),
+    );
+  }
+}
+
+class _ActionIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _ActionIcon({required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark 
-            ? Colors.white.withValues(alpha: 0.05) 
-            : Colors.black.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isDark 
-              ? Colors.white.withValues(alpha: 0.08) 
-              : Colors.black.withValues(alpha: 0.08),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: const Color(0xFF6366F1)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
+      borderRadius: BorderRadius.circular(8),
+      child: Icon(icon, size: 14, color: color.withValues(alpha: 0.4)),
     );
+  }
+}
+
+class _NeuralBackgroundPainter extends CustomPainter {
+  final Color color;
+  _NeuralBackgroundPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.03)
+      ..strokeWidth = 0.5
+      ..style = PaintingStyle.stroke;
+
+    final random = math.Random(42);
+    for (var i = 0; i < 5; i++) {
+      final path = Path();
+      path.moveTo(random.nextDouble() * size.width, random.nextDouble() * size.height);
+      path.quadraticBezierTo(
+        random.nextDouble() * size.width,
+        random.nextDouble() * size.height,
+        random.nextDouble() * size.width,
+        random.nextDouble() * size.height,
+      );
+      canvas.drawPath(path, paint);
+    }
   }
 
-  Widget _modelBadge(String modelName) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: const Color(0xFF6366F1).withValues(alpha: 0.2),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.hub_rounded, size: 12, color: const Color(0xFF6366F1)),
-          const SizedBox(width: 4),
-          Text(
-            modelName.toUpperCase(),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF6366F1),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
