@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.database import get_db
+from app.main import limiter
 from app.models.user import UserCreate, Token
 from app.services import auth_service
 from uuid import uuid4
@@ -17,16 +18,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/register", response_model=Token)
-async def register(user_in: UserCreate):
+@limiter.limit("5/hour")
+async def register(request: Request, user_in: UserCreate):
     """Register a new user."""
     db = await get_db()
     
     # Check if user exists
     existing_user = await db.users.find_one({"email": user_in.email})
     if existing_user:
+        # SECURITY FIX: Generic message to prevent username enumeration
         raise HTTPException(
             status_code=400,
-            detail="A user with this email already exists."
+            detail="Registration could not be completed. Please check your details or try logging in."
         )
     
     # Create user
@@ -56,7 +59,8 @@ async def register(user_in: UserCreate):
     )
 
 @router.post("/login", response_model=Token)
-async def login(user_in: UserCreate): # Using same schema for simplicity
+@limiter.limit("10/minute")
+async def login(request: Request, user_in: UserCreate): # Using same schema for simplicity
     """Login with email and password."""
     db = await get_db()
     
@@ -72,7 +76,7 @@ async def login(user_in: UserCreate): # Using same schema for simplicity
     if not auth_service.verify_password(user_in.password, user["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -137,4 +141,5 @@ async def google_login(request: GoogleLoginRequest):
         )
     except Exception as e:
         logger.error(f"Google login failed: {e}")
-        raise HTTPException(status_code=401, detail=str(e))
+        # SECURITY FIX: Generic error message
+        raise HTTPException(status_code=401, detail="Authentication with Google failed. Please try again.")

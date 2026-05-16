@@ -4,6 +4,7 @@ import tempfile
 import time
 import re
 import logging
+import docker
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
@@ -21,133 +22,107 @@ class ExecutionResponse(BaseModel):
     error: Optional[str] = None
     execution_time: float
 
+# Initialize Docker client
+try:
+    docker_client = docker.from_env()
+    logger.info("✅ Docker client initialized for secure code execution.")
+except Exception as e:
+    logger.warning(f"⚠️ Docker not available: {e}. Falling back to insecure execution (DEV ONLY).")
+    docker_client = None
+
 @router.post("", response_model=ExecutionResponse)
 async def execute_code(
     request: ExecutionRequest, 
-    current_user_id: str = Depends(get_current_user_id) # SECURITY FIX: Authentication required
+    current_user_id: str = Depends(get_current_user_id)
 ):
     """
-    Execute user code in a semi-sandboxed subprocess.
-    SECURITY HARDENING: Strict auth, environment scrubbing, and pattern detection.
+    Execute user code in a secure Docker container.
     """
     lang = request.language.lower()
     code = request.code
     start_time = time.time()
     
-    # SECURITY FIX: Extensive pattern detection for sandbox escape attempts
-    # We check for obfuscated imports, system calls, and reflective execution
-    forbidden_patterns = [
-        r"os\.(system|popen|remove|chmod|chown)", 
-        r"subprocess\.", 
-        r"shutil\.", 
-        r"getattr\(", 
-        r"__import__", 
-        r"exec\(", 
-        r"eval\(", 
-        r"globals\(", 
-        r"locals\(",
-        r"builtins\.",
-        r"pty\.",
-        r"socket\.",
-        r"requests\.",
-        r"urllib\.",
-        r"pickle\.",
-        r"marshal\."
-    ]
-    
-    for pattern in forbidden_patterns:
-        if re.search(pattern, code):
-            logger.warning(f"SECURITY VIOLATION: User {current_user_id} attempted blocked pattern '{pattern}'")
+    if not docker_client:
+        return ExecutionResponse(
+            output="",
+            error="Runtime Error: Docker sandbox is not initialized. Execution blocked for security.",
+            execution_time=round(time.time() - start_time, 3)
+        )
+
+    # Map languages to Docker images and commands
+    config = {
+        "python": {
+            "image": "python:3.11-alpine",
+            "command": ["python", "-c", code],
+        },
+        "javascript": {
+            "image": "node:18-alpine",
+            "command": ["node", "-e", code],
+        },
+        "js": {
+            "image": "node:18-alpine",
+            "command": ["node", "-e", code],
+        }
+    }
+
+    if lang not in config:
+        return ExecutionResponse(
+            output="",
+            error=f"Language '{lang}' is not supported for secure execution.",
+            execution_time=round(time.time() - start_time, 3)
+        )
+
+    try:
+        # Create and run container with strict resource limits
+        container = docker_client.containers.run(
+            image=config[lang]["image"],
+            command=config[lang]["command"],
+            network_disabled=True,      # No internet access
+            mem_limit="128m",           # Max 128MB RAM
+            cpu_period=100000,
+            cpu_quota=50000,            # 0.5 CPU core limit
+            stderr=True,
+            stdout=True,
+            detach=True,
+            remove=True,                # Auto-remove after finish
+            user="nobody",              # Run as non-root
+            working_dir="/tmp"
+        )
+
+        # Wait for completion or timeout
+        exit_code = 0
+        try:
+            # wait() returns a dict with 'StatusCode'
+            result = container.wait(timeout=5.0)
+            exit_code = result.get('StatusCode', 0)
+            logs = container.logs().decode('utf-8')
+        except Exception:
+            container.kill()
             return ExecutionResponse(
                 output="",
-                error=f"Security Violation: Pattern detection blocked this execution. Access to system modules is restricted.",
+                error="Execution Timed Out (Limit: 5s)",
                 execution_time=round(time.time() - start_time, 3)
             )
 
-    # SECURITY FIX: Absolute environment scrubbing. 
-    # Only allow minimal, non-sensitive environment variables.
-    # SECURITY FIX: Inherit the system PATH to find compilers (python3, node, etc.)
-    # but still scrub other sensitive environment variables.
-    safe_env = {
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"), 
-        "LANG": "en_US.UTF-8",
-        "PYTHONIOENCODING": "utf-8",
-    }
-    
-    # SMART INTERPRETER DETECTION: Use python3 on Linux (Railway) and python on Windows
-    python_cmd = "python3" if os.name != "nt" else "python"
-    
-    runtimes = {
-        "python": [python_cmd, "-c", code],
-        "javascript": ["node", "-e", code],
-        "js": ["node", "-e", code],
-    }
-
-    try:
-        if lang in runtimes:
-            # SECURITY FIX: Subprocess hardening with strict timeouts and pipe isolation
-            process = subprocess.Popen(
-                runtimes[lang],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                env=safe_env,
-                start_new_session=True # Isolate from parent process group
-            )
-            try:
-                stdout, stderr = process.communicate(timeout=5.0) # Reduced timeout for safety
-            except subprocess.TimeoutExpired:
-                process.kill()
-                stdout, stderr = "", "Execution Timed Out (Limit: 5s)"
-        
-        elif lang == "java":
-            with tempfile.TemporaryDirectory() as tmpdir:
-                match = re.search(r'public\s+class\s+(\w+)', code)
-                class_name = match.group(1) if match else "Main"
-                
-                file_path = os.path.join(tmpdir, f"{class_name}.java")
-                with open(file_path, "w") as f:
-                    f.write(code)
-                
-                # Compilation step
-                compile_proc = subprocess.run(
-                    ["javac", f"{class_name}.java"],
-                    cwd=tmpdir,
-                    capture_output=True,
-                    text=True,
-                    env=safe_env,
-                    timeout=10.0
-                )
-                
-                if compile_proc.returncode != 0:
-                    execution_time = round(time.time() - start_time, 3)
-                    return ExecutionResponse(output="", error=compile_proc.stderr, execution_time=execution_time)
-                
-                # Execution step
-                run_proc = subprocess.run(
-                    ["java", class_name],
-                    cwd=tmpdir,
-                    capture_output=True,
-                    text=True,
-                    env=safe_env,
-                    timeout=5.0
-                )
-                stdout, stderr = run_proc.stdout, run_proc.stderr
-        else:
-            raise HTTPException(status_code=400, detail=f"Language {lang} not supported for execution.")
-
         execution_time = round(time.time() - start_time, 3)
+        
+        if exit_code != 0:
+            return ExecutionResponse(
+                output="",
+                error=logs if logs else f"Runtime Error (Exit Code: {exit_code})",
+                execution_time=execution_time
+            )
+
         return ExecutionResponse(
-            output=stdout,
-            error=stderr if stderr.strip() else None,
+            output=logs,
+            error=None,
             execution_time=execution_time
         )
         
     except Exception as e:
-        logger.error(f"Execution failed for user {current_user_id}: {e}")
-        execution_time = round(time.time() - start_time, 3)
+        logger.error(f"Docker Execution failed for user {current_user_id}: {e}")
         return ExecutionResponse(
             output="",
-            error=f"Runtime Error: {str(e)}",
-            execution_time=execution_time
+            error=f"Infrastructure Error: {str(e)}",
+            execution_time=round(time.time() - start_time, 3)
         )

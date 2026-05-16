@@ -15,24 +15,42 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["files"])
 
 
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends
+from app.main import limiter
+import aiofiles
+
 @router.post("/upload", response_model=list[UploadResponse])
+@limiter.limit("20/minute")
 async def upload_files(
+    request: Request,
     files: list[UploadFile] = File(...),
     current_user_id: str = Depends(get_current_user_id)
 ):
-    """Upload one or more files and store metadata."""
+    """Upload one or more files and store metadata using streaming to prevent OOM."""
     responses = []
     try:
         for file in files:
             file_id = str(uuid4())
-            # Save file to local storage
-            path = await file_service.save_upload(current_user_id, file)
+            
+            # 1. Create user directory
+            from app.services import file_service
+            import os
+            safe_user_id = "".join([c for c in current_user_id if c.isalnum() or c in ('-', '_')])
+            user_dir = os.path.join(file_service.UPLOAD_DIR, safe_user_id)
+            os.makedirs(user_dir, exist_ok=True)
+            
+            # 2. Generate safe path
+            ext = os.path.splitext(file.filename)[1]
+            safe_name = f"{file_id}{ext}"
+            path = os.path.join(user_dir, safe_name)
+            
+            # 3. STREAM the file to disk in chunks to prevent memory spikes
+            async with aiofiles.open(path, 'wb') as out_file:
+                while content := await file.read(1024 * 1024): # 1MB chunks
+                    await out_file.write(content)
             
             # Detect language
             lang = file_service.get_language_from_ext(file.filename)
-            
-            # Read size
-            import os
             size = os.path.getsize(path)
             
             # Save metadata to DB
@@ -55,7 +73,8 @@ async def upload_files(
         return responses
     except Exception as e:
         logger.error(f"Upload error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # SECURITY FIX: Generic message
+        raise HTTPException(status_code=500, detail="File upload failed due to a server error.")
 
 
 @router.get("/user-files")

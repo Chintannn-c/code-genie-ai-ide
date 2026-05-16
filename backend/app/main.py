@@ -10,13 +10,14 @@ from app.database import connect_to_mongo, close_mongo_connection
 from app.routes import chat, history, upload, auth, execution
 from app.services.socket_manager import manager as socket_manager
 from fastapi import WebSocket, WebSocketDisconnect
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
+
+# Initialize Rate Limiter
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -31,6 +32,11 @@ async def lifespan(app: FastAPI):
     os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
     logger.info(f"📁 Data directories initialized: {settings.ARTIFACTS_PATH}, {settings.UPLOAD_PATH}")
 
+    # SECURITY CHECK: Enforce strong JWT secret in production
+    if settings.JWT_SECRET == "genie-dev-secret-key-change-in-production":
+        logger.critical("❌ INSECURE JWT_SECRET DETECTED! Application cannot start in this state.")
+        raise RuntimeError("CRITICAL SECURITY ERROR: JWT_SECRET must be overridden in production via environment variables.")
+    
     await connect_to_mongo()
     logger.info("✅ API ready!")
     yield
@@ -45,6 +51,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Setup Rate Limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Configuration
 settings = get_settings()
@@ -81,10 +91,15 @@ async def add_security_headers(request, call_next):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Global error caught: {exc}", exc_info=True)
+    import uuid
+    error_id = str(uuid.uuid4())
+    logger.error(f"Global error [{error_id}]: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": f"An unexpected error occurred: {str(exc)}"},
+        content={
+            "detail": "An unexpected internal server error occurred. Our engineers have been notified.",
+            "error_id": error_id
+        },
     )
 
 # Register routes
@@ -136,6 +151,11 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         logger.error(f"WebSocket Error for {user_id}: {e}")
         socket_manager.disconnect(websocket, user_id)
 
+
+@app.get("/")
+async def root():
+    """Root endpoint for health checks."""
+    return {"status": "ok", "service": "Code Genie API"}
 
 @app.get("/api/health")
 async def health_check():

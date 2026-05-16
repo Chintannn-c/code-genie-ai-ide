@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config/api_config.dart';
 
@@ -33,6 +34,8 @@ class User {
 
 class AuthService {
   final http.Client _client = http.Client();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  
   static final GoogleSignIn _googleSignIn = kIsWeb
       ? GoogleSignIn(
           clientId: '782488713921-bbvrh956b8pb8vdb978uflg0tsmsk4g3.apps.googleusercontent.com',
@@ -175,31 +178,34 @@ class AuthService {
     }
   }
 
-  /// Save session to shared preferences
+  /// Save session to secure storage
   Future<void> _saveSession(User user) async {
+    // 1. Save sensitive token to encrypted storage
+    await _secureStorage.write(key: 'token', value: user.token);
+    
+    // 2. Save other data to SharedPreferences for fast access
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', user.token);
     await prefs.setString('user_id', user.userId);
     await prefs.setString('email', user.email);
     if (user.fullName != null) {
       await prefs.setString('full_name', user.fullName!);
     }
     if (user.pictureUrl != null) {
-      await prefs.setString('picture_url', user.pictureUrl!); // ASSET FIX: Persist picture URL
+      await prefs.setString('picture_url', user.pictureUrl!);
     }
   }
 
   /// Get current session
   Future<User?> getSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = await _secureStorage.read(key: 'token');
     if (token == null) return null;
 
+    final prefs = await SharedPreferences.getInstance();
     return User(
       userId: prefs.getString('user_id') ?? '',
       email: prefs.getString('email') ?? '',
       fullName: prefs.getString('full_name'),
-      pictureUrl: prefs.getString('picture_url'), // ASSET FIX: Retrieve picture URL
+      pictureUrl: prefs.getString('picture_url'),
       token: token,
     );
   }
@@ -222,6 +228,7 @@ class AuthService {
 
   /// Clear session
   Future<void> signOut() async {
+    await _secureStorage.delete(key: 'token');
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     // Also sign out from Google to allow switching accounts
