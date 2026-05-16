@@ -42,16 +42,13 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
         return
 
     # Failover strategy: Try each model with each key if necessary
-    # Expanded list from 3.1 Pro down to 1.5 Flash
+    # Using more stable model aliases to avoid 404s
     models_to_try = [
-        settings.GEMINI_MODEL,           # Primary (e.g., gemini-3.1-pro)
-        "gemini-3.1-pro",
-        "gemini-3.1-flash",
-        "gemini-3.0-pro",
-        "gemini-3.0-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro",
+        settings.GEMINI_MODEL, 
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
         "gemini-1.5-flash",
+        "gemini-1.5-pro",
     ]
     models_to_try = list(dict.fromkeys(models_to_try))
     
@@ -88,8 +85,8 @@ async def stream_generate(contents: list[dict]) -> AsyncGenerator[str, None]:
                 last_error = e
                 error_str = str(e).upper()
                 
-                # If rate limited (429) or overloaded (503), try next key/model
-                if "429" in error_str or "503" in error_str or "UNAVAILABLE" in error_str or "QUOTA" in error_str:
+                # If rate limited (429), overloaded (503), or Not Found (404), try next key/model
+                if "429" in error_str or "503" in error_str or "404" in error_str or "UNAVAILABLE" in error_str or "QUOTA" in error_str:
                     logger.warning(f"Key #{i+1} failed with {model_name} ({error_str}). Rotating...")
                     continue
                 else:

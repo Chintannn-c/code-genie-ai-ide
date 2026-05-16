@@ -255,7 +255,7 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _useParallelOrchestration = false;
+  bool _useParallelOrchestration = true;
   bool _isMissionMode = false;
   bool get useParallelOrchestration => _useParallelOrchestration;
   bool get isMissionMode => _isMissionMode;
