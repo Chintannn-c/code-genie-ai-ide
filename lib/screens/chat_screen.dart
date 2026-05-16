@@ -42,7 +42,7 @@ class _ChatScreenState extends State<ChatScreen>
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _showScrollButton = false;
   bool _isAtBottom = true;
-  bool _showRightPanel = true;
+  bool _showRightPanel = false;
   final TextEditingController _searchController = TextEditingController();
 
   // ANIM FIX: Explicit AnimationController for CodePanel size transition
@@ -64,8 +64,8 @@ class _ChatScreenState extends State<ChatScreen>
       curve: Curves.easeInOutCubic,
     );
 
-    // Start panel as expanded
-    _panelController.value = 1.0;
+    // Start panel as collapsed (Web-First / Terminal Suppressed)
+    _panelController.value = 0.0;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -159,14 +159,30 @@ class _ChatScreenState extends State<ChatScreen>
 
   // ANIM FIX: Toggle logic for explicit controller
   void _togglePanel() {
+    final cp = context.read<ChatProvider>();
     setState(() {
       _showRightPanel = !_showRightPanel;
       if (_showRightPanel) {
+        // Suppress Web view if Terminal is opened
+        cp.setWebMode(false);
         _panelController.forward();
       } else {
         _panelController.reverse();
       }
     });
+  }
+
+  void _toggleWeb() {
+    final cp = context.read<ChatProvider>();
+    cp.toggleWebMode();
+    
+    // Web-First Logic: If Web is turned on, turn off the terminal
+    if (cp.isWebMode && _showRightPanel) {
+      setState(() {
+        _showRightPanel = false;
+        _panelController.reverse();
+      });
+    }
   }
 
   Map<String, List<dynamic>> _groupChats(List<dynamic> chats) {
@@ -349,7 +365,9 @@ class _ChatScreenState extends State<ChatScreen>
                               mode: mode,
                               isStreaming: chatProvider.isStreaming,
                               onToggleTerminal: _togglePanel,
+                              onToggleWeb: _toggleWeb,
                               isTerminalOpen: _showRightPanel,
+                              isWebOpen: chatProvider.isWebMode,
                               isDark: isDark,
                               onStop: chatProvider.stopStreaming,
                               attachmentButton: Selector<ChatProvider, int>(

@@ -62,20 +62,108 @@ class CodePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildHeader(context, cp),
-          _buildActionBar(context, cp),
+          if (!cp.isWebMode) _buildActionBar(context, cp),
           Expanded(
-            child: Container(
-              color: isDark ? const Color(0xFF0F172A) : Colors.white,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: SelectableText(
-                  code,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+            child: cp.isWebMode 
+              ? _buildWebView(context)
+              : Container(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: SelectableText(
+                      code,
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        height: 1.5,
+                        color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                      ),
+                    ),
                   ),
                 ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebView(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          // Browser UI Mock
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.lock_rounded, size: 12, color: Colors.greenAccent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'https://localhost:3000',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
+                ),
+                Icon(Icons.refresh_rounded, size: 14, color: isDark ? Colors.white38 : Colors.black38),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.web_rounded, size: 40, color: Color(0xFF6366F1)),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Web Application Ready',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'The generated code has been compiled and the web interface is ready for inspection.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () {
+                       ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Opening internal browser...'), behavior: SnackBarBehavior.floating),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text('Open External Preview'),
+                  ),
+                ],
               ),
             ),
           ),

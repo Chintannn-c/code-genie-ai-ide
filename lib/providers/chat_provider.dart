@@ -257,8 +257,11 @@ class ChatProvider extends ChangeNotifier {
 
   bool _useParallelOrchestration = true;
   bool _isMissionMode = false;
+  bool _isWebMode = false;
+
   bool get useParallelOrchestration => _useParallelOrchestration;
   bool get isMissionMode => _isMissionMode;
+  bool get isWebMode => _isWebMode;
 
   void toggleParallelOrchestration() {
     _useParallelOrchestration = !_useParallelOrchestration;
@@ -273,6 +276,16 @@ class ChatProvider extends ChangeNotifier {
     if (_isMissionMode) {
       _useParallelOrchestration = false;
     }
+    notifyListeners();
+  }
+
+  void setWebMode(bool active) {
+    _isWebMode = active;
+    notifyListeners();
+  }
+
+  void toggleWebMode() {
+    _isWebMode = !_isWebMode;
     notifyListeners();
   }
 

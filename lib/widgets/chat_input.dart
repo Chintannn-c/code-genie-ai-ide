@@ -14,7 +14,9 @@ class ChatInput extends StatefulWidget {
   final Function({required String prompt, String code, String error}) onSend;
   final bool isDark;
   final VoidCallback onToggleTerminal;
+  final VoidCallback onToggleWeb;
   final bool isTerminalOpen;
+  final bool isWebOpen;
 
   const ChatInput({
     super.key,
@@ -23,7 +25,9 @@ class ChatInput extends StatefulWidget {
     required this.onStop,
     required this.onSend,
     required this.onToggleTerminal,
+    required this.onToggleWeb,
     required this.isTerminalOpen,
+    required this.isWebOpen,
     this.attachmentButton,
     this.isDark = true,
   });
@@ -294,6 +298,25 @@ class _ChatInputState extends State<ChatInput> {
                           if (widget.attachmentButton != null)
                             widget.attachmentButton!,
                           
+                          const SizedBox(width: 4),
+                          
+                          // Web View Toggle Button (World Icon)
+                          Tooltip(
+                            message: widget.isWebOpen ? 'Close Web View' : 'Open Web View',
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.public_rounded,
+                                size: 20,
+                                color: widget.isWebOpen 
+                                  ? const Color(0xFF6366F1)
+                                  : (widget.isDark ? Colors.white38 : Colors.black38),
+                              ),
+                              onPressed: widget.onToggleWeb,
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+
                           const SizedBox(width: 4),
                           
                           // Terminal Toggle Button

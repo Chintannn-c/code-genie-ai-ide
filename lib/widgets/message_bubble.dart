@@ -1,11 +1,13 @@
 import 'dart:ui';
 
+import 'package:ai_coding/providers/chat_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:provider/provider.dart';
 import '../models/message.dart';
 import '../config/api_config.dart';
 import '../utils/code_parser.dart';
@@ -135,13 +137,15 @@ class MessageBubble extends StatelessWidget {
                                     ),
                                 ],
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ..._buildContent(context),
-                                  if (isStreaming && !isUser) _buildCursor(),
-                                ],
-                              ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ..._buildContent(context),
+                                    if (isStreaming && !isUser) _buildCursor(),
+                                    if (!isUser && !isStreaming && message.content.isNotEmpty) 
+                                      _buildPremiumActions(context),
+                                  ],
+                                ),
                             ),
                           ),
                         )
@@ -157,29 +161,14 @@ class MessageBubble extends StatelessWidget {
                           duration: isStreaming ? 400.ms : 0.ms,
                           curve: Curves.easeOutCubic,
                         ),
-                    // Actions row
+                    // Actions row (Simplified for history, premium buttons handled in bubble)
                     if (!isUser && message.content.isNotEmpty && !isStreaming)
                       Padding(
-                        padding: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.only(top: 6),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _actionIconButton(Icons.thumb_up_outlined),
-                            const SizedBox(width: 6),
-                            _actionIconButton(Icons.thumb_down_outlined),
-                            const SizedBox(width: 6),
-                            _actionIconButton(
-                              Icons.content_copy_rounded,
-                              onTap: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: message.content),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 6),
-                            _actionIconButton(Icons.refresh_rounded),
                             if (message.modelName != null) ...[
-                              const SizedBox(width: 12),
                               _modelBadge(message.modelName!),
                             ],
                           ],
@@ -252,31 +241,6 @@ class MessageBubble extends StatelessWidget {
         Icons.person_rounded,
         size: 18,
         color: Color(0xFF6366F1),
-      ),
-    );
-  }
-
-  Widget _actionIconButton(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.03)
-              : Colors.black.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05),
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 14,
-          color: isDark ? Colors.white38 : Colors.black38,
-        ),
       ),
     );
   }
@@ -457,6 +421,83 @@ class MessageBubble extends StatelessWidget {
         );
       },
       onEnd: () {},
+    );
+  }
+
+  Widget _buildPremiumActions(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _premiumActionButton(
+            icon: Icons.auto_fix_high_rounded,
+            label: 'Generate Full Code',
+            onTap: () {
+              final cp = context.read<ChatProvider>();
+              cp.sendMessage(prompt: "Generate the complete, production-ready code for this architecture.");
+            },
+          ),
+          _premiumActionButton(
+            icon: Icons.picture_as_pdf_rounded,
+            label: 'Export as PDF',
+            onTap: () {
+               ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Exporting to PDF...'), behavior: SnackBarBehavior.floating),
+              );
+            },
+          ),
+          _premiumActionButton(
+            icon: Icons.refresh_rounded,
+            label: 'Regenerate',
+            onTap: () {
+              final cp = context.read<ChatProvider>();
+              cp.sendMessage(prompt: "Regenerate this response with more detail.");
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _premiumActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark 
+            ? Colors.white.withValues(alpha: 0.05) 
+            : Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark 
+              ? Colors.white.withValues(alpha: 0.08) 
+              : Colors.black.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF6366F1)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
