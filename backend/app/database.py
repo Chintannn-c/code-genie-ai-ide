@@ -31,12 +31,11 @@ async def connect_to_mongo() -> None:
         raise e
 
     # Create indexes for performance
-    await _database.chats.create_index(
-        [("user_id", ASCENDING), ("created_at", DESCENDING)]
-    )
-    await _database.messages.create_index(
-        [("chat_id", ASCENDING), ("timestamp", ASCENDING)]
-    )
+    await _database.chats.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
+    await _database.messages.create_index([("chat_id", ASCENDING), ("timestamp", ASCENDING)])
+    await _database.security_logs.create_index([("timestamp", DESCENDING)])
+    await _database.audit_logs.create_index([("timestamp", DESCENDING)])
+    await _database.orchestration_events.create_index([("workflow_id", ASCENDING)])
 
     logger.info(f"Connected to MongoDB database: {settings.DB_NAME}")
 

@@ -18,10 +18,13 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_ID_WEB: Optional[str] = None
 
-    # Database
+    # Database & Memory
     MONGO_URI: str = "mongodb://localhost:27017"
     DB_NAME: str = "ai_code_assistant"
     REDIS_URL: Optional[str] = None
+    CHROMADB_URL: Optional[str] = None
+    
+    # AI Config
     GEMINI_MODEL: str = "gemini-3.1-pro"
     ALLOWED_ORIGINS: str = "*" 
     

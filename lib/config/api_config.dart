@@ -9,7 +9,9 @@ class ApiConfig {
   static String get baseUrl {
     const envUrl = String.fromEnvironment('BASE_URL');
     if (envUrl.isNotEmpty) return envUrl;
-    return useNgrok ? localUrl : railwayUrl;
+    
+    // Default to production Railway URL if not provided via environment
+    return useNgrok ? localUrl : 'https://code-genie.up.railway.app';
   }
 
   static String get wsBaseUrl {

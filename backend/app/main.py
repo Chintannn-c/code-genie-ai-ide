@@ -43,19 +43,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"❌ [STARTUP] MongoDB Connection: FAILED - {e}")
 
-        # 2. Redis Connection
-        if settings.REDIS_URL:
-            try:
-                logger.info("🚩 [STARTUP] Background: Connecting to Redis...")
-                import redis.asyncio as redis
-                r = redis.from_url(settings.REDIS_URL, socket_timeout=5.0)
-                await r.ping()
-                logger.info("✅ [STARTUP] Redis Connection: SUCCESS")
-                app.state.redis = r
-            except Exception as e:
-                logger.warning(f"⚠️ [STARTUP] Redis Connection: OPTIONAL FAILURE - {e}")
-                app.state.redis = None
-        else:
+        # 2. Redis Connection (Upstash)
+        try:
+            from app.services.redis_service import redis_service
+            logger.info("🚩 [STARTUP] Background: Connecting to Upstash Redis...")
+            await redis_service.connect()
+            app.state.redis = redis_service
+        except Exception as e:
+            logger.warning(f"⚠️ [STARTUP] Redis Connection: OPTIONAL FAILURE - {e}")
             app.state.redis = None
 
         # 3. Directories

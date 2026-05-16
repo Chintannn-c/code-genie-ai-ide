@@ -37,6 +37,7 @@ from .synthesis_engine import synthesis_engine
 from .audit_logger import audit_logger
 from .agent_tools_service import agent_tools
 from .indexer_service import indexer
+from .redis_service import redis_service
 from ..prompts.templates import SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,15 @@ class AIOrchestrator:
         await audit_logger.log("THINK", "orchestrator", "workflow_started",
                                {"prompt_length": len(prompt), "user_id": user_id},
                                user_id=user_id, workflow_id=workflow_id)
+
+        # ── Step 0: Semantic Cache Check ──
+        cached_res = await redis_service.get(f"cache:{prompt}")
+        if cached_res:
+            await audit_logger.log("OBSERVE", "orchestrator", "cache_hit", 
+                                   {"prompt_preview": prompt[:30]}, user_id=user_id, workflow_id=workflow_id)
+            cached_res["workflow_id"] = workflow_id
+            cached_res["cached"] = True
+            return cached_res
 
         # ── Step 1: Security Gateway ──
         security_result = await security_gateway.scan_prompt(prompt, user_id)
@@ -187,7 +197,7 @@ class AIOrchestrator:
                                 "strategy": strategy},
                                user_id=user_id, workflow_id=workflow_id)
 
-        return {
+        final_response = {
             "answer": final_answer,
             "strategy": strategy,
             "models_participated": agents_contributed,
@@ -197,6 +207,11 @@ class AIOrchestrator:
             "latency": total_latency,
             "parallel_execution": True,
         }
+
+        # Store in cache (expire in 6 hours)
+        await redis_service.set(f"cache:{prompt}", final_response, expire_seconds=21600)
+
+        return final_response
 
     # Backward compatibility alias
     async def get_parallel_response(self, prompt: str, history=None, user_level="intermediate"):
