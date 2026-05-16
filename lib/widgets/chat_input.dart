@@ -298,35 +298,6 @@ class _ChatInputState extends State<ChatInput> {
                           _buildOrchestratorToggle(),
                           const SizedBox(width: 8),
                           _buildSendButton(),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: Icon(
-                              widget.isTerminalOpen
-                                  ? Icons.terminal_rounded
-                                  : Icons.terminal_outlined,
-                            ),
-                            onPressed: widget.onToggleTerminal,
-                            tooltip: 'Toggle Terminal',
-                            color: widget.isTerminalOpen
-                                ? const Color(0xFF6366F1)
-                                : (widget.isDark
-                                      ? Colors.white24
-                                      : Colors.black26),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.mic_rounded),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Voice input coming soon!'),
-                                ),
-                              );
-                            },
-                            tooltip: 'Voice Input',
-                            color: widget.isDark
-                                ? Colors.white24
-                                : Colors.black26,
-                          ),
                         ],
                       ),
                     ),
@@ -336,28 +307,6 @@ class _ChatInputState extends State<ChatInput> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _actionIconButton(
-    IconData icon,
-    String tooltip, {
-    VoidCallback? onTap,
-    bool isActive = false,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, size: 20),
-        color: isActive
-            ? const Color(0xFF6366F1)
-            : (widget.isDark
-                  ? Colors.white.withValues(alpha: 0.5)
-                  : Colors.black.withValues(alpha: 0.4)),
-        splashRadius: 20,
-        hoverColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
       ),
     );
   }

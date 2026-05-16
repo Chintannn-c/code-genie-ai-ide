@@ -171,42 +171,6 @@ class FileUploadBar extends StatelessWidget {
     );
   }
 
-  Widget _actionMenu(BuildContext context, AppFile file) {
-    return PopupMenuButton<String>(
-      icon: Icon(
-        Icons.more_vert_rounded,
-        size: 14,
-        color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4),
-      ),
-      padding: EdgeInsets.zero,
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'analyze',
-          child: Row(
-            children: [
-              Icon(Icons.analytics_outlined, size: 16),
-              SizedBox(width: 8),
-              Text('Analyze', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'remove',
-          child: Row(
-            children: [
-              Icon(Icons.close_rounded, size: 16, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Remove', style: TextStyle(color: Colors.red, fontSize: 13)),
-            ],
-          ),
-        ),
-      ],
-      onSelected: (val) {
-        if (val == 'remove') onRemove(file.fileId);
-        if (val == 'analyze') onAnalyze(file.fileId);
-      },
-    );
-  }
 
   IconData _getIconForLang(String lang) {
     switch (lang.toLowerCase()) {

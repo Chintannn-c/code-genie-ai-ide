@@ -20,12 +20,9 @@ import '../widgets/orchestration_indicator.dart';
 import '../widgets/file_upload_bar.dart';
 import '../widgets/model_selector.dart';
 import '../widgets/attachment_button.dart';
-import '../providers/notification_provider.dart';
 import '../widgets/planning_timeline.dart';
 import 'dart:convert';
 import '../services/notification_service.dart';
-import '../widgets/bottom_nav_bar.dart';
-import 'notification_screen.dart';
 import 'settings_screen.dart';
 
 /// Main chat screen with sidebar and chat area.
@@ -560,73 +557,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  Widget _buildNotificationBadge(BuildContext context, bool isDark) {
-    final np = context.watch<NotificationProvider>();
-    final unreadCount = np.unreadCount;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const NotificationScreen()),
-          ),
-          icon: Icon(
-            Icons.notifications_outlined,
-            size: 20,
-            color: isDark ? Colors.white38 : Colors.black38,
-          ),
-          tooltip: 'Notifications',
-        ),
-        if (unreadCount > 0)
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6366F1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isDark ? Colors.black : Colors.white,
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              child: Text(
-                unreadCount > 9 ? '9+' : unreadCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildThemeToggle(ThemeProvider tp, bool isDark) {
-    return IconButton(
-      onPressed: tp.toggleTheme,
-      icon: Icon(
-        isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round_outlined,
-        size: 20,
-        color: isDark ? Colors.white38 : Colors.black38,
-      ),
-      tooltip: 'Toggle Theme',
-    );
-  }
 
   Widget _buildSidebar(ChatProvider cp, AuthProvider ap, bool isDark) {
     return Container(

@@ -15,7 +15,6 @@ import '../services/api_service.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/stream_service.dart';
 import '../services/websocket_service.dart';
-import '../utils/constants.dart';
 
 /// Top-level function for isolate-safe regex parsing.
 List<Map<String, String>> _parseCodeBlocks(String content) {
@@ -563,7 +562,7 @@ class ChatProvider extends ChangeNotifier {
       return;
     }
     
-    final String msgId = lastMessage.messageId ?? lastMessage.timestamp.toIso8601String();
+    final String msgId = lastMessage.messageId;
     
     if (_codeCache.containsKey(msgId)) {
       final cachedBlocks = _codeCache[msgId]!;
