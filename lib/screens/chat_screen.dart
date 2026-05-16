@@ -401,17 +401,6 @@ class _ChatScreenState extends State<ChatScreen>
             ),
         ],
       ),
-      bottomNavigationBar: CodeGenieBottomNav(
-        currentIndex: 1,
-        onTap: (index) {
-          if (index == 4) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            );
-          }
-        },
-      ),
     );
   }
 

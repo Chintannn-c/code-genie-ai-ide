@@ -300,18 +300,18 @@ class _ChatInputState extends State<ChatInput> {
                           _buildSendButton(),
                           const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.terminal_rounded),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Terminal coming soon!'),
-                                ),
-                              );
-                            },
-                            tooltip: 'Terminal',
-                            color: widget.isDark
-                                ? Colors.white24
-                                : Colors.black26,
+                            icon: Icon(
+                              widget.isTerminalOpen
+                                  ? Icons.terminal_rounded
+                                  : Icons.terminal_outlined,
+                            ),
+                            onPressed: widget.onToggleTerminal,
+                            tooltip: 'Toggle Terminal',
+                            color: widget.isTerminalOpen
+                                ? const Color(0xFF6366F1)
+                                : (widget.isDark
+                                      ? Colors.white24
+                                      : Colors.black26),
                           ),
                           IconButton(
                             icon: const Icon(Icons.mic_rounded),
@@ -323,22 +323,6 @@ class _ChatInputState extends State<ChatInput> {
                               );
                             },
                             tooltip: 'Voice Input',
-                            color: widget.isDark
-                                ? Colors.white24
-                                : Colors.black26,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.attachment_rounded),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Attachment support coming soon!',
-                                  ),
-                                ),
-                              );
-                            },
-                            tooltip: 'Attach File',
                             color: widget.isDark
                                 ? Colors.white24
                                 : Colors.black26,

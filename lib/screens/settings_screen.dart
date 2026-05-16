@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
           // Profile Card
           _buildProfileCard(user, isDark),
           
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           
           _sectionTitle('SETTINGS'),
           
@@ -108,7 +108,7 @@ class SettingsScreen extends StatelessWidget {
             isDark: isDark,
           ),
           
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
           
           // Sign Out Button
           Padding(
@@ -131,14 +131,8 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           
-          const SizedBox(height: 100), // Space for bottom nav
+          const SizedBox(height: 24), 
         ],
-      ),
-      bottomNavigationBar: CodeGenieBottomNav(
-        currentIndex: 4,
-        onTap: (index) {
-          if (index == 1) Navigator.pop(context);
-        },
       ),
     );
   }
