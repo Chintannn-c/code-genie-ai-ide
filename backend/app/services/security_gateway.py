@@ -142,7 +142,7 @@ class SecurityGateway:
             )
             # Log to MongoDB for persistent audit
             try:
-                db = await get_database()
+                db = get_database()
                 await db.security_logs.insert_one(result)
             except Exception as e:
                 logger.error(f"Failed to log security event: {e}")
