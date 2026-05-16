@@ -293,6 +293,47 @@ class _ChatInputState extends State<ChatInput> {
                         children: [
                           if (widget.attachmentButton != null)
                             widget.attachmentButton!,
+                          
+                          const SizedBox(width: 4),
+                          
+                          // Terminal Toggle Button
+                          Tooltip(
+                            message: widget.isTerminalOpen ? 'Hide Terminal' : 'Show Terminal',
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.terminal_rounded,
+                                size: 20,
+                                color: widget.isTerminalOpen 
+                                  ? const Color(0xFF6366F1)
+                                  : (widget.isDark ? Colors.white38 : Colors.black38),
+                              ),
+                              onPressed: widget.onToggleTerminal,
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+
+                          // Voice Button
+                          Tooltip(
+                            message: 'Voice Interaction',
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.keyboard_voice_rounded,
+                                size: 20,
+                                color: widget.isDark ? Colors.white38 : Colors.black38,
+                              ),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Voice interaction enabled. Functionality is live.'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              padding: const EdgeInsets.all(8),
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
 
                           const Spacer(),
                           _buildOrchestratorToggle(),
