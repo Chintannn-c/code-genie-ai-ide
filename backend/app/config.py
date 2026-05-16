@@ -22,9 +22,9 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.0-flash-lite"
     ALLOWED_ORIGINS: str = "*" 
     
-    # Paths
-    ARTIFACTS_PATH: str = "../data/artifacts"
-    UPLOAD_PATH: str = "../data/uploads"
+    # Paths (Safe defaults that work in any environment)
+    ARTIFACTS_PATH: str = "data/artifacts"
+    UPLOAD_PATH: str = "data/uploads"
     EXECUTION_TIMEOUT: float = 10.0
     
     # Auth Settings (Default provided for stability, override in .env)
