@@ -123,11 +123,21 @@ class AuthService {
         print('✨ [AuthService] Login complete! Total time: ${stopwatch.elapsedMilliseconds}ms');
         return user;
       } else {
-        final error = jsonDecode(response.body)['detail'] ?? 'Google login failed';
-        throw Exception(error);
+        String errorDetail;
+        try {
+          final data = jsonDecode(response.body);
+          errorDetail = data['detail'] ?? 'Authentication failed (${response.statusCode})';
+        } catch (_) {
+          errorDetail = 'Backend error (${response.statusCode}). Please check server logs.';
+        }
+        print('❌ [AuthService] Backend Auth Error: $errorDetail');
+        throw Exception(errorDetail);
       }
     } catch (e) {
       print('❌ [AuthService] Google Login Failed: $e');
+      if (e.toString().contains('cancelled')) {
+        throw Exception('Sign-in was cancelled.');
+      }
       rethrow;
     } finally {
       _isSigningIn = false;
