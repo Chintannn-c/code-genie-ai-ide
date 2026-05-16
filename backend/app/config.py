@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     """Application settings loaded from .env file."""
 
     # API Keys
-    GEMINI_API_KEY: str
+    # API Keys
+    GEMINI_API_KEY_1: str = ""
+    GEMINI_API_KEY_2: str = ""
     GROQ_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
     HUGGINGFACE_API_KEY: str = ""
@@ -16,10 +18,8 @@ class Settings(BaseSettings):
     
     @property
     def gemini_keys(self) -> list[str]:
-        """Returns a list of Gemini API keys for rotation."""
-        if not self.GEMINI_API_KEY:
-            return []
-        return [k.strip() for k in self.GEMINI_API_KEY.split(",") if k.strip()]
+        """Returns the list of configured Gemini keys."""
+        return [k for k in [self.GEMINI_API_KEY_1, self.GEMINI_API_KEY_2] if k]
     
     # Google Auth
     GOOGLE_CLIENT_ID: Optional[str] = None
