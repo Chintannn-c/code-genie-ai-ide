@@ -254,7 +254,20 @@ logger.info("🚀 Code Genie Module Loaded Successfully")
 if __name__ == "__main__":
     import uvicorn
     import os
-    # Strict Port Enforcement for Railway
-    port = int(os.environ.get("PORT", 8000))
-    logger.info(f"🚀 [INIT] Manual Uvicorn start on port {port}")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, log_level="info")
+    
+    # Aggressive Port Detection
+    env_port = os.environ.get("PORT")
+    # Also check for RAILWAY_TCP_PROXY_PORT just in case
+    proxy_port = os.environ.get("RAILWAY_TCP_PROXY_PORT")
+    
+    final_port = 8000
+    if env_port:
+        final_port = int(env_port)
+        print(f"🎯 [PORT_FOUND] Using PORT from environment: {final_port}")
+    elif proxy_port:
+        final_port = int(proxy_port)
+        print(f"🎯 [PORT_FOUND] Using RAILWAY_TCP_PROXY_PORT: {final_port}")
+    else:
+        print(f"⚠️ [PORT_MISSING] No port found in environment, defaulting to 8000")
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=final_port, log_level="info", proxy_headers=True)
