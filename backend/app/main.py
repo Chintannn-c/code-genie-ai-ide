@@ -165,19 +165,22 @@ async def not_found_handler(request: Request, exc):
             content={"detail": f"Route not found: {request.url.path}"}
         )
     
-    # 2. Check if it's a static file request that missed the /web_static mount
-    # (Flutter often expects files at root)
+    # 2. Check if it's a static file request
+    # Flutter Web builds place assets, main.dart.js, etc. in the static_web folder
     web_path = os.path.join(os.path.dirname(__file__), "static_web")
-    static_file = os.path.join(web_path, request.url.path.lstrip("/"))
-    if os.path.isfile(static_file):
-        return FileResponse(static_file)
+    path = request.url.path.lstrip("/")
+    
+    if path:
+        static_file = os.path.join(web_path, path)
+        if os.path.isfile(static_file):
+            return FileResponse(static_file)
 
-    # 3. Default to SPA index for all other routes
+    # 3. Default to SPA index for root or client-side routes
     index_path = os.path.join(web_path, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
         
-    return JSONResponse(status_code=404, content={"detail": "Not found"})
+    return JSONResponse(status_code=404, content={"detail": "Resource not found"})
 
 
 # 4. Static File Mounting (Optimized for Production)
@@ -189,16 +192,10 @@ try:
     os.makedirs(settings.ARTIFACTS_PATH, exist_ok=True)
     os.makedirs(settings.UPLOAD_PATH, exist_ok=True)
     
-    # Mount artifacts for web access (Dedicated path)
+    # Mount artifacts for web access (Dedicated path - SAFE)
     if os.path.exists(settings.ARTIFACTS_PATH):
         app.mount("/artifacts", StaticFiles(directory=settings.ARTIFACTS_PATH), name="artifacts")
         logger.info(f"📁 Artifacts mounted at /artifacts")
-
-    # Mount Flutter assets at root (Non-greedy)
-    # By setting html=False, it only serves real files, allowing our routes to handle the rest
-    if os.path.exists(web_path):
-        app.mount("/", StaticFiles(directory=web_path, html=False), name="flutter_assets")
-        logger.info(f"🌐 Flutter assets mounted at root")
 
 except Exception as e:
     logger.error(f"❌ Final mounting polish error: {e}")
