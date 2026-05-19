@@ -357,11 +357,15 @@ class _ChatScreenState extends State<ChatScreen>
                           Expanded(
                             child: Selector<ChatProvider, String>(
                               selector: (_, cp) =>
-                                  '${cp.messages.length}_${cp.isStreaming && cp.messages.isNotEmpty ? cp.messages.last.content.length : 0}',
-                              builder: (context, _, __) =>
-                                  chatProvider.messages.isEmpty
-                                  ? _buildEmptyState(isDark)
-                                  : _buildMessageList(chatProvider, isDark),
+                                  '${cp.messages.length}_${cp.isLoading}_${cp.isStreaming && cp.messages.isNotEmpty ? cp.messages.last.content.length : 0}',
+                              builder: (context, _, __) {
+                                if (chatProvider.isLoading) {
+                                  return _buildSkeletonLoader(isDark);
+                                }
+                                return chatProvider.messages.isEmpty
+                                    ? _buildEmptyState(isDark)
+                                    : _buildMessageList(chatProvider, isDark);
+                              },
                             ),
                           ),
                         ],
@@ -1138,6 +1142,81 @@ class _ChatScreenState extends State<ChatScreen>
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSkeletonLoader(bool isDark) {
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        final isUser = index % 2 == 0;
+        return Align(
+          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Container(
+              width: isUser ? 180 : 320,
+              height: isUser ? 60 : 110,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.05),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: isUser ? 100 : 140,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black12,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: isUser ? 140 : 260,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black12,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    if (!isUser) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 200,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white10 : Colors.black12,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            )
+            .animate(onPlay: (controller) => controller.repeat())
+            .shimmer(
+              duration: const Duration(milliseconds: 1500),
+              color: isDark
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                  : const Color(0xFF6366F1).withValues(alpha: 0.08),
+            ),
+          ),
+        );
+      },
     );
   }
 

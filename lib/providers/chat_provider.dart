@@ -251,6 +251,7 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> openChat(String chatId) async {
     _currentChatId = chatId;
+    _messages = []; // Clear instantly to enable immediate UI switch
     _isLoading = true;
     notifyListeners();
     await loadMessages(chatId);
@@ -345,9 +346,17 @@ class ChatProvider extends ChangeNotifier {
       _selectedFiles = [];
       notifyListeners();
     } catch (e) {
-      _messages.remove(userMessage);
       _activityLabel = 'Ready';
-      _errorMessage = 'Code Genie failed to respond. Try again...';
+      _isStreaming = false;
+      _isOrchestrating = false;
+      _messages.add(Message(
+        messageId: 'err_${DateTime.now().millisecondsSinceEpoch}',
+        role: 'ai',
+        content: '⚠️ Code Genie failed to respond. Please check your network connection, API configurations, or model settings and try again.',
+        timestamp: DateTime.now(),
+        type: _selectedMode,
+        language: _selectedLanguage,
+      ));
       notifyListeners();
     }
   }
@@ -447,7 +456,7 @@ class ChatProvider extends ChangeNotifier {
             const Duration(seconds: 20),
             onTimeout: (sink) {
               final errorText =
-                  '[Error: Code Genie failed to respond. Connection timed out.]';
+                  '⚠️ Code Genie failed to respond. Connection timed out. Please try again.';
               if (_messages.isNotEmpty && _messages.last.role == 'ai') {
                 _messages[_messages.length - 1] = _messages.last.copyWith(
                   content: errorText,
@@ -462,7 +471,7 @@ class ChatProvider extends ChangeNotifier {
           .listen(
             (chunk) async {
               if (chunk.error != null) {
-                final errorText = '[Error: ${chunk.error}]';
+                final errorText = '⚠️ Code Genie failed to respond: ${chunk.error}';
                 if (_messages.isNotEmpty && _messages.last.role == 'ai') {
                   _messages[_messages.length - 1] = _messages.last.copyWith(
                     content: errorText,
@@ -509,7 +518,7 @@ class ChatProvider extends ChangeNotifier {
               notifyListeners();
             },
             onError: (e) {
-              final errorText = '[Error: Connection lost. Please try again.]';
+              final errorText = '⚠️ Code Genie failed to respond. Connection lost. Please try again.';
               if (_messages.isNotEmpty && _messages.last.role == 'ai') {
                 _messages[_messages.length - 1] = _messages.last.copyWith(
                   content: errorText,

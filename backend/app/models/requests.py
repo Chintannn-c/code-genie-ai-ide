@@ -59,3 +59,15 @@ class PlanExecuteRequest(BaseModel):
     """Request schema for executing a generated plan."""
     user_id: str = Field(..., min_length=1)
     plan_data: dict = Field(..., description="The full plan JSON data to execute")
+
+class SyncOperation(BaseModel):
+    entity_type: Literal["chats", "messages"] = Field(..., description="Type of sync entity")
+    entity_id: str = Field(..., description="Identifier of the target entity")
+    operation: Literal["INSERT", "UPDATE", "DELETE"] = Field(..., description="State update operation")
+    delta_payload: dict = Field(..., description="Attributes of change payload")
+    vector_clock: int = Field(..., description="Logical timestamp vector clock")
+
+class SyncDeltaRequest(BaseModel):
+    last_sync_clock: int = Field(..., description="Last known master synchronization sequence clock")
+    device_id: str = Field(..., description="Unique client hardware device string")
+    pending_changes: list[SyncOperation] = Field(default=[], description="Unsynced local operations queue")

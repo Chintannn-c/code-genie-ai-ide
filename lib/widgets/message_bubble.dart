@@ -66,7 +66,10 @@ class MessageBubble extends StatelessWidget {
                 children: [
                   _buildHeader(agentColor),
                   const SizedBox(height: 8),
-                  _buildMainBubble(context, agentColor),
+                  Align(
+                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: _buildMainBubble(context, agentColor),
+                  ),
                   if (!isUser && !isStreaming)
                     _buildFooter(context, agentColor),
                 ],
@@ -115,56 +118,62 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildMainBubble(BuildContext context, Color agentColor) {
-    return ClipRRect(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(isUser ? 10 : 4),
-            topRight: Radius.circular(isUser ? 4 : 10),
-            bottomLeft: const Radius.circular(10),
-            bottomRight: const Radius.circular(10),
-          ),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isUser
-                    ? agentColor.withValues(alpha: 0.13)
-                    : (isDark
-                          ? const Color(0xFF111827).withValues(alpha: 0.9)
-                          : Colors.white),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(isUser ? 10 : 4),
-                  topRight: Radius.circular(isUser ? 4 : 10),
-                  bottomLeft: const Radius.circular(10),
-                  bottomRight: const Radius.circular(10),
-                ),
-                border: Border.all(
-                  color: agentColor.withValues(
-                    alpha: isStreaming ? 0.35 : 0.12,
+    final isWide = MediaQuery.of(context).size.width > 700;
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: isUser ? 520 : (isWide ? 640 : double.infinity),
+      ),
+      child: ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(isUser ? 10 : 4),
+              topRight: Radius.circular(isUser ? 4 : 10),
+              bottomLeft: const Radius.circular(10),
+              bottomRight: const Radius.circular(10),
+            ),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isUser
+                      ? agentColor.withValues(alpha: 0.13)
+                      : (isDark
+                            ? const Color(0xFF111827).withValues(alpha: 0.9)
+                            : Colors.white),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(isUser ? 10 : 4),
+                    topRight: Radius.circular(isUser ? 4 : 10),
+                    bottomLeft: const Radius.circular(10),
+                    bottomRight: const Radius.circular(10),
                   ),
-                  width: 1,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ..._buildContent(context, agentColor),
-                        if (isStreaming && !isUser)
-                          _buildStreamingIndicator(agentColor),
-                      ],
+                  border: Border.all(
+                    color: agentColor.withValues(
+                      alpha: isStreaming ? 0.35 : 0.12,
                     ),
+                    width: 1,
                   ),
-                ],
+                ),
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ..._buildContent(context, agentColor),
+                          if (isStreaming && !isUser)
+                            _buildStreamingIndicator(agentColor),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        )
-        .animate(target: 1)
-        .fadeIn(duration: 400.ms)
-        .slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad);
+          )
+          .animate(target: 1)
+          .fadeIn(duration: 400.ms)
+          .slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad),
+    );
   }
 
   Widget _buildStreamingIndicator(Color agentColor) {
