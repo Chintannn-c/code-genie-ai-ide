@@ -526,6 +526,43 @@ class AIOrchestrator:
             "security_stats": security_gateway.get_stats(),
             "audit_stats": audit_logger.get_stats(),
             "synthesis_count": synthesis_engine.synthesis_count,
+            "model_limits": [
+                {
+                    "name": "Google Gemini 2.0 Flash",
+                    "limit": "15 RPM | 1M TPM",
+                    "status": "Optimal",
+                    "color": "0xFF22C55E",
+                    "tier": "Default pool / custom key rotation fallback"
+                },
+                {
+                    "name": "Llama 3.3 70B (Groq)",
+                    "limit": "30 RPM | 14,400 RPD",
+                    "status": "Optimal",
+                    "color": "0xFF22C55E",
+                    "tier": "High-speed local key failover fallback"
+                },
+                {
+                    "name": "Qwen 2.5 Coder 32B (OpenRouter)",
+                    "limit": "20 RPM | Free Pool",
+                    "status": "Optimal",
+                    "color": "0xFF22C55E",
+                    "tier": "Alternative general backup tier"
+                },
+                {
+                    "name": "Mistral Large (Mistral)",
+                    "limit": "5 RPM | Trial Tier",
+                    "status": "Optimal",
+                    "color": "0xFF22C55E",
+                    "tier": "Cognitive reasoning specialist"
+                },
+                {
+                    "name": "GitHub Copilot Models",
+                    "limit": "Unlimited (API key)",
+                    "status": "Optimal",
+                    "color": "0xFF22C55E",
+                    "tier": "Custom user credential fallback tier"
+                }
+            ]
         }
 
 

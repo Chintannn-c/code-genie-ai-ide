@@ -72,6 +72,29 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                   ),
                 ),
                 actions: [
+                  if (!isSmallScreen)
+                    Center(
+                      child: Text(
+                        'SYNCED: ${orch.lastRefreshedFormatted}  |  POLL: ${orch.refreshIntervalSeconds}s',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: const Color(0xFF64748B),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  PopupMenuButton<int>(
+                    icon: const Icon(Icons.timer, color: Color(0xFF06B6D4)),
+                    tooltip: 'Adjust Refresh Interval',
+                    onSelected: (seconds) => orch.setRefreshInterval(seconds),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 2, child: Text('2s (Real-time)', style: GoogleFonts.inter(fontSize: 12))),
+                      PopupMenuItem(value: 5, child: Text('5s (Normal)', style: GoogleFonts.inter(fontSize: 12))),
+                      PopupMenuItem(value: 10, child: Text('10s (Relaxed)', style: GoogleFonts.inter(fontSize: 12))),
+                      PopupMenuItem(value: 30, child: Text('30s (Slow)', style: GoogleFonts.inter(fontSize: 12))),
+                    ],
+                  ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Color(0xFF6366F1)),
                     onPressed: () => orch.refresh(),
@@ -102,6 +125,10 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
 
                     // Row 5: Active Workflows
                     _buildWorkflows(orch),
+                    const SizedBox(height: 16),
+
+                    // Row 6: Active Models & Rate Limits
+                    _buildModelLimits(orch, isSmallScreen),
                     const SizedBox(height: 80),
                   ]),
                 ),
@@ -596,6 +623,167 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
               child,
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // MODEL RATE LIMITS CARD
+  // ============================================================
+  Widget _buildModelLimits(OrchestrationProvider orch, bool isSmallScreen) {
+    final List<dynamic> rawModels = orch.modelLimits.isNotEmpty ? orch.modelLimits : [
+      {
+        'name': 'Google Gemini 2.0 Flash',
+        'limit': '15 RPM | 1M TPM',
+        'status': 'Optimal',
+        'color': '0xFF22C55E',
+        'tier': 'Default pool / custom key rotation fallback'
+      },
+      {
+        'name': 'Llama 3.3 70B (Groq)',
+        'limit': '30 RPM | 14,400 RPD',
+        'status': 'Optimal',
+        'color': '0xFF22C55E',
+        'tier': 'High-speed local key failover fallback'
+      },
+      {
+        'name': 'Qwen 2.5 Coder 32B (OpenRouter)',
+        'limit': '20 RPM | Free Pool',
+        'status': 'Optimal',
+        'color': '0xFF22C55E',
+        'tier': 'Alternative general backup tier'
+      },
+      {
+        'name': 'Mistral Large (Mistral)',
+        'limit': '5 RPM | Trial Tier',
+        'status': 'Optimal',
+        'color': '0xFF22C55E',
+        'tier': 'Cognitive reasoning specialist'
+      },
+      {
+        'name': 'GitHub Copilot Models',
+        'limit': 'Unlimited (API key)',
+        'status': 'Optimal',
+        'color': '0xFF22C55E',
+        'tier': 'Custom user credential fallback tier'
+      },
+    ];
+
+    return _glassCard(
+      title: '🤖 ACTIVE MODEL ORCHESTRATION & API RATE LIMITS',
+      titleColor: const Color(0xFF06B6D4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Code Genie dynamically routes expert prompt sub-tasks across available model keys with automatic failovers when rate limits (429 errors) occur.',
+            style: GoogleFonts.inter(
+              color: const Color(0xFF94A3B8),
+              fontSize: 11,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: rawModels.length,
+            separatorBuilder: (context, index) => const Divider(color: Color(0xFF1E293B), height: 16),
+            itemBuilder: (context, index) {
+              final m = rawModels[index] as Map<String, dynamic>;
+              final String colorHex = m['color'] as String? ?? '0xFF22C55E';
+              final int colorVal = int.tryParse(colorHex) ?? 0xFF22C55E;
+              final Color statusColor = Color(colorVal);
+
+               return isSmallScreen
+                   ? Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         Row(
+                           children: [
+                             Text(
+                               m['name'] as String,
+                               style: GoogleFonts.jetBrainsMono(
+                                 color: Colors.white,
+                                 fontWeight: FontWeight.w600,
+                                 fontSize: 12,
+                               ),
+                             ),
+                             const Spacer(),
+                             _statusBadge(m['status'] as String, statusColor),
+                           ],
+                         ),
+                         const SizedBox(height: 4),
+                         Text(
+                           'Limit: ${m['limit']}',
+                           style: GoogleFonts.inter(color: const Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.bold),
+                         ),
+                         const SizedBox(height: 2),
+                         Text(
+                           m['tier'] as String,
+                           style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 10),
+                         ),
+                       ],
+                     )
+                   : Row(
+                       children: [
+                         Expanded(
+                           flex: 3,
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(
+                                 m['name'] as String,
+                                 style: GoogleFonts.jetBrainsMono(
+                                   color: Colors.white,
+                                   fontWeight: FontWeight.w600,
+                                   fontSize: 13,
+                                 ),
+                               ),
+                               const SizedBox(height: 2),
+                               Text(
+                                 m['tier'] as String,
+                                 style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 11),
+                               ),
+                             ],
+                           ),
+                         ),
+                         Expanded(
+                           flex: 2,
+                           child: Text(
+                             m['limit'] as String,
+                             style: GoogleFonts.jetBrainsMono(
+                               color: const Color(0xFF6366F1),
+                               fontSize: 12,
+                               fontWeight: FontWeight.w600,
+                             ),
+                           ),
+                         ),
+                         _statusBadge(m['status'] as String, statusColor),
+                       ],
+                     );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBadge(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        status,
+        style: GoogleFonts.inter(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
