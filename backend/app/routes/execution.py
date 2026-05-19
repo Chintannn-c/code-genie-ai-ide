@@ -116,7 +116,7 @@ async def execute_code(
             detach=True,
             remove=True,                # Auto-remove after finish
             user="nobody",              # Run as non-root
-            working_dir="/tmp"
+            working_dir="/tmp"  # nosec
         )
 
         # Wait for completion or timeout

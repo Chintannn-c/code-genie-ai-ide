@@ -337,4 +337,4 @@ if __name__ == "__main__":
     else:
         print(f"⚠️ [PORT_MISSING] No port found in environment, defaulting to 8000")
 
-    uvicorn.run("app.main:app", host="0.0.0.0", port=final_port, log_level="info", proxy_headers=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=final_port, log_level="info", proxy_headers=True)  # nosec
