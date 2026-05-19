@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/settings/glass_card.dart';
 import '../../widgets/settings/settings_toggle.dart';
 import '../../widgets/settings/settings_slider.dart';
@@ -16,17 +17,6 @@ class EditorPage extends StatefulWidget {
 }
 
 class _EditorPageState extends State<EditorPage> {
-  int _selectedFont = 0;
-  double _fontSize = 14;
-  int _tabSize = 2;
-  bool _autoSave = true;
-  bool _wordWrap = true;
-  bool _minimap = false;
-  bool _vimMode = false;
-  bool _aiSuggestions = true;
-  bool _linting = true;
-  bool _formatOnSave = true;
-
   static const _fonts = ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Source Code Pro'];
   static const _codePreview = '''
 void main() {
@@ -43,6 +33,7 @@ void main() {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
+    final sp = context.watch<SettingsProvider>();
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF08080A) : const Color(0xFFF1F5F9),
@@ -95,8 +86,9 @@ void main() {
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           _codePreview,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: _fontSize,
+                          style: GoogleFonts.getFont(
+                            _fonts[sp.selectedFont],
+                            fontSize: sp.fontSize,
                             height: 1.6,
                             color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
                           ),
@@ -126,9 +118,9 @@ void main() {
                   physics: const BouncingScrollPhysics(),
                   itemCount: _fonts.length,
                   itemBuilder: (context, index) {
-                    final isActive = _selectedFont == index;
+                    final isActive = sp.selectedFont == index;
                     return GestureDetector(
-                      onTap: () => setState(() => _selectedFont = index),
+                      onTap: () => sp.updateEditorSettings(selectedFont: index),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         margin: const EdgeInsets.only(right: 10),
@@ -174,39 +166,39 @@ void main() {
                   children: [
                     SettingsSlider(
                       label: 'Font Size', icon: Icons.format_size_rounded,
-                      value: _fontSize, min: 10, max: 24, divisions: 14,
-                      onChanged: (v) => setState(() => _fontSize = v),
+                      value: sp.fontSize, min: 10, max: 24, divisions: 14,
+                      onChanged: (v) => sp.updateEditorSettings(fontSize: v),
                       valueLabel: (v) => '${v.toInt()}px',
                       accentColor: const Color(0xFF3B82F6),
                     ),
                     SettingsSlider(
                       label: 'Tab Size', icon: Icons.space_bar_rounded,
-                      value: _tabSize.toDouble(), min: 2, max: 8, divisions: 3,
-                      onChanged: (v) => setState(() => _tabSize = v.toInt()),
+                      value: sp.tabSize.toDouble(), min: 2, max: 8, divisions: 3,
+                      onChanged: (v) => sp.updateEditorSettings(tabSize: v.toInt()),
                       valueLabel: (v) => '${v.toInt()} spaces',
-                      accentColor: const Color(0xFFA855F7),
+                      accentColor: const Color(0xFF3B82F6),
                     ),
                     SettingsToggle(label: 'Auto Save', subtitle: 'Save files automatically',
-                      icon: Icons.save_rounded, value: _autoSave,
-                      onChanged: (v) => setState(() => _autoSave = v), accentColor: const Color(0xFF10B981)),
+                      icon: Icons.save_rounded, value: sp.autoSave,
+                      onChanged: (v) => sp.updateEditorSettings(autoSave: v), accentColor: const Color(0xFF10B981)),
                     SettingsToggle(label: 'Word Wrap', subtitle: 'Wrap long lines',
-                      icon: Icons.wrap_text_rounded, value: _wordWrap,
-                      onChanged: (v) => setState(() => _wordWrap = v), accentColor: const Color(0xFF06B6D4)),
+                      icon: Icons.wrap_text_rounded, value: sp.wordWrap,
+                      onChanged: (v) => sp.updateEditorSettings(wordWrap: v), accentColor: const Color(0xFF06B6D4)),
                     SettingsToggle(label: 'Minimap', subtitle: 'Show code minimap sidebar',
-                      icon: Icons.map_rounded, value: _minimap,
-                      onChanged: (v) => setState(() => _minimap = v), accentColor: const Color(0xFFF59E0B)),
+                      icon: Icons.map_rounded, value: sp.minimap,
+                      onChanged: (v) => sp.updateEditorSettings(minimap: v), accentColor: const Color(0xFFF59E0B)),
                     SettingsToggle(label: 'Vim Mode', subtitle: 'Enable vim keybindings',
-                      icon: Icons.terminal_rounded, value: _vimMode,
-                      onChanged: (v) => setState(() => _vimMode = v), accentColor: const Color(0xFFEF4444)),
+                      icon: Icons.terminal_rounded, value: sp.vimMode,
+                      onChanged: (v) => sp.updateEditorSettings(vimMode: v), accentColor: const Color(0xFFEF4444)),
                     SettingsToggle(label: 'AI Inline Suggestions', subtitle: 'Copilot-style completions',
-                      icon: Icons.auto_fix_high_rounded, value: _aiSuggestions,
-                      onChanged: (v) => setState(() => _aiSuggestions = v), accentColor: const Color(0xFF8B5CF6)),
+                      icon: Icons.auto_fix_high_rounded, value: sp.aiSuggestions,
+                      onChanged: (v) => sp.updateEditorSettings(aiSuggestions: v), accentColor: const Color(0xFF8B5CF6)),
                     SettingsToggle(label: 'Live Linting', subtitle: 'Real-time error detection',
-                      icon: Icons.bug_report_rounded, value: _linting,
-                      onChanged: (v) => setState(() => _linting = v), accentColor: const Color(0xFFEC4899)),
+                      icon: Icons.bug_report_rounded, value: sp.linting,
+                      onChanged: (v) => sp.updateEditorSettings(linting: v), accentColor: const Color(0xFFEC4899)),
                     SettingsToggle(label: 'Format on Save', subtitle: 'Auto-format code when saving',
-                      icon: Icons.auto_fix_normal_rounded, value: _formatOnSave,
-                      onChanged: (v) => setState(() => _formatOnSave = v), accentColor: const Color(0xFF10B981)),
+                      icon: Icons.auto_fix_normal_rounded, value: sp.formatOnSave,
+                      onChanged: (v) => sp.updateEditorSettings(formatOnSave: v), accentColor: const Color(0xFF10B981)),
                   ],
                 ),
               ).animate().fadeIn(delay: 250.ms, duration: 400.ms),

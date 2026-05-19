@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/settings/glass_card.dart';
 import '../../widgets/settings/settings_toggle.dart';
 import '../../widgets/settings/settings_slider.dart';
@@ -16,13 +17,6 @@ class AppearancePage extends StatefulWidget {
 }
 
 class _AppearancePageState extends State<AppearancePage> {
-  int _selectedTheme = 0;
-  int _selectedAccent = 0;
-  double _blurIntensity = 0.7;
-  double _animationSpeed = 0.5;
-  bool _particles = true;
-  bool _reduceMotion = false;
-
   static const _themes = [
     _ThemeOption('Dark', Color(0xFF0B0B0C), Color(0xFF1E1E21), Icons.dark_mode_rounded),
     _ThemeOption('Midnight', Color(0xFF0A0E27), Color(0xFF131842), Icons.nightlight_round),
@@ -46,6 +40,7 @@ class _AppearancePageState extends State<AppearancePage> {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
     final tp = context.watch<ThemeProvider>();
+    final sp = context.watch<SettingsProvider>();
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF08080A) : const Color(0xFFF1F5F9),
@@ -77,10 +72,10 @@ class _AppearancePageState extends State<AppearancePage> {
                   itemCount: _themes.length,
                   itemBuilder: (context, index) {
                     final theme = _themes[index];
-                    final isActive = _selectedTheme == index;
+                    final isActive = sp.selectedTheme == index;
                     return GestureDetector(
                       onTap: () {
-                        setState(() => _selectedTheme = index);
+                        sp.updateAppearanceSettings(selectedTheme: index);
                         // Toggle between dark and light for the actual theme
                         if (index == 4 && isDark) tp.toggleTheme();
                         if (index != 4 && !isDark) tp.toggleTheme();
@@ -98,32 +93,32 @@ class _AppearancePageState extends State<AppearancePage> {
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: isActive
-                                ? _accents[_selectedAccent].withValues(alpha: 0.6)
+                                ? _accents[sp.selectedAccent].withValues(alpha: 0.6)
                                 : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06)),
                             width: isActive ? 2 : 1,
                           ),
                           boxShadow: isActive
-                              ? [BoxShadow(color: _accents[_selectedAccent].withValues(alpha: 0.2), blurRadius: 16)]
+                              ? [BoxShadow(color: _accents[sp.selectedAccent].withValues(alpha: 0.2), blurRadius: 16)]
                               : [],
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(theme.icon, size: 28,
-                              color: isActive ? _accents[_selectedAccent] : (index == 4 ? Colors.black54 : Colors.white54)),
+                              color: isActive ? _accents[sp.selectedAccent] : (index == 4 ? Colors.black54 : Colors.white54)),
                             const SizedBox(height: 8),
                             Text(
                               theme.name,
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11, fontWeight: FontWeight.w700,
-                                color: isActive ? _accents[_selectedAccent] : (index == 4 ? Colors.black54 : Colors.white54),
+                                  fontSize: 11, fontWeight: FontWeight.w700,
+                                  color: isActive ? _accents[sp.selectedAccent] : (index == 4 ? Colors.black54 : Colors.white54),
                               ),
                             ),
                             if (isActive) ...[
                               const SizedBox(height: 4),
                               Container(width: 20, height: 3,
                                 decoration: BoxDecoration(
-                                  color: _accents[_selectedAccent],
+                                  color: _accents[sp.selectedAccent],
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
@@ -156,9 +151,9 @@ class _AppearancePageState extends State<AppearancePage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: List.generate(_accents.length, (index) {
-                      final isActive = _selectedAccent == index;
+                      final isActive = sp.selectedAccent == index;
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedAccent = index),
+                        onTap: () => sp.updateAppearanceSettings(selectedAccent: index),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           width: isActive ? 36 : 30,
@@ -206,8 +201,8 @@ class _AppearancePageState extends State<AppearancePage> {
                       label: 'Blur Intensity',
                       subtitle: 'Glassmorphism blur strength',
                       icon: Icons.blur_on_rounded,
-                      value: _blurIntensity, min: 0, max: 1, divisions: 10,
-                      onChanged: (v) => setState(() => _blurIntensity = v),
+                      value: sp.blurIntensity, min: 0, max: 1, divisions: 10,
+                      onChanged: (v) => sp.updateAppearanceSettings(blurIntensity: v),
                       valueLabel: (v) => v <= 0.3 ? 'Subtle' : v >= 0.7 ? 'Heavy' : 'Medium',
                       accentColor: const Color(0xFF06B6D4),
                     ),
@@ -215,8 +210,8 @@ class _AppearancePageState extends State<AppearancePage> {
                       label: 'Animation Speed',
                       subtitle: 'Controls transition duration',
                       icon: Icons.speed_rounded,
-                      value: _animationSpeed, min: 0, max: 1, divisions: 10,
-                      onChanged: (v) => setState(() => _animationSpeed = v),
+                      value: sp.animationSpeed, min: 0, max: 1, divisions: 10,
+                      onChanged: (v) => sp.updateAppearanceSettings(animationSpeed: v),
                       valueLabel: (v) => v <= 0.3 ? 'Slow' : v >= 0.7 ? 'Fast' : 'Normal',
                       accentColor: const Color(0xFFA855F7),
                     ),
@@ -224,16 +219,16 @@ class _AppearancePageState extends State<AppearancePage> {
                       label: 'Particle Effects',
                       subtitle: 'Floating ambient particles in backgrounds',
                       icon: Icons.auto_awesome_rounded,
-                      value: _particles,
-                      onChanged: (v) => setState(() => _particles = v),
+                      value: sp.particles,
+                      onChanged: (v) => sp.updateAppearanceSettings(particles: v),
                       accentColor: const Color(0xFFF59E0B),
                     ),
                     SettingsToggle(
                       label: 'Reduce Motion',
                       subtitle: 'Minimize animations for accessibility',
                       icon: Icons.accessibility_new_rounded,
-                      value: _reduceMotion,
-                      onChanged: (v) => setState(() => _reduceMotion = v),
+                      value: sp.reduceMotion,
+                      onChanged: (v) => sp.updateAppearanceSettings(reduceMotion: v),
                       accentColor: const Color(0xFF64748B),
                     ),
                   ],

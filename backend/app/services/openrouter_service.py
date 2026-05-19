@@ -56,7 +56,13 @@ def validate_free_model(model_id: str):
     logger.error(f"❌ BLOCKING PAID MODEL CALL: {model_id}")
     raise ValueError(f"Safety Error: {model_id} is not a verified FREE model. Request blocked to prevent billing.")
 
-async def stream_generate(messages: list[dict], model: str = "meta-llama/llama-3.3-70b-instruct:free") -> AsyncGenerator[str, None]:
+async def stream_generate(
+    messages: list[dict], 
+    model: str = "meta-llama/llama-3.3-70b-instruct:free",
+    temperature: float = None,
+    max_tokens: int = None,
+    api_key: str = None
+) -> AsyncGenerator[str, None]:
     """
     Stream a response from OpenRouter API.
     """
@@ -64,12 +70,13 @@ async def stream_generate(messages: list[dict], model: str = "meta-llama/llama-3
     validate_free_model(model)
     
     settings = get_settings()
-    if not settings.OPENROUTER_API_KEY:
+    active_key = api_key or settings.OPENROUTER_API_KEY
+    if not active_key:
         yield "[Error: OpenRouter API Key is missing. Please check your .env file.]"
         return
 
     headers = {
-        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {active_key}",
         "Content-Type": "application/json",
         "HTTP-Referer": "http://localhost:3000", # Optional, for OpenRouter analytics
         "X-Title": "Code Genie AI",
@@ -82,8 +89,10 @@ async def stream_generate(messages: list[dict], model: str = "meta-llama/llama-3
         "model": model,
         "messages": full_messages,
         "stream": True,
-        "temperature": 0.7,
+        "temperature": temperature if temperature is not None else 0.7,
     }
+    if max_tokens is not None:
+        payload["max_tokens"] = max_tokens
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -118,6 +127,8 @@ async def generate(messages: list[dict], model: str = "meta-llama/llama-3.3-70b-
     """
     Generate a complete response from OpenRouter API.
     """
+    validate_free_model(model)
+
     settings = get_settings()
     if not settings.OPENROUTER_API_KEY:
         return "[Error: OpenRouter API Key is missing.]"

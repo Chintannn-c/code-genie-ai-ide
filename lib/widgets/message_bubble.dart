@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:math' as math;
 
 import 'package:ai_coding/providers/chat_provider.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +12,7 @@ import '../models/message.dart';
 import '../utils/code_parser.dart';
 import 'code_block.dart';
 
-/// Futuristic AI message bubble that renders as a holographic intelligence interface.
+/// Chat message bubble with readable code-aware rendering.
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isDark;
@@ -35,8 +34,10 @@ class MessageBubble extends StatelessWidget {
     if (m.contains('gemini')) return const Color(0xFF4285F4); // Electric Blue
     if (m.contains('qwen')) return const Color(0xFF00F2FF); // Cyber Cyan
     if (m.contains('mistral')) return const Color(0xFFFF4B4B); // Security Red
-    if (m.contains('llama') || m.contains('groq')) return const Color(0xFF00FF88); // Optimizer Green
-    if (m.contains('gpt') || m.contains('oss')) return const Color(0xFFFFD700); // Holographic Gold
+    if (m.contains('llama') || m.contains('groq'))
+      return const Color(0xFF00FF88); // Optimizer Green
+    if (m.contains('gpt') || m.contains('oss'))
+      return const Color(0xFFFFD700); // Holographic Gold
     return const Color(0xFF6366F1); // Default Neural Purple
   }
 
@@ -47,22 +48,27 @@ class MessageBubble extends StatelessWidget {
 
     return RepaintBoundary(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
-          mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: isUser
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (isUser) Spacer(flex: isWide ? 1 : 2),
-            
+
             Flexible(
               flex: isWide ? 12 : 10,
               child: Column(
-                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment: isUser
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
                   _buildHeader(agentColor),
                   const SizedBox(height: 8),
                   _buildMainBubble(context, agentColor),
-                  if (!isUser && !isStreaming) _buildFooter(context, agentColor),
+                  if (!isUser && !isStreaming)
+                    _buildFooter(context, agentColor),
                 ],
               ),
             ),
@@ -85,17 +91,23 @@ class MessageBubble extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Text(
-            (isUser ? 'LOCAL OPERATOR' : (message.modelName?.toUpperCase() ?? 'CODE GENIE')),
+            (isUser ? 'You' : (message.modelName ?? 'Code Genie')),
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
-              color: agentColor.withValues(alpha: 0.6),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+              color: isUser
+                  ? agentColor.withValues(alpha: 0.72)
+                  : agentColor.withValues(alpha: 0.78),
             ),
           ),
           if (isUser) ...[
             const SizedBox(width: 8),
-            Icon(Icons.person_outline_rounded, size: 12, color: agentColor.withValues(alpha: 0.4)),
+            Icon(
+              Icons.person_outline_rounded,
+              size: 12,
+              color: agentColor.withValues(alpha: 0.4),
+            ),
           ],
         ],
       ),
@@ -104,55 +116,55 @@ class MessageBubble extends StatelessWidget {
 
   Widget _buildMainBubble(BuildContext context, Color agentColor) {
     return ClipRRect(
-      borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(isUser ? 24 : 4),
-        topRight: Radius.circular(isUser ? 4 : 24),
-        bottomLeft: const Radius.circular(24),
-        bottomRight: const Radius.circular(24),
-      ),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isUser 
-                ? agentColor.withValues(alpha: 0.15) 
-                : (isDark ? const Color(0xFF161618).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.8)),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(isUser ? 24 : 4),
-              topRight: Radius.circular(isUser ? 4 : 24),
-              bottomLeft: const Radius.circular(24),
-              bottomRight: const Radius.circular(24),
-            ),
-            border: Border.all(
-              color: agentColor.withValues(alpha: isStreaming ? 0.3 : 0.1),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: agentColor.withValues(alpha: isStreaming ? 0.15 : 0.05),
-                blurRadius: 30,
-                spreadRadius: -10,
-              ),
-            ],
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(isUser ? 10 : 4),
+            topRight: Radius.circular(isUser ? 4 : 10),
+            bottomLeft: const Radius.circular(10),
+            bottomRight: const Radius.circular(10),
           ),
-          child: Stack(
-            children: [
-              if (!isUser) Positioned.fill(child: CustomPaint(painter: _NeuralBackgroundPainter(color: agentColor))),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ..._buildContent(context, agentColor),
-                    if (isStreaming && !isUser) _buildStreamingIndicator(agentColor),
-                  ],
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isUser
+                    ? agentColor.withValues(alpha: 0.13)
+                    : (isDark
+                          ? const Color(0xFF111827).withValues(alpha: 0.9)
+                          : Colors.white),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(isUser ? 10 : 4),
+                  topRight: Radius.circular(isUser ? 4 : 10),
+                  bottomLeft: const Radius.circular(10),
+                  bottomRight: const Radius.circular(10),
+                ),
+                border: Border.all(
+                  color: agentColor.withValues(
+                    alpha: isStreaming ? 0.35 : 0.12,
+                  ),
+                  width: 1,
                 ),
               ),
-            ],
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ..._buildContent(context, agentColor),
+                        if (isStreaming && !isUser)
+                          _buildStreamingIndicator(agentColor),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-    ).animate(target: 1).fadeIn(duration: 400.ms).slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad);
+        )
+        .animate(target: 1)
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad);
   }
 
   Widget _buildStreamingIndicator(Color agentColor) {
@@ -188,7 +200,11 @@ class MessageBubble extends StatelessWidget {
     // Purify content
     String purified = message.content
         .split('\n')
-        .where((line) => !line.contains('Model: AI Orchestrator') && !line.startsWith('[Error:'))
+        .where(
+          (line) =>
+              !line.contains('Model: AI Orchestrator') &&
+              !line.startsWith('[Error:'),
+        )
         .join('\n')
         .trim();
 
@@ -200,9 +216,23 @@ class MessageBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 200, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+              Container(
+                width: 200,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
               const SizedBox(height: 8),
-              Container(width: 150, height: 12, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+              Container(
+                width: 150,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
             ],
           ),
         ),
@@ -210,27 +240,37 @@ class MessageBubble extends StatelessWidget {
     }
 
     final segments = CodeParser.parse(purified);
-    children.addAll(segments.map((s) {
-      if (s.isCode) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: CodeBlock(code: s.content, language: s.language, isDark: isDark),
-        );
-      } else {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: SelectableText(
-            s.content,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              height: 1.6,
-              color: isUser ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.85)),
-              letterSpacing: 0.2,
+    children.addAll(
+      segments.map((s) {
+        if (s.isCode) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: CodeBlock(
+              code: s.content,
+              language: s.language,
+              isDark: isDark,
             ),
-          ),
-        );
-      }
-    }));
+          );
+        } else {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: SelectableText(
+              s.content,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                height: 1.6,
+                color: isUser
+                    ? Colors.white
+                    : (isDark
+                          ? Colors.white.withValues(alpha: 0.9)
+                          : Colors.black.withValues(alpha: 0.85)),
+                letterSpacing: 0,
+              ),
+            ),
+          );
+        }
+      }),
+    );
 
     return children;
   }
@@ -239,28 +279,46 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 12, left: 8, right: 8),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             _AgentContributionIcon(agentColor: agentColor),
             const SizedBox(width: 12),
             Text(
               DateFormat.jm().format(message.timestamp.toLocal()),
-              style: GoogleFonts.inter(fontSize: 10, color: agentColor.withValues(alpha: 0.4)),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                color: agentColor.withValues(alpha: 0.4),
+              ),
             ),
             const Spacer(),
-            _ActionIcon(icon: Icons.copy_rounded, color: agentColor, onTap: () {
-              Clipboard.setData(ClipboardData(text: message.content));
-            }),
+            _ActionIcon(
+              icon: Icons.copy_rounded,
+              color: agentColor,
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: message.content));
+              },
+            ),
             const SizedBox(width: 12),
-            _ActionIcon(icon: Icons.auto_fix_high_rounded, color: agentColor, onTap: () {
-               context.read<ChatProvider>().sendMessage(prompt: "Explain the architecture of your previous response.");
-            }),
+            _ActionIcon(
+              icon: Icons.auto_fix_high_rounded,
+              color: agentColor,
+              onTap: () {
+                context.read<ChatProvider>().sendMessage(
+                  prompt: "Explain the architecture of your previous response.",
+                );
+              },
+            ),
           ],
-          if (isUser) 
+          if (isUser)
             Text(
               DateFormat.jm().format(message.timestamp.toLocal()),
-              style: GoogleFonts.inter(fontSize: 10, color: agentColor.withValues(alpha: 0.4)),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                color: agentColor.withValues(alpha: 0.4),
+              ),
             ),
         ],
       ),
@@ -275,12 +333,28 @@ class _PulseIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: [
-        BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1),
-      ]),
-    ).animate(onPlay: (c) => c.repeat()).scale(duration: 1000.ms, begin: const Offset(1, 1), end: const Offset(1.5, 1.5), curve: Curves.easeInOut).fadeOut();
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.5),
+                blurRadius: 4,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat())
+        .scale(
+          duration: 1000.ms,
+          begin: const Offset(1, 1),
+          end: const Offset(1.5, 1.5),
+          curve: Curves.easeInOut,
+        )
+        .fadeOut();
   }
 }
 
@@ -306,7 +380,11 @@ class _ActionIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _ActionIcon({required this.icon, required this.color, required this.onTap});
+  const _ActionIcon({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -316,33 +394,4 @@ class _ActionIcon extends StatelessWidget {
       child: Icon(icon, size: 14, color: color.withValues(alpha: 0.4)),
     );
   }
-}
-
-class _NeuralBackgroundPainter extends CustomPainter {
-  final Color color;
-  _NeuralBackgroundPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color.withValues(alpha: 0.03)
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-
-    final random = math.Random(42);
-    for (var i = 0; i < 5; i++) {
-      final path = Path();
-      path.moveTo(random.nextDouble() * size.width, random.nextDouble() * size.height);
-      path.quadraticBezierTo(
-        random.nextDouble() * size.width,
-        random.nextDouble() * size.height,
-        random.nextDouble() * size.width,
-        random.nextDouble() * size.height,
-      );
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

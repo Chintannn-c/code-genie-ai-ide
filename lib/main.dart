@@ -7,6 +7,7 @@ import 'providers/chat_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/orchestration_provider.dart';
+import 'providers/settings_provider.dart';
 
 import 'services/notification_service.dart';
 import 'providers/notification_provider.dart';
@@ -37,6 +38,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PlanningProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(

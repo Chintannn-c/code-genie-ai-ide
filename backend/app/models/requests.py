@@ -41,9 +41,13 @@ class StreamRequest(BaseModel):
     language: str = Field("python")
     difficulty: Literal["beginner", "intermediate", "advanced"] = Field("beginner")
     type: Literal["generate", "debug", "explain", "file_analysis", "file_debug"] = Field("generate")
-    provider: Literal["gemini", "openrouter", "huggingface"] = Field("gemini")
+    provider: Literal["gemini", "openrouter", "huggingface", "groq", "github", "mistral"] = Field("gemini")
     model_name: str | None = Field(None, description="Specific model to use (for OpenRouter/HuggingFace)")
     file_ids: list[str] | None = Field(None, description="Optional file IDs to include as context")
+    temperature: float | None = Field(None, ge=0.0, le=2.0, description="Optional sampling temperature")
+    max_tokens: int | None = Field(None, ge=1, le=8192, description="Optional output token limit")
+    custom_api_keys: dict[str, str] | None = Field(None, description="Optional user-provided provider keys")
+    creativity: float | None = Field(None, description="Creativity vs Accuracy override")
     
 class PlanRequest(BaseModel):
     """Request schema for generating an autonomous plan."""

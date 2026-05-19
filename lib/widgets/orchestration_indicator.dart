@@ -5,11 +5,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 class OrchestrationIndicator extends StatelessWidget {
   final bool isActive;
+  final String label;
   final List<String> models;
 
   const OrchestrationIndicator({
     super.key,
     required this.isActive,
+    this.label = 'AI working',
     this.models = const ['Qwen', 'Gemini', 'Mistral', 'Llama'],
   });
 
@@ -18,7 +20,8 @@ class OrchestrationIndicator extends StatelessWidget {
     if (m.contains('gemini')) return const Color(0xFF4285F4);
     if (m.contains('qwen')) return const Color(0xFF00F2FF);
     if (m.contains('mistral')) return const Color(0xFFFF4B4B);
-    if (m.contains('llama') || m.contains('groq')) return const Color(0xFF00FF88);
+    if (m.contains('llama') || m.contains('groq'))
+      return const Color(0xFF00FF88);
     return const Color(0xFF6366F1);
   }
 
@@ -34,54 +37,48 @@ class OrchestrationIndicator extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: isDark 
-                  ? const Color(0xFF1E1E21).withValues(alpha: 0.6) 
-                  : Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
+              color: isDark
+                  ? const Color(0xFF111827).withValues(alpha: 0.88)
+                  : Colors.white.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.2),
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
+              mainAxisSize: MainAxisSize.max,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _HolographicRing(color: const Color(0xFF6366F1)),
-                    const SizedBox(width: 16),
-                    Text(
-                      'AI ORCHESTRATION ACTIVE',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFF6366F1),
-                        letterSpacing: 2.0,
+                _HolographicRing(color: const Color(0xFF6366F1)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ...models
+                    .take(2)
+                    .map(
+                      (m) => Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: _ModelNode(model: m, color: _getModelColor(m)),
                       ),
-                    ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: models.map((m) => _ModelNode(model: m, color: _getModelColor(m))).toList(),
-                ),
+                    ),
               ],
             ),
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOutBack);
+    ).animate().fadeIn(duration: 180.ms);
   }
 }
 
@@ -92,15 +89,21 @@ class _HolographicRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: color, width: 2),
-      ),
-    ).animate(onPlay: (c) => c.repeat())
-      .scale(duration: 1500.ms, begin: const Offset(1, 1), end: const Offset(1.3, 1.3), curve: Curves.easeInOut)
-      .fadeOut();
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat())
+        .scale(
+          duration: 1500.ms,
+          begin: const Offset(1, 1),
+          end: const Offset(1.3, 1.3),
+          curve: Curves.easeInOut,
+        )
+        .fadeOut();
   }
 }
 
@@ -112,10 +115,10 @@ class _ModelNode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -128,7 +131,7 @@ class _ModelNode extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            model.toUpperCase(),
+            model.toUpperCase().replaceAll('_', ' '),
             style: GoogleFonts.jetBrainsMono(
               fontSize: 9,
               fontWeight: FontWeight.w800,

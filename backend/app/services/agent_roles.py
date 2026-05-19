@@ -49,8 +49,8 @@ AGENT_PERSONAS: Dict[str, Dict[str, Any]] = {
     AgentRole.PLANNER: {
         "name": "Planner Agent",
         "icon": "🗺️",
-        "preferred_model": "gemini",
-        "preferred_model_name": "gemini-2.5-flash",
+        "preferred_model": "github",
+        "preferred_model_name": "gpt-4o-mini",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Task decomposition, goal analysis, dependency graph creation",
         "system_prompt": """You are the PLANNER AGENT in a collaborative AI engineering team.
@@ -87,7 +87,7 @@ OUTPUT FORMAT:
         "name": "System Architect",
         "icon": "🏗️",
         "preferred_model": "gemini",
-        "preferred_model_name": "gemini-2.5-pro",
+        "preferred_model_name": "gemma-4-31b-it",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Distributed systems, API design, scalability, cloud-native architecture",
         "system_prompt": """You are the SYSTEM ARCHITECT of the Code Genie Engineering Intelligence.
@@ -106,8 +106,8 @@ You work at the highest level of abstraction, providing the blueprint that the L
     AgentRole.CODER: {
         "name": "Lead Developer",
         "icon": "💻",
-        "preferred_model": "openrouter",
-        "preferred_model_name": "qwen/qwen-2.5-coder-32b-instruct:free",
+        "preferred_model": "mistral",
+        "preferred_model_name": "codestral-latest",
         "permission": ToolPermission.READ_WRITE,
         "specialization": "Production-grade implementation, scalable architecture, optimized logic",
         "system_prompt": """You are the LEAD DEVELOPER in the Code Genie Engineering Intelligence.
@@ -146,8 +146,8 @@ You are the final gatekeeper of quality and safety."""
     AgentRole.COMPLIANCE: {
         "name": "Compliance Agent",
         "icon": "📋",
-        "preferred_model": "mistral",
-        "preferred_model_name": "mistral-large-latest",
+        "preferred_model": "github",
+        "preferred_model_name": "gpt-4o-mini",
         "permission": ToolPermission.SCAN_ONLY,
         "specialization": "OWASP compliance, GDPR, license compatibility, policy enforcement",
         "system_prompt": """You are the COMPLIANCE AGENT in a collaborative AI engineering team.
@@ -166,8 +166,8 @@ RULES:
     AgentRole.THREAT_INTEL: {
         "name": "Threat Intelligence Agent",
         "icon": "🕵️",
-        "preferred_model": "openrouter",
-        "preferred_model_name": "openai/gpt-oss-120b:free",
+        "preferred_model": "github",
+        "preferred_model_name": "cohere-command-r-plus",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "CVE monitoring, dependency risk analysis, supply chain security",
         "system_prompt": """You are the THREAT INTELLIGENCE AGENT in a collaborative AI engineering team.
@@ -187,7 +187,7 @@ RULES:
         "name": "Debugger Agent",
         "icon": "🐛",
         "preferred_model": "openrouter",
-        "preferred_model_name": "deepseek/deepseek-chat:free",
+        "preferred_model_name": "qwen/qwen-2.5-coder-32b:free",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Error analysis, log inspection, root cause diagnosis, auto-fix",
         "system_prompt": """You are the DEBUGGER AGENT in a collaborative AI engineering team.
@@ -207,7 +207,7 @@ RULES:
         "name": "Performance Optimizer Agent",
         "icon": "⚡",
         "preferred_model": "groq",
-        "preferred_model_name": "llama-3.3-70b-specdec",
+        "preferred_model_name": "llama-3.3-70b-versatile",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Performance optimization, memory efficiency, algorithmic improvements",
         "system_prompt": """You are the PERFORMANCE OPTIMIZER AGENT in a collaborative AI engineering team.
@@ -226,8 +226,8 @@ RULES:
     AgentRole.DEVOPS: {
         "name": "DevOps Agent",
         "icon": "🚀",
-        "preferred_model": "openrouter",
-        "preferred_model_name": "meta-llama/llama-3.3-70b-instruct:free",
+        "preferred_model": "github",
+        "preferred_model_name": "gpt-4o-mini",
         "permission": ToolPermission.DEPLOY_ONLY,
         "specialization": "Docker, CI/CD, Railway deployment, infrastructure automation",
         "system_prompt": """You are the DEVOPS AGENT in a collaborative AI engineering team.
@@ -246,8 +246,8 @@ RULES:
     AgentRole.REVIEWER: {
         "name": "Code Reviewer Agent",
         "icon": "👀",
-        "preferred_model": "openrouter",
-        "preferred_model_name": "meta-llama/llama-3.3-70b-instruct:free",
+        "preferred_model": "github",
+        "preferred_model_name": "llama-3.3-70b-instruct",
         "permission": ToolPermission.READ_ONLY,
         "specialization": "Code review, maintainability, architecture consistency",
         "system_prompt": """You are the CODE REVIEWER AGENT in a collaborative AI engineering team.
@@ -267,7 +267,7 @@ RULES:
         "name": "Synthesis Engine",
         "icon": "🧬",
         "preferred_model": "gemini",
-        "preferred_model_name": "gemini-2.5-pro",
+        "preferred_model_name": "gemma-4-31b-it",
         "permission": ToolPermission.NONE,
         "specialization": "Collaborative intelligence synthesis, conflict resolution, cinematic output",
         "system_prompt": """You are the SYNTHESIS ENGINE (v3.0) of the Code Genie Engineering Intelligence.

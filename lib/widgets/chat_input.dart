@@ -297,19 +297,23 @@ class _ChatInputState extends State<ChatInput> {
                         children: [
                           if (widget.attachmentButton != null)
                             widget.attachmentButton!,
-                          
+
                           const SizedBox(width: 4),
-                          
+
                           // Web View Toggle Button (World Icon)
                           Tooltip(
-                            message: widget.isWebOpen ? 'Close Web View' : 'Open Web View',
+                            message: widget.isWebOpen
+                                ? 'Close Web View'
+                                : 'Open Web View',
                             child: IconButton(
                               icon: Icon(
                                 Icons.public_rounded,
                                 size: 20,
-                                color: widget.isWebOpen 
-                                  ? const Color(0xFF6366F1)
-                                  : (widget.isDark ? Colors.white38 : Colors.black38),
+                                color: widget.isWebOpen
+                                    ? const Color(0xFF6366F1)
+                                    : (widget.isDark
+                                          ? Colors.white38
+                                          : Colors.black38),
                               ),
                               onPressed: widget.onToggleWeb,
                               padding: const EdgeInsets.all(8),
@@ -318,17 +322,21 @@ class _ChatInputState extends State<ChatInput> {
                           ),
 
                           const SizedBox(width: 4),
-                          
+
                           // Terminal Toggle Button
                           Tooltip(
-                            message: widget.isTerminalOpen ? 'Hide Terminal' : 'Show Terminal',
+                            message: widget.isTerminalOpen
+                                ? 'Hide Terminal'
+                                : 'Show Terminal',
                             child: IconButton(
                               icon: Icon(
                                 Icons.terminal_rounded,
                                 size: 20,
-                                color: widget.isTerminalOpen 
-                                  ? const Color(0xFF6366F1)
-                                  : (widget.isDark ? Colors.white38 : Colors.black38),
+                                color: widget.isTerminalOpen
+                                    ? const Color(0xFF6366F1)
+                                    : (widget.isDark
+                                          ? Colors.white38
+                                          : Colors.black38),
                               ),
                               onPressed: widget.onToggleTerminal,
                               padding: const EdgeInsets.all(8),
@@ -343,12 +351,16 @@ class _ChatInputState extends State<ChatInput> {
                               icon: Icon(
                                 Icons.keyboard_voice_rounded,
                                 size: 20,
-                                color: widget.isDark ? Colors.white38 : Colors.black38,
+                                color: widget.isDark
+                                    ? Colors.white38
+                                    : Colors.black38,
                               ),
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Voice interaction enabled. Functionality is live.'),
+                                    content: Text(
+                                      'Voice input is not configured yet.',
+                                    ),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
@@ -382,20 +394,48 @@ class _ChatInputState extends State<ChatInput> {
     final isActive = cp.useParallelOrchestration;
 
     return Tooltip(
-      message: 'Parallel AI Orchestration (Multi-Model)',
-      child: GestureDetector(
+      message: 'Deep Solve',
+      child: InkWell(
         onTap: cp.toggleParallelOrchestration,
-        child: const Icon(Icons.psychology_rounded, size: 24)
-            .animate(target: isActive ? 1 : 0)
-            .shimmer(
-              duration: 1500.ms,
-              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-            )
-            .tint(
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: isActive
+                ? const Color(0xFF6366F1).withValues(alpha: 0.14)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
               color: isActive
-                  ? const Color(0xFF6366F1)
-                  : (widget.isDark ? Colors.white38 : Colors.black38),
+                  ? const Color(0xFF6366F1).withValues(alpha: 0.35)
+                  : (widget.isDark ? Colors.white10 : Colors.black12),
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.psychology_rounded,
+                size: 18,
+                color: isActive
+                    ? const Color(0xFF818CF8)
+                    : (widget.isDark ? Colors.white54 : Colors.black45),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Deep',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isActive
+                      ? const Color(0xFF818CF8)
+                      : (widget.isDark ? Colors.white54 : Colors.black45),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -405,20 +445,48 @@ class _ChatInputState extends State<ChatInput> {
     final isActive = cp.isMissionMode;
 
     return Tooltip(
-      message: 'Autonomous Mission (Agentic Planning)',
-      child: GestureDetector(
+      message: 'Mission Plan',
+      child: InkWell(
         onTap: cp.toggleMissionMode,
-        child: const Icon(Icons.flag_rounded, size: 24)
-            .animate(target: isActive ? 1 : 0)
-            .shimmer(
-              duration: 1500.ms,
-              color: const Color(0xFF22C55E).withValues(alpha: 0.3),
-            )
-            .tint(
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: isActive
+                ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
               color: isActive
-                  ? const Color(0xFF22C55E)
-                  : (widget.isDark ? Colors.white38 : Colors.black38),
+                  ? const Color(0xFF22C55E).withValues(alpha: 0.32)
+                  : (widget.isDark ? Colors.white10 : Colors.black12),
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.flag_rounded,
+                size: 18,
+                color: isActive
+                    ? const Color(0xFF22C55E)
+                    : (widget.isDark ? Colors.white54 : Colors.black45),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Plan',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isActive
+                      ? const Color(0xFF22C55E)
+                      : (widget.isDark ? Colors.white54 : Colors.black45),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

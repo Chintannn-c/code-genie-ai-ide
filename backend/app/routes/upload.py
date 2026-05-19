@@ -241,7 +241,10 @@ async def stream_analyze_file(request: dict, current_user_id: str = Depends(get_
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         prompt_text = build_prompt(
-            "file_analysis", file_meta["language"], difficulty=difficulty,
+            prompt=f"Analyze this file: {file_meta['file_name']}",
+            language=file_meta["language"],
+            difficulty=difficulty,
+            type="file_analysis",
             code=content
         )
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
@@ -293,8 +296,12 @@ async def stream_debug_file(request: dict, current_user_id: str = Depends(get_cu
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         prompt_text = build_prompt(
-            "file_debug", file_meta["language"], difficulty=difficulty,
-            code=content, error=error
+            prompt=f"Debug this file: {file_meta['file_name']}",
+            language=file_meta["language"],
+            difficulty=difficulty,
+            type="file_debug",
+            code=content,
+            error=error
         )
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
 
@@ -332,7 +339,7 @@ async def generate_patch(request: PatchRequest, current_user_id: str = Depends(g
             
         content = await file_service.read_file_content(file_meta["file_path"])
         prompt = build_prompt("patch", file_meta["language"], code=content, error=request.issue)
-        patch = await gemini_service.generate(prompt)
+        patch = await gemini_service.generate([{"role": "user", "parts": [{"text": prompt}]}])
         
         return {"patch": patch, "file_name": file_meta["file_name"]}
     except Exception as e:

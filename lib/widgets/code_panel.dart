@@ -21,7 +21,7 @@ class CodePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cp = context.watch<ChatProvider>();
 
-    if (code.isEmpty) {
+    if (code.isEmpty && !cp.isWebMode) {
       return Container(
         width: 400,
         color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
@@ -54,7 +54,9 @@ class CodePanel extends StatelessWidget {
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         border: Border(
           left: BorderSide(
-            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.08),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.08),
           ),
         ),
       ),
@@ -64,22 +66,24 @@ class CodePanel extends StatelessWidget {
           _buildHeader(context, cp),
           if (!cp.isWebMode) _buildActionBar(context, cp),
           Expanded(
-            child: cp.isWebMode 
-              ? _buildWebView(context)
-              : Container(
-                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: SelectableText(
-                      code,
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 13,
-                        height: 1.5,
-                        color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+            child: cp.isWebMode
+                ? _buildWebView(context)
+                : Container(
+                    color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: SelectableText(
+                        code,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: isDark
+                              ? const Color(0xFFE2E8F0)
+                              : const Color(0xFF1E293B),
+                        ),
                       ),
                     ),
                   ),
-                ),
           ),
         ],
       ),
@@ -91,11 +95,13 @@ class CodePanel extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Browser UI Mock
+          // Preview shell. This becomes live when a dev server URL is wired in.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -104,14 +110,18 @@ class CodePanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'https://localhost:3000',
+                    'Preview target not connected',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       color: isDark ? Colors.white38 : Colors.black38,
                     ),
                   ),
                 ),
-                Icon(Icons.refresh_rounded, size: 14, color: isDark ? Colors.white38 : Colors.black38),
+                Icon(
+                  Icons.refresh_rounded,
+                  size: 14,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                ),
               ],
             ),
           ),
@@ -128,11 +138,15 @@ class CodePanel extends StatelessWidget {
                       color: const Color(0xFF6366F1).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.web_rounded, size: 40, color: Color(0xFF6366F1)),
+                    child: const Icon(
+                      Icons.web_rounded,
+                      size: 40,
+                      color: Color(0xFF6366F1),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Web Application Ready',
+                    'Preview Not Connected',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -141,7 +155,7 @@ class CodePanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'The generated code has been compiled and the web interface is ready for inspection.',
+                    'Generated code is available in the code panel. Connect a local preview URL before opening a live web view.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13,
@@ -151,17 +165,25 @@ class CodePanel extends StatelessWidget {
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: () {
-                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Opening internal browser...'), behavior: SnackBarBehavior.floating),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('No preview server is connected yet.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6366F1),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                     ),
-                    child: const Text('Open External Preview'),
+                    child: const Text('Connect Preview'),
                   ),
                 ],
               ),
@@ -178,7 +200,11 @@ class CodePanel extends StatelessWidget {
       color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
       child: Row(
         children: [
-          Icon(Icons.terminal_rounded, size: 18, color: isDark ? Colors.white70 : Colors.black54),
+          Icon(
+            Icons.terminal_rounded,
+            size: 18,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
           const SizedBox(width: 10),
           Text(
             language.toUpperCase(),
@@ -217,7 +243,9 @@ class CodePanel extends StatelessWidget {
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.08),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.08),
           ),
         ),
       ),
@@ -236,7 +264,6 @@ class CodePanel extends StatelessWidget {
             color: const Color(0xFFF43F5E),
             onTap: () => cp.fixCode(code, language),
           ),
-        
         ],
       ),
     );
@@ -247,10 +274,8 @@ class CodePanel extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => CodeExecutionPanel(
-        initialCode: code,
-        language: language,
-      ),
+      builder: (context) =>
+          CodeExecutionPanel(initialCode: code, language: language),
     );
   }
 
@@ -291,10 +316,14 @@ class CodePanel extends StatelessWidget {
   }
 
   void _handleDownload(BuildContext context) {
-    // Simple copy as simulation for now, 
+    // Simple copy as simulation for now,
     // or just show snackbar that it would download
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Preparing ${language.toLowerCase()} file for download...')),
+      SnackBar(
+        content: Text(
+          'Preparing ${language.toLowerCase()} file for download...',
+        ),
+      ),
     );
   }
 }

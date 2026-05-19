@@ -33,9 +33,33 @@ class ModelSelector extends StatelessWidget {
         ),
         _buildItem(
           value: 'openrouter',
-          label: 'OpenRouter (Claude/GPT)',
+          label: 'OpenRouter Free Models',
           icon: Icons.hub_rounded,
           isSelected: cp.selectedProvider == 'openrouter',
+        ),
+        _buildItem(
+          value: 'groq',
+          label: 'Groq',
+          icon: Icons.bolt_rounded,
+          isSelected: cp.selectedProvider == 'groq',
+        ),
+        _buildItem(
+          value: 'mistral',
+          label: 'Mistral',
+          icon: Icons.code_rounded,
+          isSelected: cp.selectedProvider == 'mistral',
+        ),
+        _buildItem(
+          value: 'github',
+          label: 'GitHub Models',
+          icon: Icons.api_rounded,
+          isSelected: cp.selectedProvider == 'github',
+        ),
+        _buildItem(
+          value: 'huggingface',
+          label: 'Hugging Face',
+          icon: Icons.dataset_rounded,
+          isSelected: cp.selectedProvider == 'huggingface',
         ),
         if (cp.selectedProvider == 'openrouter') ...[
           const PopupMenuDivider(),
@@ -44,7 +68,8 @@ class ModelSelector extends StatelessWidget {
             value: 'model:meta-llama/llama-3.3-70b-instruct:free',
             label: 'Llama 3.3 (70B)',
             icon: Icons.psychology_rounded,
-            isSelected: cp.selectedModel == 'meta-llama/llama-3.3-70b-instruct:free',
+            isSelected:
+                cp.selectedModel == 'meta-llama/llama-3.3-70b-instruct:free',
           ),
           _buildItem(
             value: 'model:google/gemini-2.0-flash-exp:free',
@@ -52,16 +77,26 @@ class ModelSelector extends StatelessWidget {
             icon: Icons.bolt_rounded,
             isSelected: cp.selectedModel == 'google/gemini-2.0-flash-exp:free',
           ),
+          _buildItem(
+            value: 'model:qwen/qwen-2.5-coder-32b:free',
+            label: 'Qwen Coder 32B',
+            icon: Icons.terminal_rounded,
+            isSelected: cp.selectedModel == 'qwen/qwen-2.5-coder-32b:free',
+          ),
         ],
       ],
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.black.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
           ),
         ),
         child: Row(
@@ -84,8 +119,8 @@ class ModelSelector extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              Icons.unfold_more_rounded, 
-              size: 14, 
+              Icons.unfold_more_rounded,
+              size: 14,
               color: isDark ? Colors.white38 : Colors.black38,
             ),
           ],
@@ -123,7 +158,9 @@ class ModelSelector extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: isSelected ? const Color(0xFF6366F1) : (isDark ? Colors.white70 : Colors.black54),
+            color: isSelected
+                ? const Color(0xFF6366F1)
+                : (isDark ? Colors.white70 : Colors.black54),
           ),
           const SizedBox(width: 12),
           Text(
@@ -131,12 +168,18 @@ class ModelSelector extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected ? const Color(0xFF6366F1) : (isDark ? Colors.white : Colors.black87),
+              color: isSelected
+                  ? const Color(0xFF6366F1)
+                  : (isDark ? Colors.white : Colors.black87),
             ),
           ),
           if (isSelected) ...[
             const Spacer(),
-            const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF6366F1)),
+            const Icon(
+              Icons.check_circle_rounded,
+              size: 14,
+              color: Color(0xFF6366F1),
+            ),
           ],
         ],
       ),
@@ -147,6 +190,14 @@ class ModelSelector extends StatelessWidget {
     switch (provider) {
       case 'openrouter':
         return Icons.hub_rounded;
+      case 'groq':
+        return Icons.bolt_rounded;
+      case 'mistral':
+        return Icons.code_rounded;
+      case 'github':
+        return Icons.api_rounded;
+      case 'huggingface':
+        return Icons.dataset_rounded;
       default:
         return Icons.auto_awesome_rounded;
     }
@@ -156,6 +207,14 @@ class ModelSelector extends StatelessWidget {
     switch (provider) {
       case 'openrouter':
         return 'OPENROUTER';
+      case 'groq':
+        return 'GROQ';
+      case 'mistral':
+        return 'MISTRAL';
+      case 'github':
+        return 'GITHUB';
+      case 'huggingface':
+        return 'HF';
       default:
         return 'GEMINI';
     }

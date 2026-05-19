@@ -6,7 +6,14 @@ from app.prompts.templates import SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
 
-async def stream_generate(contents: list[dict], type: str = "generate") -> AsyncGenerator[str, None]:
+async def stream_generate(
+    contents: list[dict], 
+    type: str = "generate",
+    temperature: float = None,
+    max_output_tokens: int = None,
+    api_key: str = None,
+    custom_api_keys: dict = None
+) -> AsyncGenerator[str, None]:
     """
     Always-on Orchestration: Queries multiple models in parallel
     and streams the synthesized result.
@@ -16,7 +23,12 @@ async def stream_generate(contents: list[dict], type: str = "generate") -> Async
         
         # 1. Try Gemini with a strict watchdog timer
         # If Gemini doesn't yield a single chunk in 10s, it's considered failed
-        gemini_stream = gemini_service.stream_generate(contents)
+        gemini_stream = gemini_service.stream_generate(
+            contents,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            api_key=api_key
+        )
         iterator = gemini_stream.__aiter__()
         try:
             # Wait for the first chunk to arrive to verify Gemini is healthy
@@ -29,7 +41,7 @@ async def stream_generate(contents: list[dict], type: str = "generate") -> Async
         except (asyncio.TimeoutError, Exception) as e:
             logger.error(f"⚠️ Gemini watchdog triggered or failed: {e}. Pivoting to Groq...")
             raise e # Trigger the catch block below for Groq fallback
-
+ 
     except Exception as e:
         logger.error(f"Attempting Groq fallback due to: {e}")
         try:
@@ -38,7 +50,12 @@ async def stream_generate(contents: list[dict], type: str = "generate") -> Async
             for item in contents:
                 messages.append({"role": item["role"], "content": "".join([p.get("text", "") for p in item.get("parts", [])])})
             
-            async for chunk in groq_service.stream_generate(messages):
+            async for chunk in groq_service.stream_generate(
+                messages,
+                temperature=temperature,
+                max_tokens=max_output_tokens,
+                api_key=custom_api_keys.get("groq") if custom_api_keys else None
+            ):
                 yield chunk
         except Exception as groq_e:
             logger.error(f"⚠️ Groq fallback failed: {groq_e}. Attempting OMNI-POOL failover...")
@@ -56,7 +73,13 @@ async def stream_generate(contents: list[dict], type: str = "generate") -> Async
                 for model_id in orchestrator.free_pool:
                     try:
                         logger.info(f"🔄 Attempting OMNI-FAILOVER with: {model_id}")
-                        async for chunk in openrouter_service.stream_generate(messages, model=model_id):
+                        async for chunk in openrouter_service.stream_generate(
+                            messages, 
+                            model=model_id,
+                            temperature=temperature,
+                            max_tokens=max_output_tokens,
+                            api_key=custom_api_keys.get("openrouter") if custom_api_keys else None
+                        ):
                             yield chunk
                         success = True
                         break # Exit pool loop on success

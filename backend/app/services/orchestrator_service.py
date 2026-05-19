@@ -292,13 +292,16 @@ class AIOrchestrator:
         if provider == "gemini":
             contents = []
             for msg in history:
-                contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+                role = msg.get("role", "user")
+                if role in ("ai", "assistant"):
+                    role = "model"
+                contents.append({"role": role, "parts": [{"text": msg["content"]}]})
             contents.append({"role": "user", "parts": [{"text": prompt}]})
-            return await gemini_mod.generate(contents)
+            return await gemini_mod.generate(contents, model=model_name)
 
         elif provider == "groq":
             messages = history + [{"role": "user", "content": prompt}]
-            return await groq_mod.generate(messages)
+            return await groq_mod.generate(messages, model=model_name)
 
         elif provider == "openrouter":
             messages = history + [{"role": "user", "content": prompt}]
@@ -306,11 +309,11 @@ class AIOrchestrator:
 
         elif provider == "github":
             messages = history + [{"role": "user", "content": prompt}]
-            return await github_mod.generate(messages)
+            return await github_mod.generate(messages, model=model_name)
 
         elif provider == "mistral":
             messages = history + [{"role": "user", "content": prompt}]
-            return await mistral_mod.generate(messages)
+            return await mistral_mod.generate(messages, model=model_name)
 
         else:
             raise ValueError(f"Unknown provider: {provider}")

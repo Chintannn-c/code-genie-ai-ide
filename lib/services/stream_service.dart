@@ -98,6 +98,9 @@ class StreamService {
     String provider = 'gemini',
     String? modelName,
     List<String>? fileIds,
+    double? temperature,
+    int? maxTokens,
+    Map<String, String>? customApiKeys,
   }) {
     return _postStream(ApiConfig.stream, {
       'user_id': userId,
@@ -111,6 +114,9 @@ class StreamService {
       'provider': provider,
       if (modelName != null) 'model_name': modelName,
       if (fileIds != null && fileIds.isNotEmpty) 'file_ids': fileIds,
+      if (temperature != null) 'temperature': temperature,
+      if (maxTokens != null) 'max_tokens': maxTokens,
+      if (customApiKeys != null && customApiKeys.isNotEmpty) 'custom_api_keys': customApiKeys,
     });
   }
 

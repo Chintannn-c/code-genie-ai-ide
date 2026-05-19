@@ -25,9 +25,16 @@ def sanitize_messages(messages: list[dict]) -> list[dict]:
         })
     return sanitized
 
-async def stream_generate(messages: list[dict], model: str = "mistral-large-latest") -> AsyncGenerator[str, None]:
+async def stream_generate(
+    messages: list[dict], 
+    model: str = "mistral-large-latest",
+    temperature: float = None,
+    max_tokens: int = None,
+    api_key: str = None
+) -> AsyncGenerator[str, None]:
     settings = get_settings()
-    if not settings.MISTRAL_API_KEY:
+    active_key = api_key or settings.MISTRAL_API_KEY
+    if not active_key:
         yield "[Error: Mistral API Key is missing in .env]"
         return
 
@@ -35,15 +42,15 @@ async def stream_generate(messages: list[dict], model: str = "mistral-large-late
     messages.insert(0, {"role": "system", "content": SYSTEM_INSTRUCTION})
 
     headers = {
-        "Authorization": f"Bearer {settings.MISTRAL_API_KEY}",
+        "Authorization": f"Bearer {active_key}",
         "Content-Type": "application/json",
     }
 
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 1024,
+        "temperature": temperature if temperature is not None else 0.7,
+        "max_tokens": max_tokens if max_tokens is not None else 1024,
         "stream": True,
     }
 

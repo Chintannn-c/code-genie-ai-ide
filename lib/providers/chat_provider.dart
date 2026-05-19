@@ -19,10 +19,12 @@ import '../services/websocket_service.dart';
 /// Top-level function for isolate-safe regex parsing.
 List<Map<String, String>> _parseCodeBlocks(String content) {
   final regExp = RegExp(r'```(\w+)?\n([\s\S]*?)```');
-  return regExp.allMatches(content).map((m) => {
-    'language': m.group(1) ?? 'python',
-    'code': m.group(2) ?? '',
-  }).toList();
+  return regExp
+      .allMatches(content)
+      .map(
+        (m) => {'language': m.group(1) ?? 'python', 'code': m.group(2) ?? ''},
+      )
+      .toList();
 }
 
 /// Main state management for chat functionality.
@@ -46,11 +48,12 @@ class ChatProvider extends ChangeNotifier {
   String _latestLanguage = 'python';
   String _selectedProvider = 'gemini';
   String? _selectedModel;
+  String _activityLabel = 'Ready';
   StreamSubscription? _wsSubscription;
   bool _isEditorMode = false;
   String? _errorMessage;
   StreamSubscription? _streamSubscription;
-  
+
   // CONCURRENCY FIX: Token to cancel delayed initialization on logout
   Timer? _bootTimer;
 
@@ -58,7 +61,7 @@ class ChatProvider extends ChangeNotifier {
 
   void setUserId(String? id, String? token) {
     if (_userId == id) return;
-    
+
     // CONCURRENCY FIX: Cancel any pending boot timer to prevent ghost subscriptions
     _bootTimer?.cancel();
     _bootTimer = null;
@@ -72,16 +75,18 @@ class ChatProvider extends ChangeNotifier {
     _currentChatId = null;
     _errorMessage = null;
     _codeCache.clear();
-    
+
     _wsSubscription?.cancel();
     _wsSubscription = null;
-    
+
     if (id != null) {
       // CONCURRENCY FIX: Assign to timer for explicit lifecycle management
       _bootTimer = Timer(const Duration(milliseconds: 100), () {
         if (_userId == id) {
-           _wsService.connect(id, token);
-           _wsSubscription = _wsService.stream.listen((event) => _handleSyncEvent(event));
+          _wsService.connect(id, token);
+          _wsSubscription = _wsService.stream.listen(
+            (event) => _handleSyncEvent(event),
+          );
         }
       });
       loadChats();
@@ -119,12 +124,15 @@ class ChatProvider extends ChangeNotifier {
     }
     return null;
   }
-  
+
   List<Chat> get filteredChats {
     if (_searchQuery.isEmpty) return _chats;
-    return _chats.where((chat) => 
-      chat.title.toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
+    return _chats
+        .where(
+          (chat) =>
+              chat.title.toLowerCase().contains(_searchQuery.toLowerCase()),
+        )
+        .toList();
   }
 
   String _searchQuery = '';
@@ -148,6 +156,7 @@ class ChatProvider extends ChangeNotifier {
   String get latestLanguage => _latestLanguage;
   String get selectedProvider => _selectedProvider;
   String? get selectedModel => _selectedModel;
+  String get activityLabel => _activityLabel;
   bool get isEditorMode => _isEditorMode;
 
   void toggleEditorMode() {
@@ -192,6 +201,7 @@ class ChatProvider extends ChangeNotifier {
     _streamSubscription?.cancel();
     _streamSubscription = null;
     _isStreaming = false;
+    _activityLabel = 'Ready';
     _streamService.cancel();
     notifyListeners();
   }
@@ -255,7 +265,7 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _useParallelOrchestration = true;
+  bool _useParallelOrchestration = false;
   bool _isMissionMode = false;
   bool _isWebMode = false;
 
@@ -293,6 +303,9 @@ class ChatProvider extends ChangeNotifier {
     required String prompt,
     String code = '',
     String error = '',
+    double? temperature,
+    int? maxTokens,
+    Map<String, String>? customApiKeys,
   }) async {
     if (_isStreaming || _isLoading) return;
     _errorMessage = null;
@@ -300,15 +313,15 @@ class ChatProvider extends ChangeNotifier {
     final userContent = _selectedMode == 'generate'
         ? prompt
         : _selectedMode == 'debug'
-            ? '**Code:**\n```$_selectedLanguage\n$code\n```\n\n**Error:** $error'
-            : '```$_selectedLanguage\n$code\n```';
+        ? '**Code:**\n```$_selectedLanguage\n$code\n```\n\n**Error:** $error'
+        : '```$_selectedLanguage\n$code\n```';
 
     final userMessage = Message.userMessage(
       content: userContent,
       type: _selectedMode,
       language: _selectedLanguage,
     );
-    
+
     _messages.add(userMessage);
     notifyListeners();
 
@@ -317,14 +330,23 @@ class ChatProvider extends ChangeNotifier {
       if (_useParallelOrchestration) {
         await _orchestrateMessage(prompt, code, error, fileIds: fileIds);
       } else {
-        await _streamMessage(prompt, code, error, fileIds: fileIds);
+        await _streamMessage(
+          prompt,
+          code,
+          error,
+          fileIds: fileIds,
+          temperature: temperature,
+          maxTokens: maxTokens,
+          customApiKeys: customApiKeys,
+        );
       }
-      
+
       // Clear files after successful send
       _selectedFiles = [];
       notifyListeners();
     } catch (e) {
       _messages.remove(userMessage);
+      _activityLabel = 'Ready';
       _errorMessage = 'Code Genie failed to respond. Try again...';
       notifyListeners();
     }
@@ -349,8 +371,14 @@ class ChatProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> _orchestrateMessage(String prompt, String code, String error, {List<String>? fileIds}) async {
+  Future<void> _orchestrateMessage(
+    String prompt,
+    String code,
+    String error, {
+    List<String>? fileIds,
+  }) async {
     _isOrchestrating = true;
+    _activityLabel = 'Deep solve: coordinating expert agents';
     notifyListeners();
     try {
       final result = await _apiService.orchestrate(
@@ -367,18 +395,29 @@ class ChatProvider extends ChangeNotifier {
       await _updateLatestCode();
     } finally {
       _isOrchestrating = false;
+      _activityLabel = 'Ready';
       notifyListeners();
-      loadChats(); 
+      loadChats();
     }
   }
 
-  Future<void> _streamMessage(String prompt, String code, String error, {List<String>? fileIds}) async {
+  Future<void> _streamMessage(
+    String prompt,
+    String code,
+    String error, {
+    List<String>? fileIds,
+    double? temperature,
+    int? maxTokens,
+    Map<String, String>? customApiKeys,
+  }) async {
     final aiMessage = Message.aiStreaming(
       type: _selectedMode,
       language: _selectedLanguage,
     );
     _messages.add(aiMessage);
     _isStreaming = true;
+    _activityLabel =
+        'Streaming from ${_providerDisplayName(_selectedProvider)}';
     notifyListeners();
     String fullResponse = '';
 
@@ -398,75 +437,116 @@ class ChatProvider extends ChangeNotifier {
         provider: _selectedProvider,
         modelName: _selectedModel,
         fileIds: fileIds,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        customApiKeys: customApiKeys,
       );
 
-      _streamSubscription = stream.timeout(
-        const Duration(seconds: 20),
-        onTimeout: (sink) {
-          final errorText = '[Error: Code Genie failed to respond. Connection timed out.]';
-          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
-            _messages[_messages.length - 1] = _messages.last.copyWith(content: errorText);
-          }
-          _isStreaming = false;
-          notifyListeners();
-          sink.close();
-        },
-      ).listen(
-        (chunk) async {
-          if (chunk.error != null) {
-            final errorText = '[Error: ${chunk.error}]';
-            if (_messages.isNotEmpty && _messages.last.role == 'ai') {
-              _messages[_messages.length - 1] = _messages.last.copyWith(content: errorText);
-            }
-            _isStreaming = false;
-            notifyListeners();
-            return;
-          }
+      _streamSubscription = stream
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: (sink) {
+              final errorText =
+                  '[Error: Code Genie failed to respond. Connection timed out.]';
+              if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+                _messages[_messages.length - 1] = _messages.last.copyWith(
+                  content: errorText,
+                );
+              }
+              _isStreaming = false;
+              _activityLabel = 'Ready';
+              notifyListeners();
+              sink.close();
+            },
+          )
+          .listen(
+            (chunk) async {
+              if (chunk.error != null) {
+                final errorText = '[Error: ${chunk.error}]';
+                if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+                  _messages[_messages.length - 1] = _messages.last.copyWith(
+                    content: errorText,
+                  );
+                }
+                _isStreaming = false;
+                _activityLabel = 'Ready';
+                notifyListeners();
+                return;
+              }
 
-          if (chunk.done) {
-            if (chunk.chatId != null) _currentChatId = chunk.chatId;
-            if (_messages.isNotEmpty && _messages.last.role == 'ai') {
-              _messages[_messages.length - 1] = _messages.last.copyWith(
-                content: fullResponse,
-                messageId: chunk.messageId,
-                modelName: chunk.modelName,
-              );
-            }
-            _isStreaming = false;
-            await _updateLatestCode();
-            notifyListeners();
-            loadChats();
-            return;
-          }
+              if (chunk.done) {
+                if (chunk.chatId != null) _currentChatId = chunk.chatId;
+                if (chunk.modelName != null && chunk.modelName!.isNotEmpty) {
+                  _activityLabel = 'Completed with ${chunk.modelName}';
+                }
+                if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+                  _messages[_messages.length - 1] = _messages.last.copyWith(
+                    content: fullResponse,
+                    messageId: chunk.messageId,
+                    modelName: chunk.modelName,
+                  );
+                }
+                _isStreaming = false;
+                _activityLabel = 'Ready';
+                await _updateLatestCode();
+                notifyListeners();
+                loadChats();
+                return;
+              }
 
-          fullResponse += chunk.text;
-          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
-            _messages[_messages.length - 1] = _messages.last.copyWith(content: fullResponse);
-          }
+              fullResponse += chunk.text;
+              if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+                _messages[_messages.length - 1] = _messages.last.copyWith(
+                  content: fullResponse,
+                );
+              }
 
-          if (fullResponse.contains('```') && fullResponse.endsWith('```')) {
-             await _updateLatestCode();
-          }
+              if (fullResponse.contains('```') &&
+                  fullResponse.endsWith('```')) {
+                await _updateLatestCode();
+              }
 
-          notifyListeners();
-        },
-        onError: (e) {
-          final errorText = '[Error: Connection lost. Please try again.]';
-          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
-            _messages[_messages.length - 1] = _messages.last.copyWith(content: errorText);
-          }
-          _isStreaming = false;
-          notifyListeners();
-        },
-        onDone: () {
-          _isStreaming = false;
-          notifyListeners();
-        },
-      );
+              notifyListeners();
+            },
+            onError: (e) {
+              final errorText = '[Error: Connection lost. Please try again.]';
+              if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+                _messages[_messages.length - 1] = _messages.last.copyWith(
+                  content: errorText,
+                );
+              }
+              _isStreaming = false;
+              _activityLabel = 'Ready';
+              notifyListeners();
+            },
+            onDone: () {
+              _isStreaming = false;
+              _activityLabel = 'Ready';
+              notifyListeners();
+            },
+          );
     } catch (e) {
       _errorMessage = 'Failed to send message: $e';
       _isStreaming = false;
+      _activityLabel = 'Ready';
       notifyListeners();
+    }
+  }
+
+  String _providerDisplayName(String provider) {
+    switch (provider) {
+      case 'openrouter':
+        return 'OpenRouter';
+      case 'groq':
+        return 'Groq';
+      case 'github':
+        return 'GitHub Models';
+      case 'mistral':
+        return 'Mistral';
+      case 'huggingface':
+        return 'Hugging Face';
+      default:
+        return 'Gemini';
     }
   }
 
@@ -494,14 +574,17 @@ class ChatProvider extends ChangeNotifier {
     setMode('explain');
     sendMessage(prompt: prompt);
   }
-  
+
   Future<void> uploadFiles(List<PlatformFile> files) async {
     if (files.isEmpty) return;
     _isUploading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      final uploaded = await _apiService.uploadFiles(userId: _userId!, files: files);
+      final uploaded = await _apiService.uploadFiles(
+        userId: _userId!,
+        files: files,
+      );
       debugPrint('✅ Uploaded ${uploaded.length} files successfully');
       _selectedFiles.addAll(uploaded);
       debugPrint('📁 Current selected files: ${_selectedFiles.length}');
@@ -518,62 +601,124 @@ class ChatProvider extends ChangeNotifier {
     if (_isStreaming) return;
     await _streamSubscription?.cancel();
     _isStreaming = true;
+    _activityLabel = 'Analyzing file context';
     _isLoading = true;
     notifyListeners();
-    final aiMessage = Message.aiStreaming(type: 'file_analysis', language: _selectedLanguage);
+    final aiMessage = Message.aiStreaming(
+      type: 'file_analysis',
+      language: _selectedLanguage,
+    );
     _messages.add(aiMessage);
     _isLoading = false;
     notifyListeners();
     String fullResponse = '';
     try {
-      final stream = _streamService.streamFileAnalysis(userId: _userId!, fileId: fileId, chatId: _currentChatId, type: type, difficulty: _selectedDifficulty);
+      final stream = _streamService.streamFileAnalysis(
+        userId: _userId!,
+        fileId: fileId,
+        chatId: _currentChatId,
+        type: type,
+        difficulty: _selectedDifficulty,
+      );
       _streamSubscription = stream.listen((chunk) async {
-        if (chunk.error != null) { _errorMessage = chunk.error; _isStreaming = false; notifyListeners(); return; }
+        if (chunk.error != null) {
+          _errorMessage = chunk.error;
+          _isStreaming = false;
+          _activityLabel = 'Ready';
+          notifyListeners();
+          return;
+        }
         if (chunk.done) {
           if (chunk.chatId != null) _currentChatId = chunk.chatId;
-          if (_messages.isNotEmpty && _messages.last.role == 'ai') { _messages[_messages.length - 1] = _messages.last.copyWith(content: fullResponse, messageId: chunk.messageId); }
+          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+            _messages[_messages.length - 1] = _messages.last.copyWith(
+              content: fullResponse,
+              messageId: chunk.messageId,
+            );
+          }
           _isStreaming = false;
+          _activityLabel = 'Ready';
           await _updateLatestCode();
           notifyListeners();
           loadChats();
           return;
         }
         fullResponse += chunk.text;
-        if (_messages.isNotEmpty && _messages.last.role == 'ai') { _messages[_messages.length - 1] = _messages.last.copyWith(content: fullResponse); }
+        if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+          _messages[_messages.length - 1] = _messages.last.copyWith(
+            content: fullResponse,
+          );
+        }
         notifyListeners();
       });
-    } catch (e) { _errorMessage = 'Analysis failed: $e'; _isStreaming = false; notifyListeners(); }
+    } catch (e) {
+      _errorMessage = 'Analysis failed: $e';
+      _isStreaming = false;
+      _activityLabel = 'Ready';
+      notifyListeners();
+    }
   }
 
   Future<void> debugFile(String fileId, String error) async {
     if (_isStreaming) return;
     await _streamSubscription?.cancel();
     _isStreaming = true;
+    _activityLabel = 'Debugging file context';
     _isLoading = true;
     notifyListeners();
-    final aiMessage = Message.aiStreaming(type: 'file_debug', language: _selectedLanguage);
+    final aiMessage = Message.aiStreaming(
+      type: 'file_debug',
+      language: _selectedLanguage,
+    );
     _messages.add(aiMessage);
     _isLoading = false;
     notifyListeners();
     String fullResponse = '';
     try {
-      final stream = _streamService.streamFileDebug(userId: _userId!, fileId: fileId, chatId: _currentChatId, error: error, difficulty: _selectedDifficulty);
+      final stream = _streamService.streamFileDebug(
+        userId: _userId!,
+        fileId: fileId,
+        chatId: _currentChatId,
+        error: error,
+        difficulty: _selectedDifficulty,
+      );
       _streamSubscription = stream.listen((chunk) async {
-        if (chunk.error != null) { _errorMessage = chunk.error; _isStreaming = false; notifyListeners(); return; }
+        if (chunk.error != null) {
+          _errorMessage = chunk.error;
+          _isStreaming = false;
+          _activityLabel = 'Ready';
+          notifyListeners();
+          return;
+        }
         if (chunk.done) {
           if (chunk.chatId != null) _currentChatId = chunk.chatId;
-          if (_messages.isNotEmpty && _messages.last.role == 'ai') { _messages[_messages.length - 1] = _messages.last.copyWith(content: fullResponse, messageId: chunk.messageId); }
+          if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+            _messages[_messages.length - 1] = _messages.last.copyWith(
+              content: fullResponse,
+              messageId: chunk.messageId,
+            );
+          }
           _isStreaming = false;
+          _activityLabel = 'Ready';
           await _updateLatestCode();
           notifyListeners();
           loadChats();
           return;
         }
         fullResponse += chunk.text;
-        if (_messages.isNotEmpty && _messages.last.role == 'ai') { _messages[_messages.length - 1] = _messages.last.copyWith(content: fullResponse); }
+        if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+          _messages[_messages.length - 1] = _messages.last.copyWith(
+            content: fullResponse,
+          );
+        }
         notifyListeners();
       });
-    } catch (e) { _errorMessage = 'File debug failed: $e'; _isStreaming = false; notifyListeners(); }
+    } catch (e) {
+      _errorMessage = 'File debug failed: $e';
+      _isStreaming = false;
+      _activityLabel = 'Ready';
+      notifyListeners();
+    }
   }
 
   @override
@@ -581,24 +726,24 @@ class ChatProvider extends ChangeNotifier {
     _bootTimer?.cancel(); // CONCURRENCY FIX: Cleanup on provider destruction
     _wsSubscription?.cancel();
     _streamSubscription?.cancel();
-    _wsService.dispose(); 
-    _streamService.dispose(); 
+    _wsService.dispose();
+    _streamService.dispose();
     super.dispose();
   }
 
   Future<void> _updateLatestCode() async {
     if (_messages.isEmpty) return;
-    
+
     final lastMessage = _messages.last;
     final content = lastMessage.content;
-    
+
     // Only proceed if the message actually contains a code block
     if (!content.contains('```')) {
       return;
     }
-    
+
     final String msgId = lastMessage.messageId;
-    
+
     if (_codeCache.containsKey(msgId)) {
       final cachedBlocks = _codeCache[msgId]!;
       if (cachedBlocks.isNotEmpty) {
@@ -612,15 +757,18 @@ class ChatProvider extends ChangeNotifier {
     if (_codeCache.length > 20) {
       _codeCache.remove(_codeCache.keys.first);
     }
-    
-    final List<Map<String, String>> blocks = await compute(_parseCodeBlocks, content);
+
+    final List<Map<String, String>> blocks = await compute(
+      _parseCodeBlocks,
+      content,
+    );
     _codeCache[msgId] = blocks;
-    
+
     if (blocks.isNotEmpty) {
       _latestLanguage = blocks.last['language'] ?? 'python';
       _latestCode = blocks.last['code'] ?? '';
     }
-    
+
     notifyListeners();
   }
 }

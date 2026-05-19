@@ -187,57 +187,6 @@ async def orchestrate_response(request: StreamRequest, current_user_id: str = De
         logger.error(f"Orchestration Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/plan")
-async def create_plan(request: GenerateRequest, background_tasks: BackgroundTasks, current_user_id: str = Depends(get_current_user_id)):
-    """Generates a proactive execution plan and starts it IMMEDIATELY."""
-    try:
-        # 1. Generate the plan
-        plan = await orchestrator_service.orchestrator.generate_plan(request.prompt)
-        
-        # 2. Broadcast via WebSocket for real-time UI reaction
-        await socket_manager.broadcast_to_user(
-            current_user_id,
-            {
-                "type": "plan_created",
-                "plan": plan
-            }
-        )
-        
-        # 3. PROACTIVE TRANSFORMATION: Start execution immediately without waiting for approval
-        background_tasks.add_task(
-            orchestrator_service.orchestrator.run_autonomous_plan,
-            user_id=current_user_id,
-            plan_id=plan["id"],
-            plan_data=plan
-        )
-        
-        return plan
-    except Exception as e:
-        logger.error(f"Planning route error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/plan/{plan_id}/execute")
-async def execute_plan_route(
-    plan_id: str, 
-    plan_data: dict, 
-    background_tasks: BackgroundTasks, 
-    current_user_id: str = Depends(get_current_user_id)
-):
-    """Triggers autonomous execution of an approved plan."""
-    try:
-        # Start execution in background so user doesn't wait
-        background_tasks.add_task(
-            orchestrator_service.orchestrator.run_autonomous_plan,
-            user_id=current_user_id,
-            plan_id=plan_id,
-            plan_data=plan_data
-        )
-        
-        return {"status": "execution_started", "plan_id": plan_id}
-    except Exception as e:
-        logger.error(f"Execution route error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.post("/stream")
 async def stream_response(request: StreamRequest, current_user_id: str = Depends(get_current_user_id)):
     """SSE streaming endpoint."""
@@ -312,7 +261,10 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
                 current_user_id=current_user_id,
                 chat_id=chat_id,
                 msg_type=request.type,
-                language=request.language
+                language=request.language,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                custom_api_keys=request.custom_api_keys,
             ),
             headers={"X-Accel-Buffering": "no"}
         )
