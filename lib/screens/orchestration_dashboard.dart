@@ -27,6 +27,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 900;
+
     return Consumer<OrchestrationProvider>(
       builder: (context, orch, _) {
         return Scaffold(
@@ -59,7 +62,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                       Text(
                         'ORCHESTRATION COCKPIT',
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 11 : 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 2,
                           color: const Color(0xFFE2E8F0),
@@ -82,11 +85,11 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // Row 1: Top Stats
-                    _buildStatRow(orch),
+                    _buildStatRow(orch, isSmallScreen),
                     const SizedBox(height: 16),
 
                     // Row 2: Security SOC + Agent Activity
-                    _buildSecurityAndAgents(orch),
+                    _buildSecurityAndAgents(orch, isSmallScreen),
                     const SizedBox(height: 16),
 
                     // Row 3: Audit Trail
@@ -113,21 +116,42 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   // ============================================================
   // TOP STATS ROW
   // ============================================================
-  Widget _buildStatRow(OrchestrationProvider orch) {
+  Widget _buildStatRow(OrchestrationProvider orch, bool isSmallScreen) {
+    final cards = [
+      _glowStat('ORCHESTRATIONS', '${orch.totalOrchestrations}',
+          Icons.hub, const Color(0xFF6366F1)),
+      _glowStat('AGENT CALLS', '${orch.totalAgentCalls}',
+          Icons.smart_toy, const Color(0xFF06B6D4)),
+      _glowStat('SYNTHESES', '${orch.synthesisCount}',
+          Icons.merge_type, const Color(0xFFF59E0B)),
+      _glowStat('BLOCKED', '${orch.blocked}',
+          Icons.shield, const Color(0xFFEF4444)),
+    ];
+
+    if (isSmallScreen) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: cards[0]),
+              const SizedBox(width: 12),
+              Expanded(child: cards[1]),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: cards[2]),
+              const SizedBox(width: 12),
+              Expanded(child: cards[3]),
+            ],
+          ),
+        ],
+      ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1);
+    }
+
     return Row(
-      children: [
-        _glowStat('ORCHESTRATIONS', '${orch.totalOrchestrations}',
-            Icons.hub, const Color(0xFF6366F1)),
-        const SizedBox(width: 12),
-        _glowStat('AGENT CALLS', '${orch.totalAgentCalls}',
-            Icons.smart_toy, const Color(0xFF06B6D4)),
-        const SizedBox(width: 12),
-        _glowStat('SYNTHESES', '${orch.synthesisCount}',
-            Icons.merge_type, const Color(0xFFF59E0B)),
-        const SizedBox(width: 12),
-        _glowStat('BLOCKED', '${orch.blocked}',
-            Icons.shield, const Color(0xFFEF4444)),
-      ].map((e) => Expanded(child: e)).toList(),
+      children: cards.map((e) => Expanded(child: e)).toList(),
     ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1);
   }
 
@@ -186,77 +210,83 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   // ============================================================
   // SECURITY SOC + AGENT ROLES
   // ============================================================
-  Widget _buildSecurityAndAgents(OrchestrationProvider orch) {
+  Widget _buildSecurityAndAgents(OrchestrationProvider orch, bool isSmallScreen) {
+    final securityCard = _glassCard(
+      title: '🛡️ SECURITY OPERATIONS CENTER',
+      titleColor: const Color(0xFF22C55E),
+      child: Column(
+        children: [
+          _socRow('Total Scanned', '${orch.totalScanned}', const Color(0xFF6366F1)),
+          _socRow('Clean', '${orch.clean}', const Color(0xFF22C55E)),
+          _socRow('Flagged', '${orch.flagged}', const Color(0xFFF59E0B)),
+          _socRow('Blocked', '${orch.blocked}', const Color(0xFFEF4444)),
+          const SizedBox(height: 12),
+          // Threat level bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: orch.totalScanned > 0
+                  ? (orch.clean / orch.totalScanned).clamp(0.0, 1.0)
+                  : 1.0,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFEF4444).withOpacity(0.3),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF22C55E)),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            orch.totalScanned > 0
+                ? '${((orch.clean / orch.totalScanned) * 100).toStringAsFixed(1)}% CLEAN'
+                : 'NO DATA',
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 10,
+              color: const Color(0xFF22C55E),
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final agentsCard = _glassCard(
+      title: '🧬 EXPERT CIVILIZATION',
+      titleColor: const Color(0xFF06B6D4),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _agentChip('🗺️', 'Planner', const Color(0xFF6366F1)),
+          _agentChip('🏗️', 'Architect', const Color(0xFF8B5CF6)),
+          _agentChip('💻', 'Coder', const Color(0xFF06B6D4)),
+          _agentChip('🔒', 'Auditor', const Color(0xFFEF4444)),
+          _agentChip('📋', 'Compliance', const Color(0xFFF59E0B)),
+          _agentChip('🕵️', 'Threat Intel', const Color(0xFFEC4899)),
+          _agentChip('🐛', 'Debugger', const Color(0xFFF97316)),
+          _agentChip('⚡', 'Optimizer', const Color(0xFF22D3EE)),
+          _agentChip('🚀', 'DevOps', const Color(0xFF14B8A6)),
+          _agentChip('👀', 'Reviewer', const Color(0xFFA78BFA)),
+          _agentChip('🧬', 'Synthesizer', const Color(0xFFE2E8F0)),
+        ],
+      ),
+    );
+
+    if (isSmallScreen) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          securityCard,
+          const SizedBox(height: 16),
+          agentsCard,
+        ],
+      ).animate().fadeIn(duration: 800.ms, delay: 200.ms);
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Security SOC Panel
-        Expanded(
-          flex: 3,
-          child: _glassCard(
-            title: '🛡️ SECURITY OPERATIONS CENTER',
-            titleColor: const Color(0xFF22C55E),
-            child: Column(
-              children: [
-                _socRow('Total Scanned', '${orch.totalScanned}', const Color(0xFF6366F1)),
-                _socRow('Clean', '${orch.clean}', const Color(0xFF22C55E)),
-                _socRow('Flagged', '${orch.flagged}', const Color(0xFFF59E0B)),
-                _socRow('Blocked', '${orch.blocked}', const Color(0xFFEF4444)),
-                const SizedBox(height: 12),
-                // Threat level bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: orch.totalScanned > 0
-                        ? (orch.clean / orch.totalScanned).clamp(0.0, 1.0)
-                        : 1.0,
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFFEF4444).withOpacity(0.3),
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF22C55E)),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  orch.totalScanned > 0
-                      ? '${((orch.clean / orch.totalScanned) * 100).toStringAsFixed(1)}% CLEAN'
-                      : 'NO DATA',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10,
-                    color: const Color(0xFF22C55E),
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        Expanded(flex: 3, child: securityCard),
         const SizedBox(width: 12),
-
-        // Agent Roles Panel
-        Expanded(
-          flex: 4,
-          child: _glassCard(
-            title: '🧬 EXPERT CIVILIZATION',
-            titleColor: const Color(0xFF06B6D4),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _agentChip('🗺️', 'Planner', const Color(0xFF6366F1)),
-                _agentChip('🏗️', 'Architect', const Color(0xFF8B5CF6)),
-                _agentChip('💻', 'Coder', const Color(0xFF06B6D4)),
-                _agentChip('🔒', 'Auditor', const Color(0xFFEF4444)),
-                _agentChip('📋', 'Compliance', const Color(0xFFF59E0B)),
-                _agentChip('🕵️', 'Threat Intel', const Color(0xFFEC4899)),
-                _agentChip('🐛', 'Debugger', const Color(0xFFF97316)),
-                _agentChip('⚡', 'Optimizer', const Color(0xFF22D3EE)),
-                _agentChip('🚀', 'DevOps', const Color(0xFF14B8A6)),
-                _agentChip('👀', 'Reviewer', const Color(0xFFA78BFA)),
-                _agentChip('🧬', 'Synthesizer', const Color(0xFFE2E8F0)),
-              ],
-            ),
-          ),
-        ),
+        Expanded(flex: 4, child: agentsCard),
       ],
     ).animate().fadeIn(duration: 800.ms, delay: 200.ms);
   }

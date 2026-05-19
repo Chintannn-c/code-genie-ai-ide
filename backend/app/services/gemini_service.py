@@ -12,7 +12,6 @@ _clients: list[genai.Client] = []
 
 def get_gemini_clients() -> list[genai.Client]:
     """Get or create the pool of Gemini clients based on rotated keys."""
-    global _clients
     if not _clients:
         settings = get_settings()
         keys = settings.gemini_keys
