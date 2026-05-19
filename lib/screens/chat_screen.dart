@@ -1284,38 +1284,6 @@ class _ChatScreenState extends State<ChatScreen>
                 color: isDark ? Colors.white38 : Colors.black38,
               ),
             ),
-            const SizedBox(height: 28),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildActionCard(
-                  title: 'Generate Code',
-                  subtitle: 'Turn ideas into logic',
-                  icon: Icons.code_rounded,
-                  color: const Color(0xFF6366F1),
-                  isDark: isDark,
-                  onTap: () => context.read<ChatProvider>().setMode('generate'),
-                ),
-                _buildActionCard(
-                  title: 'Debug Errors',
-                  subtitle: 'Heal broken scripts',
-                  icon: Icons.bug_report_rounded,
-                  color: const Color(0xFF10B981),
-                  isDark: isDark,
-                  onTap: () => context.read<ChatProvider>().setMode('debug'),
-                ),
-                _buildActionCard(
-                  title: 'Explain Snippets',
-                  subtitle: 'Master complex logic',
-                  icon: Icons.psychology_rounded,
-                  color: const Color(0xFFF59E0B),
-                  isDark: isDark,
-                  onTap: () => context.read<ChatProvider>().setMode('explain'),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -1342,83 +1310,6 @@ class _ChatScreenState extends State<ChatScreen>
             child: const Text('Sign Out'),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: 180,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.02),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withValues(alpha: 0.2)),
-                  ),
-                  child: Icon(icon, size: 24, color: color),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : Colors.black87,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white38 : Colors.black45,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
