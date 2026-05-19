@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/notification_model.dart';
@@ -7,6 +8,7 @@ class NotificationProvider extends ChangeNotifier {
   final NotificationService _service = NotificationService();
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
+  StreamSubscription? _streamSub;
 
   List<NotificationModel> get notifications => _notifications;
   bool get isLoading => _isLoading;
@@ -21,7 +23,7 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
 
     // Listen to the live stream from the service
-    _service.notificationStream.listen((notification) {
+    _streamSub = _service.notificationStream.listen((notification) {
       // Check if it already exists to avoid duplicates
       final exists = _notifications.any((n) => n.id == notification.id);
       if (!exists) {
@@ -35,6 +37,12 @@ class NotificationProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _streamSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadFromHive() async {

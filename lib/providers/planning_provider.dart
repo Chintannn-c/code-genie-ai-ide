@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -12,6 +13,7 @@ class PlanningProvider extends ChangeNotifier {
   PlanModel? _currentPlan;
   List<PlanModel> _history = [];
   bool _isLoading = false;
+  StreamSubscription? _rawMessageSub;
 
   PlanModel? get currentPlan => _currentPlan;
   List<PlanModel> get history => _history;
@@ -35,7 +37,7 @@ class PlanningProvider extends ChangeNotifier {
     await _loadHistory();
 
     // Listen for real-time plans from the backend
-    NotificationService().rawMessageStream.listen((message) {
+    _rawMessageSub = NotificationService().rawMessageStream.listen((message) {
       if (message['type'] == 'plan_created') {
         final plan = PlanModel.fromJson(message['plan']);
         setCurrentPlan(plan);
@@ -53,6 +55,12 @@ class PlanningProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _rawMessageSub?.cancel();
+    super.dispose();
   }
 
   PlanStepStatus _parseStatus(String? status) {

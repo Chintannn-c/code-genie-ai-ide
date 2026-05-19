@@ -30,6 +30,24 @@ void main() {
   }
 }''';
 
+  TextStyle _getPreviewStyle(String fontName, double fontSize, Color color) {
+    try {
+      return GoogleFonts.getFont(
+        fontName,
+        fontSize: fontSize,
+        height: 1.6,
+        color: color,
+      );
+    } catch (_) {
+      return TextStyle(
+        fontFamily: fontName,
+        fontSize: fontSize,
+        height: 1.6,
+        color: color,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDark;
@@ -86,11 +104,10 @@ void main() {
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           _codePreview,
-                          style: GoogleFonts.getFont(
+                          style: _getPreviewStyle(
                             _fonts[sp.selectedFont],
-                            fontSize: sp.fontSize,
-                            height: 1.6,
-                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                            sp.fontSize,
+                            isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
                           ),
                         ),
                       ),

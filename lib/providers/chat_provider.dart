@@ -73,6 +73,16 @@ class ChatProvider extends ChangeNotifier {
     _bootTimer?.cancel();
     _bootTimer = null;
 
+    // HEARTBEAT & STREAM FIX: Cleanly abort and release active timers & stream networks
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    _isStalled = false;
+    _currentContextStatus = null;
+    _isStreaming = false;
+    _isOrchestrating = false;
+    _streamSubscription?.cancel();
+    _streamSubscription = null;
+
     _userId = id;
     _apiService.setToken(token);
     _streamService.setToken(token);
@@ -1056,6 +1066,7 @@ class ChatProvider extends ChangeNotifier {
   @override
   void dispose() {
     _bootTimer?.cancel(); // CONCURRENCY FIX: Cleanup on provider destruction
+    _heartbeatTimer?.cancel();
     _wsSubscription?.cancel();
     _streamSubscription?.cancel();
     _wsService.dispose();
