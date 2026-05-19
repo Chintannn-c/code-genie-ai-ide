@@ -53,8 +53,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                           color: const Color(0xFF22C55E),
                           boxShadow: [
                             BoxShadow(
-                                color: const Color(0xFF22C55E).withOpacity(0.6),
-                                blurRadius: 8)
+                              color: const Color(0xFF22C55E).withOpacity(0.6),
+                              blurRadius: 8,
+                            ),
                           ],
                         ),
                       ),
@@ -89,10 +90,34 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                     tooltip: 'Adjust Refresh Interval',
                     onSelected: (seconds) => orch.setRefreshInterval(seconds),
                     itemBuilder: (context) => [
-                      PopupMenuItem(value: 2, child: Text('2s (Real-time)', style: GoogleFonts.inter(fontSize: 12))),
-                      PopupMenuItem(value: 5, child: Text('5s (Normal)', style: GoogleFonts.inter(fontSize: 12))),
-                      PopupMenuItem(value: 10, child: Text('10s (Relaxed)', style: GoogleFonts.inter(fontSize: 12))),
-                      PopupMenuItem(value: 30, child: Text('30s (Slow)', style: GoogleFonts.inter(fontSize: 12))),
+                      PopupMenuItem(
+                        value: 2,
+                        child: Text(
+                          '2s (Real-time)',
+                          style: GoogleFonts.inter(fontSize: 12),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 5,
+                        child: Text(
+                          '5s (Normal)',
+                          style: GoogleFonts.inter(fontSize: 12),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 10,
+                        child: Text(
+                          '10s (Relaxed)',
+                          style: GoogleFonts.inter(fontSize: 12),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 30,
+                        child: Text(
+                          '30s (Slow)',
+                          style: GoogleFonts.inter(fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                   IconButton(
@@ -145,14 +170,30 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   // ============================================================
   Widget _buildStatRow(OrchestrationProvider orch, bool isSmallScreen) {
     final cards = [
-      _glowStat('ORCHESTRATIONS', '${orch.totalOrchestrations}',
-          Icons.hub, const Color(0xFF6366F1)),
-      _glowStat('AGENT CALLS', '${orch.totalAgentCalls}',
-          Icons.smart_toy, const Color(0xFF06B6D4)),
-      _glowStat('SYNTHESES', '${orch.synthesisCount}',
-          Icons.merge_type, const Color(0xFFF59E0B)),
-      _glowStat('BLOCKED', '${orch.blocked}',
-          Icons.shield, const Color(0xFFEF4444)),
+      _glowStat(
+        'ORCHESTRATIONS',
+        '${orch.totalOrchestrations}',
+        Icons.hub,
+        const Color(0xFF6366F1),
+      ),
+      _glowStat(
+        'AGENT CALLS',
+        '${orch.totalAgentCalls}',
+        Icons.smart_toy,
+        const Color(0xFF06B6D4),
+      ),
+      _glowStat(
+        'SYNTHESES',
+        '${orch.synthesisCount}',
+        Icons.merge_type,
+        const Color(0xFFF59E0B),
+      ),
+      _glowStat(
+        'BLOCKED',
+        '${orch.blocked}',
+        Icons.shield,
+        const Color(0xFFEF4444),
+      ),
     ];
 
     if (isSmallScreen) {
@@ -190,7 +231,11 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.2)),
         boxShadow: [
-          BoxShadow(color: color.withOpacity(0.05), blurRadius: 20, spreadRadius: 2),
+          BoxShadow(
+            color: color.withOpacity(0.05),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
         ],
       ),
       child: Column(
@@ -201,11 +246,14 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
               Icon(icon, color: color, size: 18),
               const Spacer(),
               Container(
-                width: 6, height: 6,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: color,
-                  boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 6)],
+                  boxShadow: [
+                    BoxShadow(color: color.withOpacity(0.5), blurRadius: 6),
+                  ],
                 ),
               ),
             ],
@@ -237,13 +285,20 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   // ============================================================
   // SECURITY SOC + AGENT ROLES
   // ============================================================
-  Widget _buildSecurityAndAgents(OrchestrationProvider orch, bool isSmallScreen) {
+  Widget _buildSecurityAndAgents(
+    OrchestrationProvider orch,
+    bool isSmallScreen,
+  ) {
     final securityCard = _glassCard(
       title: '🛡️ SECURITY OPERATIONS CENTER',
       titleColor: const Color(0xFF22C55E),
       child: Column(
         children: [
-          _socRow('Total Scanned', '${orch.totalScanned}', const Color(0xFF6366F1)),
+          _socRow(
+            'Total Scanned',
+            '${orch.totalScanned}',
+            const Color(0xFF6366F1),
+          ),
           _socRow('Clean', '${orch.clean}', const Color(0xFF22C55E)),
           _socRow('Flagged', '${orch.flagged}', const Color(0xFFF59E0B)),
           _socRow('Blocked', '${orch.blocked}', const Color(0xFFEF4444)),
@@ -300,11 +355,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
     if (isSmallScreen) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          securityCard,
-          const SizedBox(height: 16),
-          agentsCard,
-        ],
+        children: [securityCard, const SizedBox(height: 16), agentsCard],
       ).animate().fadeIn(duration: 800.ms, delay: 200.ms);
     }
 
@@ -324,20 +375,33 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
       child: Row(
         children: [
           Container(
-            width: 8, height: 8,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color,
-              boxShadow: [BoxShadow(color: color.withOpacity(0.4), blurRadius: 6)],
+              boxShadow: [
+                BoxShadow(color: color.withOpacity(0.4), blurRadius: 6),
+              ],
             ),
           ),
           const SizedBox(width: 10),
-          Text(label,
-              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8))),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: const Color(0xFF94A3B8),
+            ),
+          ),
           const Spacer(),
-          Text(value,
-              style: GoogleFonts.jetBrainsMono(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+          Text(
+            value,
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -356,9 +420,14 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
-          Text(name,
-              style: GoogleFonts.inter(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          Text(
+            name,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -368,8 +437,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   // AUDIT TRAIL
   // ============================================================
   Widget _buildAuditTrail(OrchestrationProvider orch) {
-    final events =
-        (orch.auditData['recent_events'] as List<dynamic>?) ?? [];
+    final events = (orch.auditData['recent_events'] as List<dynamic>?) ?? [];
 
     return _glassCard(
       title: '📝 AUDIT TRAIL',
@@ -378,9 +446,13 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Text('No audit events yet',
-                    style: GoogleFonts.inter(
-                        color: const Color(0xFF475569), fontSize: 13)),
+                child: Text(
+                  'No audit events yet',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF475569),
+                    fontSize: 13,
+                  ),
+                ),
               ),
             )
           : Column(
@@ -396,7 +468,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(4),
@@ -404,9 +478,10 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                         child: Text(
                           type,
                           style: GoogleFonts.jetBrainsMono(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: color),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -414,14 +489,18 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                         child: Text(
                           '$agent → $action',
                           style: GoogleFonts.inter(
-                              fontSize: 11, color: const Color(0xFF94A3B8)),
+                            fontSize: 11,
+                            color: const Color(0xFF94A3B8),
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         (e['hash'] ?? '').toString().substring(0, 8),
                         style: GoogleFonts.jetBrainsMono(
-                            fontSize: 9, color: const Color(0xFF475569)),
+                          fontSize: 9,
+                          color: const Color(0xFF475569),
+                        ),
                       ),
                     ],
                   ),
@@ -471,8 +550,8 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
           final riskColor = risk == 'critical'
               ? const Color(0xFFEF4444)
               : risk == 'high'
-                  ? const Color(0xFFF59E0B)
-                  : const Color(0xFF06B6D4);
+              ? const Color(0xFFF59E0B)
+              : const Color(0xFF06B6D4);
 
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -490,28 +569,39 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$agent → $action',
-                          style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                      Text('Risk: ${risk.toUpperCase()}',
-                          style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10, color: riskColor)),
+                      Text(
+                        '$agent → $action',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Risk: ${risk.toUpperCase()}',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          color: riskColor,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.check_circle,
-                      color: Color(0xFF22C55E), size: 28),
-                  onPressed: () =>
-                      orch.resolveApproval(a['request_id'], true),
+                  icon: const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF22C55E),
+                    size: 28,
+                  ),
+                  onPressed: () => orch.resolveApproval(a['request_id'], true),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.cancel,
-                      color: Color(0xFFEF4444), size: 28),
-                  onPressed: () =>
-                      orch.resolveApproval(a['request_id'], false),
+                  icon: const Icon(
+                    Icons.cancel,
+                    color: Color(0xFFEF4444),
+                    size: 28,
+                  ),
+                  onPressed: () => orch.resolveApproval(a['request_id'], false),
                 ),
               ],
             ),
@@ -536,19 +626,28 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: Color(0xFF22C55E), size: 18),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: Color(0xFF22C55E),
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
-                  Text('No active workflows — system idle',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: const Color(0xFF64748B))),
+                  Text(
+                    'No active workflows — system idle',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
                   const Spacer(),
                   Text(
                     'Created: ${wfStats['total_created'] ?? 0} | '
                     'Done: ${wfStats['completed'] ?? 0} | '
                     'Failed: ${wfStats['failed'] ?? 0}',
                     style: GoogleFonts.jetBrainsMono(
-                        fontSize: 10, color: const Color(0xFF475569)),
+                      fontSize: 10,
+                      color: const Color(0xFF475569),
+                    ),
                   ),
                 ],
               ),
@@ -559,13 +658,18 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                 return ListTile(
                   dense: true,
                   leading: _stateIcon(state),
-                  title: Text(w['goal'] ?? '',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: Colors.white),
-                      overflow: TextOverflow.ellipsis),
-                  subtitle: Text(state.toUpperCase(),
-                      style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, color: const Color(0xFF64748B))),
+                  title: Text(
+                    w['goal'] ?? '',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    state.toUpperCase(),
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 10,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
                 );
               }).toList(),
             ),
@@ -575,26 +679,42 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   Widget _stateIcon(String state) {
     switch (state) {
       case 'executing':
-        return const Icon(Icons.play_circle, color: Color(0xFF22C55E), size: 20);
+        return const Icon(
+          Icons.play_circle,
+          color: Color(0xFF22C55E),
+          size: 20,
+        );
       case 'waiting_approval':
-        return const Icon(Icons.pause_circle, color: Color(0xFFF59E0B), size: 20);
+        return const Icon(
+          Icons.pause_circle,
+          color: Color(0xFFF59E0B),
+          size: 20,
+        );
       case 'failed':
         return const Icon(Icons.error, color: Color(0xFFEF4444), size: 20);
       case 'completed':
-        return const Icon(Icons.check_circle, color: Color(0xFF06B6D4), size: 20);
+        return const Icon(
+          Icons.check_circle,
+          color: Color(0xFF06B6D4),
+          size: 20,
+        );
       default:
-        return const Icon(Icons.hourglass_empty,
-            color: Color(0xFF64748B), size: 20);
+        return const Icon(
+          Icons.hourglass_empty,
+          color: Color(0xFF64748B),
+          size: 20,
+        );
     }
   }
 
   // ============================================================
   // GLASS CARD
   // ============================================================
-  Widget _glassCard(
-      {required String title,
-      required Color titleColor,
-      required Widget child}) {
+  Widget _glassCard({
+    required String title,
+    required Color titleColor,
+    required Widget child,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
@@ -604,8 +724,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
           decoration: BoxDecoration(
             color: const Color(0xFF0F1219).withOpacity(0.7),
             borderRadius: BorderRadius.circular(16),
-            border:
-                Border.all(color: titleColor.withOpacity(0.15)),
+            border: Border.all(color: titleColor.withOpacity(0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -632,43 +751,45 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
   // MODEL RATE LIMITS CARD
   // ============================================================
   Widget _buildModelLimits(OrchestrationProvider orch, bool isSmallScreen) {
-    final List<dynamic> rawModels = orch.modelLimits.isNotEmpty ? orch.modelLimits : [
-      {
-        'name': 'Google Gemini 2.0 Flash',
-        'limit': '15 RPM | 1M TPM',
-        'status': 'Optimal',
-        'color': '0xFF22C55E',
-        'tier': 'Default pool / custom key rotation fallback'
-      },
-      {
-        'name': 'Llama 3.3 70B (Groq)',
-        'limit': '30 RPM | 14,400 RPD',
-        'status': 'Optimal',
-        'color': '0xFF22C55E',
-        'tier': 'High-speed local key failover fallback'
-      },
-      {
-        'name': 'Qwen 2.5 Coder 32B (OpenRouter)',
-        'limit': '20 RPM | Free Pool',
-        'status': 'Optimal',
-        'color': '0xFF22C55E',
-        'tier': 'Alternative general backup tier'
-      },
-      {
-        'name': 'Mistral Large (Mistral)',
-        'limit': '5 RPM | Trial Tier',
-        'status': 'Optimal',
-        'color': '0xFF22C55E',
-        'tier': 'Cognitive reasoning specialist'
-      },
-      {
-        'name': 'GitHub Copilot Models',
-        'limit': 'Unlimited (API key)',
-        'status': 'Optimal',
-        'color': '0xFF22C55E',
-        'tier': 'Custom user credential fallback tier'
-      },
-    ];
+    final List<dynamic> rawModels = orch.modelLimits.isNotEmpty
+        ? orch.modelLimits
+        : [
+            {
+              'name': 'Google Gemini 2.0 Flash',
+              'limit': '15 RPM | 1M TPM',
+              'status': 'Optimal',
+              'color': '0xFF22C55E',
+              'tier': 'Default pool / custom key rotation fallback',
+            },
+            {
+              'name': 'Llama 3.3 70B (Groq)',
+              'limit': '30 RPM | 14,400 RPD',
+              'status': 'Optimal',
+              'color': '0xFF22C55E',
+              'tier': 'High-speed local key failover fallback',
+            },
+            {
+              'name': 'Qwen 2.5 Coder 32B (OpenRouter)',
+              'limit': '20 RPM | Free Pool',
+              'status': 'Optimal',
+              'color': '0xFF22C55E',
+              'tier': 'Alternative general backup tier',
+            },
+            {
+              'name': 'Mistral Large (Mistral)',
+              'limit': '5 RPM | Trial Tier',
+              'status': 'Optimal',
+              'color': '0xFF22C55E',
+              'tier': 'Cognitive reasoning specialist',
+            },
+            {
+              'name': 'GitHub Copilot Models',
+              'limit': 'Unlimited (API key)',
+              'status': 'Optimal',
+              'color': '0xFF22C55E',
+              'tier': 'Custom user credential fallback tier',
+            },
+          ];
 
     return _glassCard(
       title: '🤖 ACTIVE MODEL ORCHESTRATION & API RATE LIMITS',
@@ -689,80 +810,91 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: rawModels.length,
-            separatorBuilder: (context, index) => const Divider(color: Color(0xFF1E293B), height: 16),
+            separatorBuilder: (context, index) =>
+                const Divider(color: Color(0xFF1E293B), height: 16),
             itemBuilder: (context, index) {
               final m = rawModels[index] as Map<String, dynamic>;
               final String colorHex = m['color'] as String? ?? '0xFF22C55E';
               final int colorVal = int.tryParse(colorHex) ?? 0xFF22C55E;
               final Color statusColor = Color(colorVal);
 
-               return isSmallScreen
-                   ? Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         Row(
-                           children: [
-                             Text(
-                               m['name'] as String,
-                               style: GoogleFonts.jetBrainsMono(
-                                 color: Colors.white,
-                                 fontWeight: FontWeight.w600,
-                                 fontSize: 12,
-                               ),
-                             ),
-                             const Spacer(),
-                             _statusBadge(m['status'] as String, statusColor),
-                           ],
-                         ),
-                         const SizedBox(height: 4),
-                         Text(
-                           'Limit: ${m['limit']}',
-                           style: GoogleFonts.inter(color: const Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.bold),
-                         ),
-                         const SizedBox(height: 2),
-                         Text(
-                           m['tier'] as String,
-                           style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 10),
-                         ),
-                       ],
-                     )
-                   : Row(
-                       children: [
-                         Expanded(
-                           flex: 3,
-                           child: Column(
-                             crossAxisAlignment: CrossAxisAlignment.start,
-                             children: [
-                               Text(
-                                 m['name'] as String,
-                                 style: GoogleFonts.jetBrainsMono(
-                                   color: Colors.white,
-                                   fontWeight: FontWeight.w600,
-                                   fontSize: 13,
-                                 ),
-                               ),
-                               const SizedBox(height: 2),
-                               Text(
-                                 m['tier'] as String,
-                                 style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 11),
-                               ),
-                             ],
-                           ),
-                         ),
-                         Expanded(
-                           flex: 2,
-                           child: Text(
-                             m['limit'] as String,
-                             style: GoogleFonts.jetBrainsMono(
-                               color: const Color(0xFF6366F1),
-                               fontSize: 12,
-                               fontWeight: FontWeight.w600,
-                             ),
-                           ),
-                         ),
-                         _statusBadge(m['status'] as String, statusColor),
-                       ],
-                     );
+              return isSmallScreen
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              m['name'] as String,
+                              style: GoogleFonts.jetBrainsMono(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const Spacer(),
+                            _statusBadge(m['status'] as String, statusColor),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Limit: ${m['limit']}',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF6366F1),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          m['tier'] as String,
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF64748B),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                m['name'] as String,
+                                style: GoogleFonts.jetBrainsMono(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                m['tier'] as String,
+                                style: GoogleFonts.inter(
+                                  color: const Color(0xFF64748B),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            m['limit'] as String,
+                            style: GoogleFonts.jetBrainsMono(
+                              color: const Color(0xFF6366F1),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        _statusBadge(m['status'] as String, statusColor),
+                      ],
+                    );
             },
           ),
         ],

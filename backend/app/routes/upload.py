@@ -40,14 +40,70 @@ async def upload_files(
             os.makedirs(user_dir, exist_ok=True)
             
             # 2. Generate safe path
-            ext = os.path.splitext(file.filename)[1]
+            ext = os.path.splitext(file.filename)[1].lower()
+            
+            # Security: File extension validation
+            BLOCKED_EXTENSIONS = {'.exe', '.bat', '.sh', '.cmd', '.msi', '.dll', '.so', '.dylib', '.elf', '.bin', '.com', '.vbs'}
+            if ext in BLOCKED_EXTENSIONS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Security: Uploading executable or binary payload file type '{ext}' is strictly prohibited."
+                )
+
+            # Security: MIME type verification
+            BLOCKED_MIMES = {'application/x-dosexec', 'application/x-sharedlib', 'application/x-executable', 'application/x-msi'}
+            if file.content_type in BLOCKED_MIMES:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Security: Executable and system binary files are strictly prohibited."
+                )
+            
             safe_name = f"{file_id}{ext}"
             path = os.path.join(user_dir, safe_name)
             
             # 3. STREAM the file to disk in chunks to prevent memory spikes
+            total_uploaded_size = 0
+            MAX_UPLOAD_SIZE = 15 * 1024 * 1024  # 15MB
+            
             async with aiofiles.open(path, 'wb') as out_file:
-                while content := await file.read(1024 * 1024): # 1MB chunks
+                while content := await file.read(1024 * 1024):  # 1MB chunks
+                    total_uploaded_size += len(content)
+                    if total_uploaded_size > MAX_UPLOAD_SIZE:
+                        # Clean up partial file
+                        await out_file.close()
+                        if os.path.exists(path):
+                            os.remove(path)
+                        raise HTTPException(
+                            status_code=400, 
+                            detail="Security: File size exceeds the maximum allowed limit of 15MB."
+                        )
                     await out_file.write(content)
+            
+            # Security: ZIP Bomb Protection
+            if ext == '.zip':
+                import zipfile
+                try:
+                    with zipfile.ZipFile(path, 'r') as zip_ref:
+                        if len(zip_ref.namelist()) > 100:
+                            if os.path.exists(path):
+                                os.remove(path)
+                            raise HTTPException(
+                                status_code=400,
+                                detail="Security: ZIP contains too many files (Limit: 100 files)."
+                            )
+                        total_uncompressed_size = sum(zinfo.file_size for zinfo in zip_ref.infolist())
+                        MAX_UNCOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
+                        if total_uncompressed_size > MAX_UNCOMPRESSED_SIZE:
+                            if os.path.exists(path):
+                                os.remove(path)
+                            raise HTTPException(
+                                status_code=400,
+                                detail="Security: ZIP uncompressed payload size is too large (Limit: 100MB)."
+                            )
+                except zipfile.BadZipFile:
+                    if os.path.exists(path):
+                        os.remove(path)
+                    raise HTTPException(status_code=400, detail="Invalid ZIP archive.")
             
             # Detect language
             lang = file_service.get_language_from_ext(file.filename)

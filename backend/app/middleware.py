@@ -28,6 +28,10 @@ class ProductionSecurityMiddleware:
                 headers["X-Content-Type-Options"] = "nosniff"
                 headers["X-Frame-Options"] = "DENY"
                 headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+                headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss: http: https:; frame-ancestors 'none';"
+                headers["X-XSS-Protection"] = "1; mode=block"
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), magnetometer=(), gyroscope=()"
                 
                 process_time = time.time() - start_time
                 headers["X-Process-Time"] = str(process_time)
