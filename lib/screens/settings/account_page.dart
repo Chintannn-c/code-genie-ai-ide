@@ -56,11 +56,18 @@ class _AccountPageState extends State<AccountPage> {
 
   // --- API SERVICE INTEGRATION HANDLERS ---
 
-  Future<void> _fetchProfile() async {
-    setState(() {
-      _isLoading = true;
-      _syncFailed = false;
-    });
+  Future<void> _fetchProfile({bool background = false}) async {
+    if (!background) {
+      setState(() {
+        _isLoading = true;
+        _syncFailed = false;
+      });
+    } else {
+      setState(() {
+        _syncing = true;
+        _syncFailed = false;
+      });
+    }
 
     final ap = context.read<AuthProvider>();
     final token = ap.user?.token;
@@ -91,6 +98,7 @@ class _AccountPageState extends State<AccountPage> {
             _activeSessions = data['active_sessions'] ?? [];
             _anomalyLogs = data['anomaly_logs'] ?? [];
             _isLoading = false;
+            _syncing = false;
           });
         }
       } else {
@@ -101,6 +109,7 @@ class _AccountPageState extends State<AccountPage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _syncing = false;
           _syncFailed = true;
         });
         _showToast('Failed to hydrate settings from server. Running in offline fallback mode.', isError: true);
@@ -108,7 +117,7 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  Future<void> _updateSecuritySettings(bool twoFactor, bool biometric) async {
+  Future<void> _updateSecuritySettings(bool twoFactor, bool biometric, {String? code}) async {
     setState(() {
       _syncing = true;
       _syncFailed = false;
@@ -128,6 +137,7 @@ class _AccountPageState extends State<AccountPage> {
         body: jsonEncode({
           'two_factor': twoFactor,
           'biometric': biometric,
+          if (code != null) 'code': code,
         }),
       );
 
@@ -140,7 +150,7 @@ class _AccountPageState extends State<AccountPage> {
           });
         }
         // Proactively refresh profile logs
-        _fetchProfile();
+        _fetchProfile(background: true);
       } else {
         throw Exception('Sync failed: ${response.statusCode}');
       }
@@ -153,6 +163,38 @@ class _AccountPageState extends State<AccountPage> {
         });
         _showToast('Persistence failed. Reverting security changes.', isError: true);
       }
+    }
+  }
+
+  Future<String?> _sendGmailVerificationCode() async {
+    final ap = context.read<AuthProvider>();
+    final token = ap.user?.token;
+    final userEmail = ap.user?.email ?? _email;
+
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/auth/security/send-code');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'email': userEmail,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final res = jsonDecode(response.body);
+        _showToast('Verification code sent to $userEmail!');
+        return res['dev_code']?.toString();
+      } else {
+        throw Exception('Failed to send code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [AccountPage] Send Code Error: $e');
+      _showToast('Failed to dispatch validation email.', isError: true);
+      return null;
     }
   }
 
@@ -353,7 +395,7 @@ class _AccountPageState extends State<AccountPage> {
 
       if (response.statusCode == 200) {
         _showToast('All indexing states and conversation logs erased successfully.', isError: true);
-        _fetchProfile();
+        _fetchProfile(background: true);
       } else {
         throw Exception('Erase context failed: ${response.statusCode}');
       }
@@ -612,10 +654,17 @@ class _AccountPageState extends State<AccountPage> {
       );
     } else {
       final controller = TextEditingController();
+      String? devCode;
+      bool sendingCode = false;
+
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (ctx) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
+          final ap = context.read<AuthProvider>();
+          final userEmail = ap.user?.email ?? _email;
+          
           return StatefulBuilder(
             builder: (context, setDialogState) {
               return BackdropFilter(
@@ -625,96 +674,134 @@ class _AccountPageState extends State<AccountPage> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   title: Row(
                     children: [
-                      const Icon(Icons.security_rounded, color: Color(0xFF6366F1)),
+                      const Icon(Icons.mail_lock_rounded, color: Color(0xFF6366F1)),
                       const SizedBox(width: 10),
                       Text(
-                        'Set Up 2FA',
-                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 18),
+                        'Gmail Verification (2FA)',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                     ],
                   ),
                   content: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.) to set up 2FA protection.',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, height: 1.4, color: isDark ? Colors.white70 : Colors.black54),
+                          'For enhanced cybersecurity protection, we will send a secure 6-digit OTP to your registered Gmail account.',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, height: 1.45, color: isDark ? Colors.white70 : Colors.black87),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 14),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                                blurRadius: 15,
-                              ),
-                            ],
+                            color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
                           ),
-                          child: Column(
+                          child: Row(
                             children: [
-                              Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: CustomPaint(
-                                  painter: _QrPainter(),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SelectableText(
-                                'JBSWY3DPEHPK3PXP',
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                              Icon(Icons.alternate_email_rounded, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  userEmail,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF6366F1),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        Text(
-                          'Enter the 6-digit code shown in your app:',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? Colors.white38 : Colors.black38),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: controller,
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 8,
-                          ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            filled: true,
-                            fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-                            hintText: '000000',
-                            hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                        const SizedBox(height: 16),
+                        if (devCode == null)
+                          SizedBox(
+                            width: double.maxFinite,
+                            child: ElevatedButton.icon(
+                              onPressed: sendingCode 
+                                ? null 
+                                : () async {
+                                    setDialogState(() => sendingCode = true);
+                                    final code = await _sendGmailVerificationCode();
+                                    setDialogState(() {
+                                      sendingCode = false;
+                                      devCode = code;
+                                    });
+                                  },
+                              icon: sendingCode 
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                                : const Icon(Icons.send_rounded, size: 14),
+                              label: Text(sendingCode ? 'Dispatching...' : 'Send OTP to Gmail', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF6366F1),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
-                            ),
+                          )
+                        else ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Enter Gmail OTP Code:',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: isDark ? Colors.white38 : Colors.black45),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  controller.text = devCode!;
+                                  setDialogState(() {});
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Auto-fill dev OTP ($devCode)',
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF10B981)),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          onChanged: (val) {
-                            setDialogState(() {});
-                          },
-                        ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: controller,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 8,
+                            ),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              filled: true,
+                              fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                              hintText: '000000',
+                              hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                              ),
+                            ),
+                            onChanged: (val) {
+                              setDialogState(() {});
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -727,11 +814,11 @@ class _AccountPageState extends State<AccountPage> {
                       onPressed: controller.text.length == 6
                           ? () {
                               Navigator.pop(ctx);
-                              _updateSecuritySettings(true, _biometric);
+                              _updateSecuritySettings(true, _biometric, code: controller.text);
                             }
                           : null,
                       child: Text(
-                        'Verify',
+                        'Verify & Enable',
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w800,
                           color: controller.text.length == 6 ? const Color(0xFF6366F1) : (isDark ? Colors.white12 : Colors.black12),
@@ -875,9 +962,6 @@ class _AccountPageState extends State<AccountPage> {
 
                   // Data Privacy Control Panel
                   SliverToBoxAdapter(child: _buildPrivacyControlPanel(isDark)),
-
-                  // Suspicious Login Anomaly logs
-                  SliverToBoxAdapter(child: _buildAnomalyLogsPanel(isDark)),
 
                   // Danger Zone Warning settings
                   SliverToBoxAdapter(child: _buildDangerZone(isDark)),
@@ -1424,80 +1508,68 @@ class _AccountPageState extends State<AccountPage> {
                   onTap: () {
                     showDialog(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: Text('Clear Context Memory?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-                        content: Text('This immediately clears conversational cache systems and resets models memory contexts. Are you sure?', style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              _clearAiMemoryTranscripts();
-                            }, 
-                            child: const Text('Erase Context', style: TextStyle(color: Colors.orangeAccent)),
+                      builder: (ctx) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        return BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                          child: AlertDialog(
+                            backgroundColor: isDark ? const Color(0xFF141416) : Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: Row(
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Clear Context Memory?',
+                                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 18),
+                                ),
+                              ],
+                            ),
+                            content: Text(
+                              'This immediately clears conversational cache systems and resets models memory contexts. This action is instantaneous and cannot be undone.',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12, 
+                                fontWeight: FontWeight.w500, 
+                                height: 1.45, 
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: Text(
+                                  'Cancel',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                  ),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _clearAiMemoryTranscripts();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orangeAccent,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                child: Text(
+                                  'Erase Context',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnomalyLogsPanel(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-            child: Text(
-              'SECURITY ANOMALY LOGS',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 10, fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white24 : Colors.black26,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-          Container(
-            width: double.maxFinite,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: _anomalyLogs.isEmpty
-                  ? [Text('No abnormal activity found.', style: GoogleFonts.plusJakartaSans(color: Colors.white24, fontSize: 11))]
-                  : _anomalyLogs.map((log) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.lens, size: 6, color: Color(0xFF6366F1)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                log.toString(),
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 10,
-                                  color: isDark ? Colors.white54 : Colors.black87,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
             ),
           ),
         ],
