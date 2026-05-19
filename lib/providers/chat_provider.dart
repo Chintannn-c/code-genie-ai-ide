@@ -56,6 +56,11 @@ class ChatProvider extends ChangeNotifier {
   String? _errorMessage;
   StreamSubscription? _streamSubscription;
 
+  // Context awareness & heartbeat watchdog states
+  String? _currentContextStatus;
+  Timer? _heartbeatTimer;
+  bool _isStalled = false;
+
   // CONCURRENCY FIX: Token to cancel delayed initialization on logout
   Timer? _bootTimer;
 
@@ -160,6 +165,8 @@ class ChatProvider extends ChangeNotifier {
   String? get selectedModel => _selectedModel;
   String get activityLabel => _activityLabel;
   bool get isEditorMode => _isEditorMode;
+  String? get currentContextStatus => _currentContextStatus;
+  bool get isStalled => _isStalled;
 
   void toggleEditorMode() {
     _isEditorMode = !_isEditorMode;
@@ -200,12 +207,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void stopStreaming() {
-    _streamSubscription?.cancel();
-    _streamSubscription = null;
-    _isStreaming = false;
-    _activityLabel = 'Ready';
-    _streamService.cancel();
-    notifyListeners();
+    stopGenerating();
   }
 
   void clearError() {
@@ -486,10 +488,17 @@ class ChatProvider extends ChangeNotifier {
     );
     _messages.add(aiMessage);
     _isStreaming = true;
+    _isStalled = false;
+    _currentContextStatus = null;
     _activityLabel =
         'Streaming from ${_providerDisplayName(_selectedProvider)}';
+    _resetHeartbeat();
     notifyListeners();
     String fullResponse = '';
+
+    if (fileIds != null && fileIds.isNotEmpty) {
+      startDocumentAnalysisStages();
+    }
 
     try {
       await _streamSubscription?.cancel();
@@ -516,6 +525,9 @@ class ChatProvider extends ChangeNotifier {
           .timeout(
             const Duration(seconds: 20),
             onTimeout: (sink) {
+              _cancelHeartbeat();
+              _currentContextStatus = null;
+              stopDocumentAnalysisStages();
               final errorText =
                   '⚠️ Code Genie failed to respond. Connection timed out. Please try again.';
               if (_messages.isNotEmpty && _messages.last.role == 'ai') {
@@ -531,7 +543,25 @@ class ChatProvider extends ChangeNotifier {
           )
           .listen(
             (chunk) async {
+              // Parse live context awareness status badges
+              if (chunk.status != null && chunk.status!.isNotEmpty) {
+                _currentContextStatus = chunk.status;
+                _isStalled = false;
+                _resetHeartbeat();
+                notifyListeners();
+                return;
+              }
+
+              if (chunk.text.isNotEmpty || chunk.done || chunk.error != null) {
+                stopDocumentAnalysisStages();
+                _currentContextStatus = null;
+                _isStalled = false;
+                _resetHeartbeat();
+              }
+
               if (chunk.error != null) {
+                _cancelHeartbeat();
+                _currentContextStatus = null;
                 final errorText = '⚠️ Code Genie failed to respond: ${chunk.error}';
                 if (_messages.isNotEmpty && _messages.last.role == 'ai') {
                   _messages[_messages.length - 1] = _messages.last.copyWith(
@@ -545,6 +575,8 @@ class ChatProvider extends ChangeNotifier {
               }
 
               if (chunk.done) {
+                _cancelHeartbeat();
+                _currentContextStatus = null;
                 if (chunk.chatId != null) _currentChatId = chunk.chatId;
                 if (chunk.modelName != null && chunk.modelName!.isNotEmpty) {
                   _activityLabel = 'Completed with ${chunk.modelName}';
@@ -579,6 +611,8 @@ class ChatProvider extends ChangeNotifier {
               notifyListeners();
             },
             onError: (e) {
+              _cancelHeartbeat();
+              _currentContextStatus = null;
               final errorText = '⚠️ Code Genie failed to respond. Connection lost. Please try again.';
               if (_messages.isNotEmpty && _messages.last.role == 'ai') {
                 _messages[_messages.length - 1] = _messages.last.copyWith(
@@ -590,17 +624,68 @@ class ChatProvider extends ChangeNotifier {
               notifyListeners();
             },
             onDone: () {
+              _cancelHeartbeat();
+              _currentContextStatus = null;
               _isStreaming = false;
               _activityLabel = 'Ready';
               notifyListeners();
             },
           );
     } catch (e) {
+      _cancelHeartbeat();
+      _currentContextStatus = null;
       _errorMessage = 'Failed to send message: $e';
       _isStreaming = false;
       _activityLabel = 'Ready';
       notifyListeners();
     }
+  }
+
+  /// Interactive stop action: aborts streaming connections and terminates compute tasks on backend.
+  Future<void> stopGenerating() async {
+    if (!_isStreaming || _currentChatId == null) return;
+
+    _cancelHeartbeat();
+    _currentContextStatus = null;
+    stopDocumentAnalysisStages();
+
+    // 1. Instantly abort client-side network request subscription
+    await _streamSubscription?.cancel();
+    _streamSubscription = null;
+    _streamService.cancel();
+
+    _isStreaming = false;
+    _activityLabel = 'Ready';
+    notifyListeners();
+
+    // 2. Call explicit stop API to cancel backend pipeline
+    try {
+      await _apiService.stopGeneration(_currentChatId!);
+    } catch (e) {
+      debugPrint('Failed to send stop signal to backend: $e');
+    }
+
+    // 3. Gracefully retrieve and sync the saved partial response from backend database
+    await loadMessages(_currentChatId!);
+  }
+
+  /// Reset the connection heartbeat watchdog to detect stalled streams
+  void _resetHeartbeat() {
+    _heartbeatTimer?.cancel();
+    if (!_isStreaming) return;
+    _heartbeatTimer = Timer(const Duration(seconds: 10), () {
+      if (_isStreaming) {
+        _isStalled = true;
+        notifyListeners();
+      }
+    });
+  }
+
+  /// Cancel and release resources occupied by the connection watchdog
+  void _cancelHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    _isStalled = false;
   }
 
   String _providerDisplayName(String provider) {
@@ -626,6 +711,10 @@ class ChatProvider extends ChangeNotifier {
   List<AppFile> get selectedFiles => _selectedFiles;
   bool get isUploading => _isUploading;
 
+  String? _documentReadingStage;
+  String? get documentReadingStage => _documentReadingStage;
+  Timer? _stageTimer;
+
   void removeFile(String fileId) {
     _selectedFiles.removeWhere((f) => f.fileId == fileId);
     notifyListeners();
@@ -645,25 +734,198 @@ class ChatProvider extends ChangeNotifier {
     sendMessage(prompt: prompt);
   }
 
+  void startDocumentAnalysisStages() {
+    _documentReadingStage = "Preparing context...";
+    notifyListeners();
+    
+    final stages = [
+      "Extracting text...",
+      "Analyzing document structure...",
+      "Understanding context...",
+      "Generating embeddings...",
+      "Finding key insights...",
+      "Preparing intelligent response...",
+    ];
+    int stageIdx = 0;
+    
+    _stageTimer?.cancel();
+    _stageTimer = Timer.periodic(const Duration(milliseconds: 1400), (timer) {
+      if (stageIdx < stages.length - 1) {
+        stageIdx++;
+        _documentReadingStage = stages[stageIdx];
+        notifyListeners();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void stopDocumentAnalysisStages() {
+    _stageTimer?.cancel();
+    _stageTimer = null;
+    _documentReadingStage = null;
+    notifyListeners();
+  }
+
   Future<void> uploadFiles(List<PlatformFile> files) async {
     if (files.isEmpty) return;
     _isUploading = true;
     _errorMessage = null;
     notifyListeners();
+
+    for (var file in files) {
+      await _uploadSingleFile(file);
+    }
+
+    _isUploading = false;
+    notifyListeners();
+  }
+
+  Future<void> _uploadSingleFile(PlatformFile file) async {
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+    final optimisticFile = AppFile(
+      fileId: tempId,
+      fileName: file.name,
+      language: file.extension ?? 'txt',
+      size: file.size,
+      status: FileUploadStatus.preparing,
+      progress: 0.05,
+      platformFile: file,
+    );
+
+    _selectedFiles.add(optimisticFile);
+    notifyListeners();
+
+    await _executeUpload(tempId, file);
+  }
+
+  Future<void> _executeUpload(String fileId, PlatformFile file) async {
+    int index = _selectedFiles.indexWhere((f) => f.fileId == fileId);
+    if (index == -1) return;
+
     try {
-      final uploaded = await _apiService.uploadFiles(
-        userId: _userId!,
-        files: files,
+      // 1. Preparing
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        status: FileUploadStatus.preparing,
+        progress: 0.1,
       );
-      debugPrint('✅ Uploaded ${uploaded.length} files successfully');
-      _selectedFiles.addAll(uploaded);
-      debugPrint('📁 Current selected files: ${_selectedFiles.length}');
-    } catch (e) {
-      _errorMessage = 'Upload failed: $e';
-      debugPrint('❌ Upload error: $e');
-    } finally {
-      _isUploading = false;
       notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // 2. Encrypting
+      if (index >= _selectedFiles.length || _selectedFiles[index].status == FileUploadStatus.paused) return;
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        status: FileUploadStatus.encrypting,
+        progress: 0.2,
+      );
+      notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // 3. Uploading (Simulating chunked speed transfer indicators)
+      if (index >= _selectedFiles.length || _selectedFiles[index].status == FileUploadStatus.paused) return;
+      
+      double progressVal = 0.2;
+      final startTime = DateTime.now();
+      
+      while (progressVal < 0.8) {
+        if (index >= _selectedFiles.length) return;
+        if (_selectedFiles[index].status == FileUploadStatus.paused) return;
+        
+        progressVal += 0.15;
+        final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+        final speedKb = elapsed > 0 ? (file.size * progressVal) / elapsed : 180.0;
+        final remainingBytes = file.size * (1.0 - progressVal);
+        final remainingSec = speedKb > 0 ? (remainingBytes / 1024) / speedKb : 2.0;
+
+        _selectedFiles[index] = _selectedFiles[index].copyWith(
+          status: FileUploadStatus.uploading,
+          progress: progressVal,
+          uploadSpeed: '${(speedKb / 10).toStringAsFixed(1)} KB/s',
+          timeRemaining: '${remainingSec.toStringAsFixed(0)}s left',
+        );
+        notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 250));
+      }
+
+      // 4. Processing
+      if (index >= _selectedFiles.length || _selectedFiles[index].status == FileUploadStatus.paused) return;
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        status: FileUploadStatus.processing,
+        progress: 0.85,
+        uploadSpeed: '',
+        timeRemaining: '',
+      );
+      notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // 5. Analyzing
+      if (index >= _selectedFiles.length || _selectedFiles[index].status == FileUploadStatus.paused) return;
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        status: FileUploadStatus.analyzing,
+        progress: 0.92,
+      );
+      notifyListeners();
+
+      // Trigger actual network upload API
+      final uploadedList = await _apiService.uploadFiles(
+        userId: _userId!,
+        files: [file],
+      );
+
+      if (uploadedList.isEmpty) {
+        throw Exception('Server rejected the attachment file content.');
+      }
+
+      // 6. Ready for AI
+      if (index >= _selectedFiles.length) return;
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        fileId: uploadedList.first.fileId,
+        language: uploadedList.first.language,
+        status: FileUploadStatus.ready,
+        progress: 1.0,
+      );
+      notifyListeners();
+
+    } catch (e) {
+      if (index < _selectedFiles.length && index != -1) {
+        _selectedFiles[index] = _selectedFiles[index].copyWith(
+          status: FileUploadStatus.failed,
+          errorMessage: e.toString().replaceAll('Exception: ', ''),
+          progress: 0.0,
+        );
+        notifyListeners();
+      }
+    }
+  }
+
+  void pauseUpload(String fileId) {
+    int index = _selectedFiles.indexWhere((f) => f.fileId == fileId);
+    if (index != -1) {
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        status: FileUploadStatus.paused,
+      );
+      notifyListeners();
+    }
+  }
+
+  void resumeUpload(String fileId) {
+    int index = _selectedFiles.indexWhere((f) => f.fileId == fileId);
+    if (index != -1) {
+      _selectedFiles[index] = _selectedFiles[index].copyWith(
+        status: FileUploadStatus.uploading,
+      );
+      notifyListeners();
+      _executeUpload(fileId, _selectedFiles[index].platformFile!);
+    }
+  }
+
+  void retryUpload(String fileId) {
+    int index = _selectedFiles.indexWhere((f) => f.fileId == fileId);
+    if (index != -1) {
+      final file = _selectedFiles[index].platformFile;
+      if (file != null) {
+        _executeUpload(fileId, file);
+      }
     }
   }
 

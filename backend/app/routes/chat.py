@@ -2,15 +2,55 @@ import json
 import logging
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
-from app.models.requests import GenerateRequest, DebugRequest, ExplainRequest, StreamRequest
+from app.models.requests import GenerateRequest, DebugRequest, ExplainRequest, StreamRequest, StopGenerationRequest
 from app.models.responses import ChatResponse
 from app.services import chat_service, file_service, ai_service as gemini_service, groq_service, orchestrator_service
 from app.services.socket_manager import manager as socket_manager
 from app.prompts.templates import build_prompt
 from app.routes.deps import get_current_user_id
+from app.services.llm_gateway import active_streams
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
+
+@router.post("/chat/stop")
+async def stop_generation(request: StopGenerationRequest, current_user_id: str = Depends(get_current_user_id)):
+    """Triggers cancellation of an active inference stream by setting its asyncio.Event flag."""
+    chat_id = request.chat_id
+    if chat_id in active_streams:
+        active_streams[chat_id].set()
+        logger.info(f"🛑 [STREAM CONTROL] Stop event triggered for chat {chat_id} by user {current_user_id}")
+        return {"status": "success", "message": "Termination signal sent to inference pipeline."}
+    return {"status": "success", "message": "No active stream found to terminate."}
+
+async def _build_file_context(file_ids: list[str] | None, current_user_id: str) -> str:
+    """Validate and extract document contents to inject into system/user prompts."""
+    file_context = ""
+    if file_ids:
+        logger.info(f"📁 [FILE INJECTION] Processing {len(file_ids)} files for user {current_user_id}")
+        for fid in file_ids:
+            meta = await chat_service.get_file_metadata(fid)
+            if not meta:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Document failed to attach to AI context: File '{fid}' not found in registry."
+                )
+            if meta["user_id"] != current_user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Document failed to attach to AI context: Access denied for file '{meta['file_name']}'."
+                )
+            try:
+                content = await file_service.read_file_content(meta["file_path"])
+                file_context += f"\n\n--- FILE ATTACHED: {meta['file_name']} ---\n{content}\n"
+                logger.info(f"✅ [FILE INJECTION] Appended {len(content)} chars from '{meta['file_name']}'")
+            except Exception as fe:
+                logger.error(f"❌ [FILE INJECTION] Failed to read {meta['file_name']}: {fe}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Document failed to attach to AI context: Failed to read content of file '{meta['file_name']}'."
+                )
+    return file_context
 
 @router.post("/generate", response_model=ChatResponse)
 async def generate_code(request: GenerateRequest, current_user_id: str = Depends(get_current_user_id)):
@@ -34,7 +74,8 @@ async def generate_code(request: GenerateRequest, current_user_id: str = Depends
             language=request.language,
         )
 
-        prompt_text = build_prompt(prompt=request.prompt, language=request.language, difficulty=request.difficulty, type="generate")
+        file_context = await _build_file_context(request.file_ids, current_user_id)
+        prompt_text = build_prompt(prompt=request.prompt + file_context, language=request.language, difficulty=request.difficulty, type="generate")
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         content = await gemini_service.generate(contents)
 
@@ -82,7 +123,8 @@ async def debug_code(request: DebugRequest, current_user_id: str = Depends(get_c
             msg_type="debug", language=request.language,
         )
 
-        prompt_text = build_prompt(prompt="Fix this code", language=request.language, difficulty=request.difficulty, type="debug", code=request.code, error=request.error)
+        file_context = await _build_file_context(request.file_ids, current_user_id)
+        prompt_text = build_prompt(prompt="Fix this code" + file_context, language=request.language, difficulty=request.difficulty, type="debug", code=request.code, error=request.error)
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         content = await gemini_service.generate(contents)
 
@@ -122,7 +164,8 @@ async def explain_code(request: ExplainRequest, current_user_id: str = Depends(g
             msg_type="explain", language=request.language,
         )
 
-        prompt_text = build_prompt(prompt="Explain this code", language=request.language, difficulty=request.difficulty, type="explain", code=request.code)
+        file_context = await _build_file_context(request.file_ids, current_user_id)
+        prompt_text = build_prompt(prompt="Explain this code" + file_context, language=request.language, difficulty=request.difficulty, type="explain", code=request.code)
         contents = [{"role": "user", "parts": [{"text": prompt_text}]}]
         content = await gemini_service.generate(contents)
 
@@ -160,9 +203,10 @@ async def orchestrate_response(request: StreamRequest, current_user_id: str = De
             msg_type="orchestrate", language=request.language,
         )
 
+        file_context = await _build_file_context(request.file_ids, current_user_id)
         history = await chat_service.get_chat_context(chat_id, max_messages=10)
         result = await orchestrator_service.orchestrator.get_parallel_response(
-            prompt=request.prompt,
+            prompt=request.prompt + file_context,
             history=history,
             user_level="intermediate" 
         )
@@ -221,24 +265,7 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
         history = await chat_service.get_chat_context(chat_id, max_messages=10)
         
         # FILE CONTEXT INJECTION: Fetch and append file contents if provided
-        file_context = ""
-        if request.file_ids:
-            logger.info(f"📁 [FILE INJECTION] Processing {len(request.file_ids)} files for user {current_user_id}")
-            for fid in request.file_ids:
-                meta = await chat_service.get_file_metadata(fid)
-                if meta:
-                    logger.info(f"📄 [FILE INJECTION] Found meta for {fid}: {meta.get('file_name')} (Owner: {meta.get('user_id')})")
-                    if meta["user_id"] == current_user_id:
-                        try:
-                            content = await file_service.read_file_content(meta["file_path"])
-                            file_context += f"\n\n--- FILE: {meta['file_name']} ---\n{content}\n"
-                            logger.info(f"✅ [FILE INJECTION] Successfully appended {len(content)} chars from {meta['file_name']}")
-                        except Exception as fe:
-                            logger.warning(f"❌ [FILE INJECTION] Failed to read file {fid}: {fe}")
-                    else:
-                        logger.warning(f"🚫 [FILE INJECTION] Ownership mismatch for {fid}: Requestor {current_user_id} != Owner {meta['user_id']}")
-                else:
-                    logger.warning(f"❓ [FILE INJECTION] No metadata found for file_id: {fid}")
+        file_context = await _build_file_context(request.file_ids, current_user_id)
 
         prompt_text = build_prompt(
             prompt=(request.prompt if request.prompt else f"Process this {request.type} request") + file_context,

@@ -499,48 +499,76 @@ class _ChatInputState extends State<ChatInput> {
       cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: isStop ? widget.onStop : _send,
-        child:
-            AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: canSend && !isStop
-                        ? const LinearGradient(
-                            colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                          )
-                        : null,
-                    color: isStop
-                        ? Colors.redAccent.withValues(alpha: 0.15)
-                        : (!canSend
-                              ? (widget.isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.05))
-                              : null),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      if (canSend && !isStop)
-                        BoxShadow(
-                          color: const Color(0xFF6366F1).withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                    ],
-                  ),
-                  child: Icon(
-                    isStop ? Icons.stop_rounded : Icons.send_rounded,
-                    color: canSend
-                        ? (isStop ? Colors.redAccent : Colors.white)
-                        : (widget.isDark ? Colors.white24 : Colors.black26),
-                    size: 20,
-                  ),
-                )
-                .animate(target: canSend ? 1 : 0)
-                .scale(
-                  begin: const Offset(0.95, 0.95),
-                  end: const Offset(1, 1),
-                  duration: 200.ms,
-                  curve: Curves.easeOutBack,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            horizontal: isStop ? 16 : 10,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            gradient: canSend && !isStop
+                ? const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  )
+                : null,
+            color: isStop
+                ? const Color(0xFFEF4444).withValues(alpha: 0.15)
+                : (!canSend
+                    ? (widget.isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.05))
+                    : null),
+            borderRadius: BorderRadius.circular(14),
+            border: isStop
+                ? Border.all(color: const Color(0xFFF87171).withValues(alpha: 0.4), width: 1.5)
+                : null,
+            boxShadow: [
+              if (canSend && !isStop)
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
+              if (isStop)
+                BoxShadow(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 0),
+                ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isStop ? Icons.stop_circle_rounded : Icons.send_rounded,
+                color: canSend
+                    ? (isStop ? const Color(0xFFF87171) : Colors.white)
+                    : (widget.isDark ? Colors.white24 : Colors.black26),
+                size: 20,
+              ),
+              if (isStop) ...[
+                const SizedBox(width: 8),
+                Text(
+                  'Stop Generating',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFF87171),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        )
+        .animate(target: canSend ? 1 : 0)
+        .scale(
+          begin: const Offset(0.95, 0.95),
+          end: const Offset(1, 1),
+          duration: 200.ms,
+          curve: Curves.easeOutBack,
+        ),
       ),
     );
   }

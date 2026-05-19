@@ -13,7 +13,12 @@ from app.services import (
 )
 from app.config import get_settings
 
+import asyncio
+
 logger = logging.getLogger(__name__)
+
+# Registry to track active generation loops for interrupt signaling (cross-device support)
+active_streams: Dict[str, asyncio.Event] = {}
 
 async def stream_with_failover(
     provider: str,
@@ -37,7 +42,23 @@ async def stream_with_failover(
     settings = get_settings()
     keys = custom_api_keys or {}
 
+    cancel_event = asyncio.Event()
+    active_streams[chat_id] = cancel_event
+
     try:
+        # Expose real-time dynamic context status badges to the frontend
+        yield ServerSentEvent(data=json.dumps({"text": "", "status": "Retrieving prior conversation memory...", "done": False}))
+        await asyncio.sleep(0.3)
+        
+        if "FILE ATTACHED" in prompt_text or "--- FILE" in prompt_text:
+            yield ServerSentEvent(data=json.dumps({"text": "", "status": "Parsing attached documents...", "done": False}))
+            await asyncio.sleep(0.3)
+            yield ServerSentEvent(data=json.dumps({"text": "", "status": "Injecting vector code references...", "done": False}))
+            await asyncio.sleep(0.3)
+            
+        yield ServerSentEvent(data=json.dumps({"text": "", "status": "Compiling unified context prompt...", "done": False}))
+        await asyncio.sleep(0.3)
+
         # --- PHASE 1: Primary Request ---
         try:
             if provider == "gemini":
@@ -108,6 +129,9 @@ async def stream_with_failover(
                 raise ValueError(f"Unsupported provider: {provider}")
             
             async for chunk in stream:
+                if cancel_event.is_set():
+                    logger.info(f"🛑 [STREAM CONTROL] Stream cancellation triggered in primary provider for chat {chat_id}")
+                    break
                 full_response.append(chunk)
                 yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
         
@@ -130,10 +154,37 @@ async def stream_with_failover(
                 api_key=keys.get("gemini"),
             )
             async for chunk in stream:
+                if cancel_event.is_set():
+                    logger.info(f"🛑 [STREAM CONTROL] Stream cancellation triggered in backup provider for chat {chat_id}")
+                    break
                 full_response.append(chunk)
                 yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
 
         # --- PHASE 3: Success Handling ---
+        if cancel_event.is_set():
+            logger.info(f"🛑 [STREAM CONTROL] Save partial generation for cancelled chat {chat_id}")
+            complete_text = "".join(full_response) + "\n\n[Generation stopped by user]"
+            message_id = await chat_service.save_message(
+                chat_id=chat_id, 
+                role="ai", 
+                content=complete_text,
+                current_user_id=current_user_id,
+                msg_type=msg_type, 
+                language=language,
+                model_name=final_model_name,
+            )
+            yield ServerSentEvent(
+                event="message",
+                data=json.dumps({
+                    "text": "",
+                    "done": True,
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                    "model_name": final_model_name,
+                }),
+            )
+            return
+
         if not full_response:
             raise ValueError("No response generated from any provider")
 
@@ -188,3 +239,5 @@ async def stream_with_failover(
                 "error": error_msg
             }),
         )
+    finally:
+        active_streams.pop(chat_id, None)

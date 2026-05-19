@@ -20,6 +20,7 @@ class DebugRequest(BaseModel):
     error: str = Field(..., min_length=1, max_length=5000, description="Error message")
     language: str = Field("python")
     difficulty: Literal["beginner", "intermediate", "advanced"] = Field("beginner")
+    file_ids: list[str] | None = Field(None, description="Optional file IDs to include as context")
 
 
 class ExplainRequest(BaseModel):
@@ -29,6 +30,7 @@ class ExplainRequest(BaseModel):
     code: str = Field(..., min_length=1, max_length=50000, description="Code to explain")
     language: str = Field("python")
     difficulty: Literal["beginner", "intermediate", "advanced"] = Field("beginner")
+    file_ids: list[str] | None = Field(None, description="Optional file IDs to include as context")
 
 
 class StreamRequest(BaseModel):
@@ -71,3 +73,8 @@ class SyncDeltaRequest(BaseModel):
     last_sync_clock: int = Field(..., description="Last known master synchronization sequence clock")
     device_id: str = Field(..., description="Unique client hardware device string")
     pending_changes: list[SyncOperation] = Field(default=[], description="Unsynced local operations queue")
+
+
+class StopGenerationRequest(BaseModel):
+    """Request schema to interrupt/abort streaming AI generation sessions."""
+    chat_id: str = Field(..., min_length=1, description="Target chat identifier to abort")

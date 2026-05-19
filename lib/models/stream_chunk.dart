@@ -8,6 +8,7 @@ class StreamChunk {
   final String? messageId;
   final String? error;
   final String? modelName;
+  final String? status;
 
   StreamChunk({
     required this.text,
@@ -16,6 +17,7 @@ class StreamChunk {
     this.messageId,
     this.error,
     this.modelName,
+    this.status,
   });
 
   factory StreamChunk.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class StreamChunk {
       messageId: json['message_id'],
       error: json['error'],
       modelName: json['model_name'],
+      status: json['status'],
     );
   }
 

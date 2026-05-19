@@ -390,6 +390,20 @@ class ApiService {
     return true;
   }
 
+  /// Terminate active AI generation for a chat session (memory leak prevention & cross-device sync).
+  Future<Map<String, dynamic>> stopGeneration(String chatId) async {
+    final response = await _client.post(
+      _uri('/api/chat/stop'),
+      headers: _headers,
+      body: jsonEncode({'chat_id': chatId}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to stop generation: ${response.body}');
+    }
+    return jsonDecode(response.body);
+  }
+
   void dispose() {
     _client.close();
   }
