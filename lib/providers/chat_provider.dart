@@ -6,8 +6,10 @@
  */
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import '../models/chat.dart';
 import '../models/message.dart';
 import '../models/app_file.dart';
@@ -213,12 +215,55 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> loadChats() async {
     if (_userId == null) return;
+    
+    // 1. Optimistic Local Hydration: Load cached conversations in <10ms
     try {
-      _chats = await _apiService.getChats(_userId!);
+      final box = await Hive.openBox('cached_chats_box_$_userId');
+      final cachedJson = box.get('chats_list');
+      if (cachedJson != null) {
+        final decoded = jsonDecode(cachedJson) as List;
+        _chats = decoded.map((c) => Chat.fromJson(c)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error reading chats cache: $e');
+    }
+
+    // 2. Background Revalidation: Fetch fresh PostgreSQL data silently
+    try {
+      final freshChats = await _apiService.getChats(_userId!);
+      _chats = freshChats;
       notifyListeners();
+
+      // 3. Keep Cache database updated in the background
+      final box = await Hive.openBox('cached_chats_box_$_userId');
+      final encodable = freshChats.map((c) => c.toJson()).toList();
+      await box.put('chats_list', jsonEncode(encodable));
     } catch (e) {
       _errorMessage = 'Failed to load chats: $e';
       notifyListeners();
+    }
+  }
+
+  Future<List<Chat>> getChatsFromApi(String userId, {int page = 1, int limit = 20}) async {
+    return await _apiService.getChats(userId, page: page, limit: limit);
+  }
+
+  Future<void> appendChats(List<Chat> newChats) async {
+    final existingIds = _chats.map((c) => c.chatId).toSet();
+    for (var chat in newChats) {
+      if (!existingIds.contains(chat.chatId)) {
+        _chats.add(chat);
+      }
+    }
+    notifyListeners();
+
+    try {
+      final box = await Hive.openBox('cached_chats_box_$_userId');
+      final encodable = _chats.map((c) => c.toJson()).toList();
+      await box.put('chats_list', jsonEncode(encodable));
+    } catch (e) {
+      debugPrint('⚠️ Error updating cache: $e');
     }
   }
 
@@ -234,17 +279,33 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<void> deleteChat(String chatId) async {
+    final previousChats = List<Chat>.from(_chats);
+
+    // 1. Optimistic UI: Instantly remove chat from frontend state
+    _chats.removeWhere((c) => c.chatId == chatId);
+    if (_currentChatId == chatId) {
+      _currentChatId = null;
+      _messages = [];
+    }
+    notifyListeners();
+
     try {
       final success = await _apiService.deleteChat(chatId);
-      if (success) {
-        if (_currentChatId == chatId) {
-          _currentChatId = null;
-          _messages = [];
-        }
-        await loadChats();
+      if (!success) {
+        // Rollback state if api reports failure
+        _chats = previousChats;
+        _errorMessage = 'Server refused deletion. Rolling back state...';
+        notifyListeners();
+      } else {
+        // Silently update cache box
+        final box = await Hive.openBox('cached_chats_box_$_userId');
+        final encodable = _chats.map((c) => c.toJson()).toList();
+        await box.put('chats_list', jsonEncode(encodable));
       }
     } catch (e) {
-      _errorMessage = 'Failed to delete chat: $e';
+      // Rollback state on connection or parsing failure
+      _chats = previousChats;
+      _errorMessage = 'Connection failure: $e. Reverted optimistic delete.';
       notifyListeners();
     }
   }

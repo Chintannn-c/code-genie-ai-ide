@@ -26,4 +26,15 @@ class Chat {
       lastMessageSnippet: json['last_message_snippet'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'chat_id': chatId,
+      'title': title,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'message_count': messageCount,
+      'last_message_snippet': lastMessageSnippet,
+    };
+  }
 }

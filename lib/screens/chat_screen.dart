@@ -1,15 +1,10 @@
-/*
- * FIXES APPLIED: 2026-05-06
- * Bug #1 — RepaintBoundary + SizeTransition — line ~170
- */
-
 import 'dart:ui';
-
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'history_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
@@ -24,7 +19,6 @@ import '../widgets/difficulty_selector.dart';
 import '../widgets/language_selector.dart';
 import '../widgets/mode_selector.dart';
 import '../widgets/model_selector.dart';
-
 import '../widgets/planning_timeline.dart';
 import '../providers/planning_provider.dart';
 import 'dart:convert';
@@ -1060,7 +1054,35 @@ class _ChatScreenState extends State<ChatScreen>
             },
           ),
           _utilityIcon(Icons.help_outline_rounded, 'Help', isDark),
-          _utilityIcon(Icons.star_outline_rounded, 'Favorites', isDark),
+          _utilityIcon(
+            Icons.history_rounded,
+            'History',
+            isDark,
+            onTap: () {
+              // Optimistic instant navigation with high-performance pre-mounted route transitions
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const HistoryScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.fastEaseInToSlowEaseOut,
+                        ),
+                      ),
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 300),
+                ),
+              );
+            },
+          ),
           _utilityIcon(
             Icons.logout_rounded,
             'Sign Out',
