@@ -169,6 +169,16 @@ class SendCodeRequest(BaseModel):
 class SessionRevokeRequest(BaseModel):
     session_id: str
 
+class AiSettingsUpdateRequest(BaseModel):
+    temperature: float = None
+    max_tokens: float = None
+    creativity: float = None
+    streaming: bool = None
+    autonomous_mode: bool = None
+    debate_mode: bool = None
+    rag_context: bool = None
+    memory_persist: bool = None
+
 @router.get("/profile")
 async def get_profile(current_user_id: str = Depends(get_current_user_id)):
     """Fetch user profile metadata, active sessions, AI usage, and security configurations."""
@@ -221,6 +231,20 @@ async def get_profile(current_user_id: str = Depends(get_current_user_id)):
         set_fields["anomaly_logs"] = user["anomaly_logs"]
         updated = True
         
+    if "ai_settings" not in user:
+        user["ai_settings"] = {
+            "temperature": 0.7,
+            "max_tokens": 4096.0,
+            "creativity": 0.6,
+            "streaming": True,
+            "autonomous_mode": False,
+            "debate_mode": False,
+            "rag_context": True,
+            "memory_persist": False
+        }
+        set_fields["ai_settings"] = user["ai_settings"]
+        updated = True
+        
     if updated:
         await db.users.update_one({"_id": current_user_id}, {"$set": set_fields})
         
@@ -234,7 +258,8 @@ async def get_profile(current_user_id: str = Depends(get_current_user_id)):
         "connections": user.get("connections"),
         "usage": user.get("usage"),
         "active_sessions": user.get("active_sessions"),
-        "anomaly_logs": user.get("anomaly_logs")
+        "anomaly_logs": user.get("anomaly_logs"),
+        "ai_settings": user.get("ai_settings")
     }
 
 @router.post("/profile/update")
@@ -350,6 +375,55 @@ async def revoke_session(request: SessionRevokeRequest, current_user_id: str = D
     )
     
     return {"status": "success", "message": "Session terminated successfully"}
+
+@router.get("/ai-settings")
+async def get_ai_settings(current_user_id: str = Depends(get_current_user_id)):
+    """Fetch user's AI orchestration settings."""
+    db = await get_db()
+    user = await db.users.find_one({"_id": current_user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    ai_settings = user.get("ai_settings", {
+        "temperature": 0.7,
+        "max_tokens": 4096.0,
+        "creativity": 0.6,
+        "streaming": True,
+        "autonomous_mode": False,
+        "debate_mode": False,
+        "rag_context": True,
+        "memory_persist": False
+    })
+    return {"status": "success", "ai_settings": ai_settings}
+
+@router.post("/ai-settings/update")
+async def update_ai_settings(request: AiSettingsUpdateRequest, current_user_id: str = Depends(get_current_user_id)):
+    """Update user's AI orchestration settings."""
+    db = await get_db()
+    
+    update_data = {}
+    if request.temperature is not None:
+        update_data["ai_settings.temperature"] = request.temperature
+    if request.max_tokens is not None:
+        update_data["ai_settings.max_tokens"] = request.max_tokens
+    if request.creativity is not None:
+        update_data["ai_settings.creativity"] = request.creativity
+    if request.streaming is not None:
+        update_data["ai_settings.streaming"] = request.streaming
+    if request.autonomous_mode is not None:
+        update_data["ai_settings.autonomous_mode"] = request.autonomous_mode
+    if request.debate_mode is not None:
+        update_data["ai_settings.debate_mode"] = request.debate_mode
+    if request.rag_context is not None:
+        update_data["ai_settings.rag_context"] = request.rag_context
+    if request.memory_persist is not None:
+        update_data["ai_settings.memory_persist"] = request.memory_persist
+
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc)
+        await db.users.update_one({"_id": current_user_id}, {"$set": update_data})
+        
+    return {"status": "success", "message": "AI Settings synchronized successfully"}
 
 @router.post("/privacy/export")
 async def export_data(current_user_id: str = Depends(get_current_user_id)):
