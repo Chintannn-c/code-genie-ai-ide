@@ -28,23 +28,29 @@ class _DiagramRendererState extends State<DiagramRenderer> {
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
-      _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.transparent)
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onPageFinished: (String url) {
-              if (mounted) {
-                setState(() {
-                  _isWebViewReady = true;
-                });
-                _renderDiagram();
-              }
-            },
-          ),
-        )
-        ..loadHtmlString(_buildHtml());
+    final isMobile = defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
+    if (!kIsWeb && isMobile) {
+      try {
+        _controller = WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.transparent)
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageFinished: (String url) {
+                if (mounted) {
+                  setState(() {
+                    _isWebViewReady = true;
+                  });
+                  _renderDiagram();
+                }
+              },
+            ),
+          )
+          ..loadHtmlString(_buildHtml());
+      } catch (e) {
+        debugPrint("Failed to initialize WebViewController: $e");
+        _controller = null;
+      }
     }
   }
 

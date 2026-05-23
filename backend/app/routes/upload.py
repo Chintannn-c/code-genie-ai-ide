@@ -172,7 +172,8 @@ async def analyze_file(
             content=f"Analyze this file: {file_meta['file_name']}",
             current_user_id=current_user_id,
             msg_type="file_analysis",
-            language=file_meta["language"]
+            language=file_meta["language"],
+            file_id=request.file_id,
         )
         
         prompt_text = build_prompt(prompt=f"Analyze this file: {file_meta['file_name']}", language=file_meta["language"], difficulty=request.difficulty if hasattr(request, 'difficulty') else "beginner", type="file_analysis", code=content)
@@ -194,7 +195,8 @@ async def analyze_file(
             current_user_id=current_user_id,
             msg_type="file_analysis",
             language=file_meta["language"],
-            model_name=request.model_name or f"{request.provider.upper() if request.provider else 'GEMINI'} (Direct)"
+            model_name=request.model_name or f"{request.provider.upper() if request.provider else 'GEMINI'} (Direct)",
+            file_id=request.file_id,
         )
         
         return ChatResponse(
@@ -237,7 +239,8 @@ async def debug_file(
             content=f"Debug {file_meta['file_name']}: {request.error}",
             current_user_id=current_user_id,
             msg_type="file_debug",
-            language=file_meta["language"]
+            language=file_meta["language"],
+            file_id=request.file_id,
         )
         
         prompt_text = build_prompt(prompt=f"Debug {file_meta['file_name']}: {request.error}", language=file_meta["language"], difficulty=request.difficulty if hasattr(request, 'difficulty') else "beginner", type="file_debug", code=content, error=request.error)
@@ -257,7 +260,8 @@ async def debug_file(
             current_user_id=current_user_id,
             msg_type="file_debug",
             language=file_meta["language"],
-            model_name=request.model_name or f"{request.provider.upper() if request.provider else 'GEMINI'} (Direct)"
+            model_name=request.model_name or f"{request.provider.upper() if request.provider else 'GEMINI'} (Direct)",
+            file_id=request.file_id,
         )
         
         return ChatResponse(
@@ -420,4 +424,32 @@ async def download_file(file_id: str, current_user_id: str = Depends(get_current
         return FileResponse(file_meta["file_path"])
     except Exception as e:
         logger.error(f"Download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/file-metadata/{file_id}")
+async def get_file_metadata(file_id: str, current_user_id: str = Depends(get_current_user_id)):
+    """Get metadata for a specific file."""
+    try:
+        file_meta = await chat_service.get_file_metadata(file_id)
+        if not file_meta:
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        # SECURITY FIX: Verify ownership
+        if file_meta["user_id"] != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this file")
+            
+        return {
+            "file_id": file_meta["file_id"],
+            "file_name": file_meta["file_name"],
+            "language": file_meta["language"],
+            "size": file_meta["size"],
+            "status": file_meta.get("status", "safe"),
+            "risk_score": file_meta.get("risk_score", 0),
+            "risk_level": file_meta.get("risk_level", "low"),
+            "created_at": file_meta.get("created_at").isoformat() if file_meta.get("created_at") else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Metadata error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

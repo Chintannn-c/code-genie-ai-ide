@@ -12,6 +12,7 @@ import '../models/message.dart';
 import '../utils/code_parser.dart';
 import 'code_block.dart';
 import 'diagram_renderer.dart';
+import 'file_preview_renderer.dart';
 
 /// Chat message bubble with readable code-aware rendering.
 class MessageBubble extends StatelessWidget {
@@ -160,6 +161,13 @@ class MessageBubble extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (message.fileId != null) ...[
+                            FilePreviewRenderer(
+                              fileId: message.fileId!,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           ..._buildContent(context, agentColor),
                           if (isStreaming && !isUser)
                             _buildStreamingIndicator(context, agentColor),

@@ -1,5 +1,6 @@
 import json
 import logging
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 from app.models.requests import GenerateRequest, DebugRequest, ExplainRequest, StreamRequest, StopGenerationRequest
@@ -120,6 +121,7 @@ async def generate_code(request: GenerateRequest, current_user_id: str = Depends
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         # SECURITY FIX: Pass current_user_id for ownership verification
+        fid = request.file_ids[0] if request.file_ids else None
         await chat_service.save_message(
             chat_id=chat_id,
             role="user",
@@ -127,6 +129,7 @@ async def generate_code(request: GenerateRequest, current_user_id: str = Depends
             current_user_id=current_user_id,
             msg_type="generate",
             language=request.language,
+            file_id=fid,
         )
 
         file_context = await _build_file_context(request.file_ids, current_user_id, request.prompt)
@@ -143,6 +146,7 @@ async def generate_code(request: GenerateRequest, current_user_id: str = Depends
             current_user_id=current_user_id,
             msg_type="generate",
             language=request.language,
+            file_id=fid,
         )
 
         from datetime import datetime, timezone
@@ -173,10 +177,12 @@ async def debug_code(request: DebugRequest, current_user_id: str = Depends(get_c
         user_content = f"**Code:**\n```{request.language}\n{request.code}\n```\n\n**Error:** {request.error}"
         
         # SECURITY FIX: Pass current_user_id
+        fid = request.file_ids[0] if request.file_ids else None
         await chat_service.save_message(
             chat_id=chat_id, role="user", content=user_content,
             current_user_id=current_user_id,
             msg_type="debug", language=request.language,
+            file_id=fid,
         )
 
         file_context = await _build_file_context(request.file_ids, current_user_id, request.error)
@@ -190,6 +196,7 @@ async def debug_code(request: DebugRequest, current_user_id: str = Depends(get_c
             chat_id=chat_id, role="ai", content=content,
             current_user_id=current_user_id,
             msg_type="debug", language=request.language,
+            file_id=fid,
         )
 
         from datetime import datetime, timezone
@@ -214,11 +221,13 @@ async def explain_code(request: ExplainRequest, current_user_id: str = Depends(g
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         # SECURITY FIX: Pass current_user_id
+        fid = request.file_ids[0] if request.file_ids else None
         await chat_service.save_message(
             chat_id=chat_id, role="user",
             content=f"```{request.language}\n{request.code}\n```",
             current_user_id=current_user_id,
             msg_type="explain", language=request.language,
+            file_id=fid,
         )
 
         file_context = await _build_file_context(request.file_ids, current_user_id, request.code)
@@ -232,6 +241,7 @@ async def explain_code(request: ExplainRequest, current_user_id: str = Depends(g
             chat_id=chat_id, role="ai", content=content,
             current_user_id=current_user_id,
             msg_type="explain", language=request.language,
+            file_id=fid,
         )
 
         from datetime import datetime, timezone
@@ -255,10 +265,12 @@ async def orchestrate_response(request: StreamRequest, current_user_id: str = De
             chat_id = await chat_service.create_chat(current_user_id, f"Parallel: {request.prompt[:50]}")
 
         # SECURITY FIX: Pass current_user_id
+        fid = request.file_ids[0] if request.file_ids else None
         await chat_service.save_message(
             chat_id=chat_id, role="user", content=request.prompt,
             current_user_id=current_user_id,
             msg_type="orchestrate", language=request.language,
+            file_id=fid,
         )
 
         file_context = await _build_file_context(request.file_ids, current_user_id, request.prompt)
@@ -274,7 +286,8 @@ async def orchestrate_response(request: StreamRequest, current_user_id: str = De
             chat_id=chat_id, role="ai", content=result["answer"],
             current_user_id=current_user_id,
             msg_type="orchestrate", language=request.language,
-            model_name=f"ORCHESTRATOR ({', '.join(result['models_participated'])})"
+            model_name=f"ORCHESTRATOR ({', '.join(result['models_participated'])})",
+            file_id=fid,
         )
 
         return {
@@ -314,10 +327,12 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
             user_content = f"```{request.language}\n{request.code}\n```"
 
         # SECURITY FIX: Pass current_user_id
+        fid = request.file_ids[0] if request.file_ids else None
         await chat_service.save_message(
             chat_id=chat_id, role="user", content=user_content,
             current_user_id=current_user_id,
             msg_type=request.type, language=request.language,
+            file_id=fid,
         )
 
         history = await chat_service.get_chat_context(chat_id, max_messages=10)
@@ -350,6 +365,7 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 custom_api_keys=request.custom_api_keys,
+                file_id=fid,
             ),
             headers={"X-Accel-Buffering": "no"}
         )

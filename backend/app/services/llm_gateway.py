@@ -36,7 +36,8 @@ async def stream_with_failover(
     language: str,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
-    custom_api_keys: Optional[Dict[str, str]] = None
+    custom_api_keys: Optional[Dict[str, str]] = None,
+    file_id: Optional[str] = None
 ) -> AsyncGenerator[ServerSentEvent, None]:
     """
     Centralized streaming logic with automatic failover to Gemini.
@@ -224,6 +225,7 @@ async def stream_with_failover(
                 msg_type=msg_type, 
                 language=language,
                 model_name=final_model_name,
+                file_id=file_id,
             )
             yield ServerSentEvent(
                 event="message",
@@ -249,6 +251,7 @@ async def stream_with_failover(
             msg_type=msg_type, 
             language=language,
             model_name=final_model_name,
+            file_id=file_id,
         )
 
         yield ServerSentEvent(
@@ -277,7 +280,8 @@ async def stream_with_failover(
                     current_user_id=current_user_id,
                     msg_type=msg_type, 
                     language=language,
-                    model_name=final_model_name
+                    model_name=final_model_name,
+                    file_id=file_id
                 )
             except: pass
 

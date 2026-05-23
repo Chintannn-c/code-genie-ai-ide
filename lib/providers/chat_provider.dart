@@ -464,6 +464,7 @@ class ChatProvider extends ChangeNotifier {
       content: userContent,
       type: _selectedMode,
       language: _selectedLanguage,
+      fileId: _selectedFiles.isNotEmpty ? _selectedFiles.first.fileId : null,
     );
 
     _messages.add(userMessage);

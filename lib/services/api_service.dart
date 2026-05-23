@@ -404,6 +404,34 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  /// Get metadata for a specific file
+  Future<AppFile> getFileMetadata(String fileId) async {
+    final response = await _client.get(
+      _uri('/api/file-metadata/$fileId'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load file metadata: ${response.body}');
+    }
+
+    return AppFile.fromJson(jsonDecode(response.body));
+  }
+
+  /// Download the raw string contents of an uploaded file
+  Future<String> downloadFileContent(String fileId) async {
+    final response = await _client.get(
+      _uri('/api/file/$fileId'),
+      headers: _headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to download file content: ${response.body}');
+    }
+
+    return response.body;
+  }
+
   void dispose() {
     _client.close();
   }
