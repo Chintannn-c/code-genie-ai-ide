@@ -1,5 +1,5 @@
 import 'dart:ui';
-
+import 'package:flutter/foundation.dart';
 import 'package:ai_coding/providers/chat_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -293,6 +293,16 @@ class MessageBubble extends StatelessWidget {
     children.addAll(
       segments.map((s) {
         if (s.isDiagram) {
+          if (kIsWeb) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: CodeBlock(
+                code: s.content,
+                language: 'mermaid',
+                isDark: isDark,
+              ),
+            );
+          }
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: DiagramRenderer(

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -18,6 +19,7 @@ import '../widgets/attachment_button.dart';
 
 import '../widgets/planning_timeline.dart';
 import '../providers/planning_provider.dart';
+import '../providers/orchestration_provider.dart';
 import 'dart:convert';
 import '../services/notification_service.dart';
 import 'settings_screen.dart';
@@ -498,7 +500,7 @@ class _ChatScreenState extends State<ChatScreen>
                   width: MediaQuery.of(context).size.width * 0.30,
                   child: Selector<ChatProvider, String>(
                     selector: (_, cp) => cp.latestCode,
-                    builder: (context, code, _) => CodePanel(
+                    builder: (context, code, _) => RightCockpitPanel(
                       code: code,
                       language: chatProvider.latestLanguage,
                       isDark: isDark,
@@ -609,45 +611,54 @@ class _ChatScreenState extends State<ChatScreen>
 
   Widget _buildActivityPill(ChatProvider cp, bool isDark) {
     final active = cp.isStreaming || cp.isOrchestrating;
+    final statusText = active 
+        ? (cp.isOrchestrating ? 'Agent Active' : 'Streaming') 
+        : 'System Sync';
+
     return Container(
-      constraints: const BoxConstraints(maxWidth: 260),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      constraints: const BoxConstraints(maxWidth: 280),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: active
-            ? const Color(0xFF2563EB).withValues(alpha: 0.12)
-            : (isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.04)),
-        borderRadius: BorderRadius.circular(8),
+            ? const Color(0xFF6366F1).withOpacity(0.12)
+            : const Color(0xFF10B981).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: active
-              ? const Color(0xFF2563EB).withValues(alpha: 0.3)
-              : (isDark ? Colors.white10 : Colors.black12),
+              ? const Color(0xFF6366F1).withOpacity(0.3)
+              : const Color(0xFF10B981).withOpacity(0.2),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: active ? const Color(0xFF2563EB) : const Color(0xFF10B981),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 7),
+          // Glowing heartbeat node
+          _LiveHeartbeat(isActive: active),
+          const SizedBox(width: 8),
           Flexible(
-            child: Text(
-              cp.activityLabel,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: active
-                    ? const Color(0xFF60A5FA)
-                    : (isDark ? Colors.white60 : Colors.black54),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  statusText.toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    color: active ? const Color(0xFF818CF8) : const Color(0xFF10B981),
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                Text(
+                  'Latency: 24ms | Synced',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 8,
+                    color: isDark ? Colors.white30 : Colors.black38,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1406,6 +1417,414 @@ class TypingIndicator extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ============================================================
+// DYNAMIC TABBED RIGHT PANEL (Cockpit panel: Code + Telemetry)
+// ============================================================
+
+class RightCockpitPanel extends StatefulWidget {
+  final String code;
+  final String language;
+  final bool isDark;
+
+  const RightCockpitPanel({
+    super.key,
+    required this.code,
+    required this.language,
+    required this.isDark,
+  });
+
+  @override
+  State<RightCockpitPanel> createState() => _RightCockpitPanelState();
+}
+
+class _RightCockpitPanelState extends State<RightCockpitPanel>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.isDark ? const Color(0xFF0D0F16) : Colors.white,
+        border: Border(
+          left: BorderSide(
+            color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+            width: 1.5,
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: widget.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  ),
+                ),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: const Color(0xFF6366F1),
+                labelColor: const Color(0xFF818CF8),
+                unselectedLabelColor: widget.isDark ? Colors.white30 : Colors.black38,
+                labelStyle: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.0,
+                ),
+                tabs: const [
+                  Tab(text: 'CODE PLAYGROUND', icon: Icon(Icons.code_rounded, size: 14)),
+                  Tab(text: 'ORCHESTRATION TELEMETRY', icon: Icon(Icons.hub_rounded, size: 14)),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: original Code Panel
+                CodePanel(
+                  code: widget.code,
+                  language: widget.language,
+                  isDark: widget.isDark,
+                ),
+                
+                // Tab 2: Live Orchestration Dashboard / Telemetry HUD
+                _OrchestrationTelemetryTab(isDark: widget.isDark),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// LIVE ORCHESTRATION TELEMETRY PANEL
+// ============================================================
+
+class _OrchestrationTelemetryTab extends StatelessWidget {
+  final bool isDark;
+  const _OrchestrationTelemetryTab({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<OrchestrationProvider>(
+          create: (_) => OrchestrationProvider()..startPolling(),
+        ),
+      ],
+      child: Consumer<OrchestrationProvider>(
+        builder: (context, orch, _) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Stat Cards Grid
+                _buildHUDCard(
+                  title: 'ORCHESTRATION NETWORK',
+                  color: const Color(0xFF6366F1),
+                  child: Row(
+                    children: [
+                      _buildHUDMetric('Orchestrations', '${orch.totalOrchestrations}', const Color(0xFF6366F1)),
+                      _buildHUDMetric('Agent Calls', '${orch.totalAgentCalls}', const Color(0xFF06B6D4)),
+                      _buildHUDMetric('Blocked Scans', '${orch.blocked}', const Color(0xFFEF4444)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Active multi-agent mesh networks
+                _buildHUDCard(
+                  title: 'ACTIVE COGNITIVE AGENTS',
+                  color: const Color(0xFF06B6D4),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _buildAgentNode('🗺️ Planner', const Color(0xFF6366F1)),
+                      _buildAgentNode('🏗️ Architect', const Color(0xFF8B5CF6)),
+                      _buildAgentNode('💻 Coder', const Color(0xFF06B6D4)),
+                      _buildAgentNode('🔒 Auditor', const Color(0xFFEF4444)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Ingestion & Vector SOC
+                _buildHUDCard(
+                  title: 'ZERO-TRUST SECURITY SOC',
+                  color: const Color(0xFF10B981),
+                  child: Column(
+                    children: [
+                      _socRow('Clean Files Ingested', '${orch.clean}', const Color(0xFF10B981)),
+                      _socRow('Threat Blocked', '${orch.blocked}', const Color(0xFFEF4444)),
+                      _socRow('Leaked Key Detections', '${orch.flagged}', const Color(0xFFF59E0B)),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: orch.totalScanned > 0 ? (orch.clean / orch.totalScanned).clamp(0.0, 1.0) : 1.0,
+                          minHeight: 4,
+                          backgroundColor: const Color(0xFFEF4444).withOpacity(0.2),
+                          valueColor: const AlwaysStoppedAnimation(Color(0xFF10B981)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Pending approvals human-in-the-loop
+                if (orch.approvals.isNotEmpty) ...[
+                  _buildHUDCard(
+                    title: 'PENDING APPROVAL GATEWAYS',
+                    color: const Color(0xFFEF4444),
+                    child: Column(
+                      children: orch.approvals.map((a) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444).withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.security_rounded, size: 14, color: Color(0xFFEF4444)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${a['agent']} → ${a['action']}',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 18),
+                                onPressed: () {
+                                  HapticFeedback.selectionClick();
+                                  orch.resolveApproval(a['request_id'], true);
+                                },
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.cancel_rounded, color: Colors.red, size: 18),
+                                onPressed: () {
+                                  HapticFeedback.selectionClick();
+                                  orch.resolveApproval(a['request_id'], false);
+                                },
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // AI debate logs / recent events
+                _buildHUDCard(
+                  title: 'COGNITIVE LOG DEBATE ENGINE',
+                  color: const Color(0xFFF59E0B),
+                  child: Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.black38,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withOpacity(0.04)),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: ListView.builder(
+                      itemCount: (orch.auditData['recent_events'] as List?)?.length ?? 0,
+                      itemBuilder: (context, index) {
+                        final events = (orch.auditData['recent_events'] as List);
+                        final e = events[events.length - 1 - index];
+                        final type = e['event_type'] ?? 'THINK';
+                        final agent = e['agent_name'] ?? 'Planner';
+                        final action = e['action'] ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(color: const Color(0xFF6366F1).withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+                                child: Text(type, style: GoogleFonts.jetBrainsMono(fontSize: 8, fontWeight: FontWeight.bold, color: const Color(0xFF818CF8))),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '$agent → $action',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 10, color: Colors.white70),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHUDCard({required String title, required Color color, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131520).withOpacity(0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHUDMetric(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value, style: GoogleFonts.jetBrainsMono(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+          Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 9, color: Colors.white38)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAgentNode(String name, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        name,
+        style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+      ),
+    ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2.seconds, color: Colors.white12);
+  }
+
+  Widget _socRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.white60)),
+          const Spacer(),
+          Text(value, style: GoogleFonts.jetBrainsMono(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// REAL-TIME HEARTBEAT PULSER
+// ============================================================
+
+class _LiveHeartbeat extends StatefulWidget {
+  final bool isActive;
+  const _LiveHeartbeat({required this.isActive});
+
+  @override
+  State<_LiveHeartbeat> createState() => _LiveHeartbeatState();
+}
+
+class _LiveHeartbeatState extends State<_LiveHeartbeat>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isActive ? const Color(0xFF6366F1) : const Color(0xFF10B981);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.6 * _controller.value),
+                blurRadius: 6 * _controller.value + 2,
+                spreadRadius: 2 * _controller.value,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

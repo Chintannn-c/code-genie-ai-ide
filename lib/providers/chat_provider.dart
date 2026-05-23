@@ -140,6 +140,64 @@ class ChatProvider extends ChangeNotifier {
     } else if (type == 'orchestration_state') {
       _activityLabel = event['message'];
       notifyListeners();
+    } else if (type == 'file_status_updated') {
+      final fileId = event['file_id'];
+      final statusStr = event['status'];
+      final riskScore = event['risk_score'] ?? 0;
+      final riskLevel = event['risk_level'];
+      final quarantineReason = event['quarantine_reason'];
+
+      final idx = _selectedFiles.indexWhere((f) => f.fileId == fileId);
+      if (idx != -1) {
+        final currentFile = _selectedFiles[idx];
+        FileUploadStatus newStatus;
+        double newProgress = currentFile.progress;
+        String? newError = currentFile.errorMessage;
+
+        switch (statusStr) {
+          case 'uploading':
+            newStatus = FileUploadStatus.uploading;
+            newProgress = 0.25;
+            break;
+          case 'validating':
+            newStatus = FileUploadStatus.validating;
+            newProgress = 0.5;
+            break;
+          case 'scanning':
+            newStatus = FileUploadStatus.scanning;
+            newProgress = 0.75;
+            break;
+          case 'parsing':
+            newStatus = FileUploadStatus.parsing;
+            newProgress = 0.9;
+            break;
+          case 'safe':
+            newStatus = FileUploadStatus.ready;
+            newProgress = 1.0;
+            newError = null;
+            break;
+          case 'quarantined':
+            newStatus = FileUploadStatus.quarantined;
+            newProgress = 1.0;
+            newError = 'Quarantined: $quarantineReason (Risk: $riskLevel, Score: $riskScore/100)';
+            break;
+          case 'blocked':
+            newStatus = FileUploadStatus.failed;
+            newProgress = 0.0;
+            newError = 'Blocked: $quarantineReason';
+            break;
+          default:
+            newStatus = FileUploadStatus.failed;
+            newError = quarantineReason;
+        }
+
+        _selectedFiles[idx] = currentFile.copyWith(
+          status: newStatus,
+          progress: newProgress,
+          errorMessage: newError,
+        );
+        notifyListeners();
+      }
     }
   }
 
@@ -893,21 +951,13 @@ class ChatProvider extends ChangeNotifier {
       // 4. Processing
       if (index >= _selectedFiles.length || _selectedFiles[index].status == FileUploadStatus.paused) return;
       _selectedFiles[index] = _selectedFiles[index].copyWith(
-        status: FileUploadStatus.processing,
+        status: FileUploadStatus.uploading,
         progress: 0.85,
         uploadSpeed: '',
         timeRemaining: '',
       );
       notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // 5. Analyzing
-      if (index >= _selectedFiles.length || _selectedFiles[index].status == FileUploadStatus.paused) return;
-      _selectedFiles[index] = _selectedFiles[index].copyWith(
-        status: FileUploadStatus.analyzing,
-        progress: 0.92,
-      );
-      notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 200));
 
       // Trigger actual network upload API
       final uploadedList = await _apiService.uploadFiles(
@@ -919,13 +969,13 @@ class ChatProvider extends ChangeNotifier {
         throw Exception('Server rejected the attachment file content.');
       }
 
-      // 6. Ready for AI
+      // Hand off to the Live WebSocket pipeline status tracking
       if (index >= _selectedFiles.length) return;
       _selectedFiles[index] = _selectedFiles[index].copyWith(
         fileId: uploadedList.first.fileId,
         language: uploadedList.first.language,
-        status: FileUploadStatus.ready,
-        progress: 1.0,
+        status: FileUploadStatus.validating,
+        progress: 0.4,
       );
       notifyListeners();
 

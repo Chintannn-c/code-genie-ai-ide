@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/app_file.dart';
 import '../providers/chat_provider.dart';
 
@@ -74,9 +75,12 @@ class FileUploadBar extends StatelessWidget {
         return _buildFailedCard(context, file, cp);
       case FileUploadStatus.paused:
         return _buildPausedCard(context, file, cp);
+      case FileUploadStatus.quarantined:
+        return _buildQuarantinedCard(context, file);
       case FileUploadStatus.uploading:
-      case FileUploadStatus.processing:
-      case FileUploadStatus.analyzing:
+      case FileUploadStatus.scanning:
+      case FileUploadStatus.validating:
+      case FileUploadStatus.parsing:
         return _buildProgressCard(context, file, cp);
       case FileUploadStatus.ready:
         return _buildReadyCard(context, file);
@@ -338,8 +342,18 @@ class FileUploadBar extends StatelessWidget {
   Widget _buildProgressCard(BuildContext context, AppFile file, ChatProvider cp) {
     final themeColor = _getColorForLang(file.language);
     String statusLabel = 'Uploading...';
-    if (file.status == FileUploadStatus.processing) statusLabel = 'Processing...';
-    if (file.status == FileUploadStatus.analyzing) statusLabel = 'Analyzing context...';
+    IconData statusIcon = Icons.cloud_upload_outlined;
+    
+    if (file.status == FileUploadStatus.validating) {
+      statusLabel = 'Validating Binary Header...';
+      statusIcon = Icons.verified_user_outlined;
+    } else if (file.status == FileUploadStatus.scanning) {
+      statusLabel = 'Malware Scanning...';
+      statusIcon = Icons.security_rounded;
+    } else if (file.status == FileUploadStatus.parsing) {
+      statusLabel = 'Context Ingestion Parsing...';
+      statusIcon = Icons.analytics_outlined;
+    }
 
     return Container(
       width: 270,
@@ -360,7 +374,7 @@ class FileUploadBar extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.cloud_upload_outlined,
+                statusIcon,
                 size: 14,
                 color: themeColor,
               ),
@@ -712,5 +726,164 @@ class FileUploadBar extends StatelessWidget {
       default:
         return Icons.description_outlined;
     }
+  }
+
+  Widget _buildQuarantinedCard(BuildContext context, AppFile file) {
+    return Container(
+      width: 270,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF450A0A).withValues(alpha: 0.8), // Deep Red
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFEF4444),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+            blurRadius: 10,
+            spreadRadius: 1,
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Animate(
+              onPlay: (c) => c.repeat(reverse: true),
+              child: const Icon(
+                Icons.gpp_bad_rounded,
+                size: 20,
+                color: Color(0xFFF87171),
+              ),
+            ).scale(
+              begin: const Offset(1, 1),
+              end: const Offset(1.15, 1.15),
+              duration: const Duration(milliseconds: 1000),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  file.fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'QUARANTINED',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFEF4444),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: const Color(0xFF1E1E24),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Row(
+                          children: [
+                            const Icon(Icons.shield_outlined, color: Color(0xFFEF4444)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Security Threat Quarantine',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'The security gateway isolated this file due to potential hazards.',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: Text(
+                                file.errorMessage ?? 'Malware payload detected.',
+                                style: GoogleFonts.firaCode(
+                                  color: const Color(0xFFF87171),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              onRemove(file.fileId);
+                            },
+                            style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
+                            child: const Text('Dismiss & Discard'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 10, color: Colors.white60),
+                        const SizedBox(width: 4),
+                        Text(
+                          'View Threat',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

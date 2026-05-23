@@ -33,7 +33,7 @@ async def generate_plan(
 @router.post("/{plan_id}/execute")
 async def execute_plan(
     plan_id: str,
-    request: dict,  # FastAPI allows arbitrary dicts for body, or we can use the explicit Request Model
+    plan_data: dict,  # Renamed from request to avoid Starlette injection gotcha
     background_tasks: BackgroundTasks,
     current_user_id: str = Depends(get_current_user_id)
 ):
@@ -45,7 +45,7 @@ async def execute_plan(
             orchestrator.run_autonomous_plan,
             user_id=current_user_id,
             plan_id=plan_id,
-            plan_data=request
+            plan_data=plan_data
         )
         return {"status": "success", "message": f"Execution started for plan {plan_id}"}
     except Exception as e:

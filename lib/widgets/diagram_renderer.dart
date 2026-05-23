@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'code_block.dart';
 
 class DiagramRenderer extends StatefulWidget {
   final String diagramCode;
@@ -20,28 +22,30 @@ class DiagramRenderer extends StatefulWidget {
 }
 
 class _DiagramRendererState extends State<DiagramRenderer> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isWebViewReady = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _isWebViewReady = true;
-              });
-              _renderDiagram();
-            }
-          },
-        ),
-      )
-      ..loadHtmlString(_buildHtml());
+    if (!kIsWeb) {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.transparent)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isWebViewReady = true;
+                });
+                _renderDiagram();
+              }
+            },
+          ),
+        )
+        ..loadHtmlString(_buildHtml());
+    }
   }
 
   @override
@@ -99,6 +103,7 @@ class _DiagramRendererState extends State<DiagramRenderer> {
 
   void _renderDiagram() {
     if (widget.diagramCode.isEmpty) return;
+    if (_controller == null) return;
     
     // Clean code for javascript injection
     final cleanCode = widget.diagramCode
@@ -106,13 +111,21 @@ class _DiagramRendererState extends State<DiagramRenderer> {
       .replaceAll('`', '\\`')
       .replaceAll('\$', '\\\$');
     
-    _controller.runJavaScript("renderGraph(`$cleanCode`);");
+    _controller!.runJavaScript("renderGraph(`$cleanCode`);");
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.isStreaming) {
       return _buildSkeleton();
+    }
+
+    if (kIsWeb || _controller == null) {
+      return CodeBlock(
+        code: widget.diagramCode,
+        language: 'mermaid',
+        isDark: true,
+      );
     }
 
     return Container(
@@ -127,7 +140,7 @@ class _DiagramRendererState extends State<DiagramRenderer> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: WebViewWidget(controller: _controller),
+        child: WebViewWidget(controller: _controller!),
       ),
     );
   }

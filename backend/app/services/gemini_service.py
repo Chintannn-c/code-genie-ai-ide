@@ -60,6 +60,8 @@ async def stream_generate(
     # Using more stable model aliases to avoid 404s
     models_to_try = [
         model or settings.GEMINI_MODEL, 
+        "gemini-3.5-flash",
+        "gemini-2.5-pro",
         "gemma-4-31b-it",
         "gemma-4-26b-a4b-it",
         "gemini-2.5-flash",
@@ -131,6 +133,8 @@ async def generate(contents: list[dict], model: str = None) -> str:
 
     models_to_try = [
         model or settings.GEMINI_MODEL, 
+        "gemini-3.5-flash",
+        "gemini-2.5-pro",
         "gemma-4-31b-it",
         "gemma-4-26b-a4b-it",
         "gemini-2.5-flash",

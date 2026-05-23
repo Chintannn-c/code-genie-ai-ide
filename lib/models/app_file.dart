@@ -4,11 +4,13 @@ enum FileUploadStatus {
   preparing,
   encrypting,
   uploading,
-  processing,
-  analyzing,
+  scanning,
+  validating,
+  parsing,
   ready,
   failed,
-  paused
+  paused,
+  quarantined
 }
 
 /// Upgraded App file model supporting optimistic shims, real-time progress metrics, and retries.

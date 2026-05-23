@@ -1,10 +1,104 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../providers/chat_provider.dart';
+
+// ============================================================
+// COGNITIVE THOUGHT WAVE PAINTER (For Deep Mode Reasoning)
+// ============================================================
+
+class ThoughtWavePainter extends CustomPainter {
+  final double animationValue;
+  final Color color;
+
+  ThoughtWavePainter({required this.animationValue, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final path = Path();
+    final yCenter = size.height / 2;
+
+    for (double x = 0; x <= size.width; x += 2) {
+      // Multiple sine waves superposition for complex thought visualizer
+      double wave1 = math.sin((x * 0.035) + (animationValue * math.pi * 2)) * 6.0;
+      double wave2 = math.cos((x * 0.015) - (animationValue * math.pi * 1.5)) * 3.0;
+      path.lineTo(x, yCenter + wave1 + wave2);
+    }
+
+    canvas.drawPath(path, paint);
+
+    // Draw secondary lighter path
+    final path2 = Path();
+    paint.color = color.withOpacity(0.12);
+    for (double x = 0; x <= size.width; x += 2) {
+      double wave1 = math.cos((x * 0.025) + (animationValue * math.pi * 1.2)) * 5.0;
+      double wave2 = math.sin((x * 0.045) - (animationValue * math.pi * 2.0)) * 2.0;
+      path2.lineTo(x, yCenter + wave1 + wave2);
+    }
+    canvas.drawPath(path2, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant ThoughtWavePainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue || oldDelegate.color != color;
+  }
+}
+
+// ============================================================
+// STRUCTURAL BLUEPRINT LINE PAINTER (For Plan Mode)
+// ============================================================
+
+class BlueprintPainter extends CustomPainter {
+  final double animationValue;
+  final Color color;
+
+  BlueprintPainter({required this.animationValue, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withOpacity(0.25)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Draw structural blueprint connector lines
+    double stepWidth = size.width / 5;
+    for (int i = 0; i <= 5; i++) {
+      double x = i * stepWidth;
+      // Draw grid ticks
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      
+      // Draw pulsing blueprint node dots
+      double pulse = 1.5 + math.sin((animationValue * math.pi * 2) + i) * 1.0;
+      canvas.drawCircle(Offset(x, size.height / 2), pulse, dotPaint);
+    }
+
+    // Horizontal connection line
+    canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant BlueprintPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue || oldDelegate.color != color;
+  }
+}
+
+// ============================================================
+// REDESIGNED ORCHESTRATION INPUT DOCK
+// ============================================================
 
 class ChatInput extends StatefulWidget {
   final String mode;
@@ -36,13 +130,25 @@ class ChatInput extends StatefulWidget {
   State<ChatInput> createState() => _ChatInputState();
 }
 
-class _ChatInputState extends State<ChatInput> {
+class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
   final _promptCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
   final _errorCtrl = TextEditingController();
   final _focus = FocusNode();
-
   String _detectedLang = 'python';
+  String? _lastValue;
+  
+  // Voice interaction visual state
+  bool _isVoiceRecording = false;
+  late AnimationController _voiceController;
+
+  // Custom Suggestion predictions
+  final List<String> _suggestions = [
+    'Analyze security threats',
+    'Execute target build pipeline',
+    'Refactor auth schema in Hive',
+    'Examine current vector indices'
+  ];
 
   @override
   void initState() {
@@ -71,27 +177,32 @@ class _ChatInputState extends State<ChatInput> {
     };
 
     _focus.addListener(() => setState(() {}));
+
+    _voiceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _promptCtrl.dispose();
+    _codeCtrl.dispose();
+    _errorCtrl.dispose();
+    _focus.dispose();
+    _voiceController.dispose();
+    super.dispose();
   }
 
   String _detectLanguage(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('def ') ||
-        lower.contains('import ') ||
-        lower.contains('print('))
-      return 'python';
-    if (lower.contains('public class ') || lower.contains('system.out.print'))
-      return 'java';
-    if (lower.contains('function ') ||
-        lower.contains('const ') ||
-        lower.contains('let ') ||
-        lower.contains('console.log'))
-      return 'javascript';
-    if (lower.contains('#include <') || lower.contains('std::cout'))
-      return 'cpp';
+    if (lower.contains('def ') || lower.contains('import ') || lower.contains('print(')) return 'python';
+    if (lower.contains('public class ') || lower.contains('system.out.print')) return 'java';
+    if (lower.contains('function ') || lower.contains('const ') || lower.contains('let ') || lower.contains('console.log')) return 'javascript';
+    if (lower.contains('#include <') || lower.contains('std::cout')) return 'cpp';
     if (lower.contains('package ') && lower.contains('func ')) return 'go';
-    if (lower.contains('void main()') || lower.contains('widget'))
-      return 'dart';
-    return 'python'; // Default
+    if (lower.contains('void main()') || lower.contains('widget')) return 'dart';
+    return 'python';
   }
 
   void _handleAutoClosing(String value) {
@@ -112,23 +223,14 @@ class _ChatInputState extends State<ChatInput> {
     final lastChar = value[selection.start - 1];
     String? closingChar;
 
-    if (lastChar == '(')
-      closingChar = ')';
-    else if (lastChar == '[')
-      closingChar = ']';
-    else if (lastChar == '{')
-      closingChar = '}';
-    else if (lastChar == '"')
-      closingChar = '"';
-    else if (lastChar == "'")
-      closingChar = "'";
+    if (lastChar == '(') closingChar = ')';
+    else if (lastChar == '[') closingChar = ']';
+    else if (lastChar == '{') closingChar = '}';
+    else if (lastChar == '"') closingChar = '"';
+    else if (lastChar == "'") closingChar = "'";
 
     if (closingChar != null) {
-      final newText =
-          value.substring(0, selection.start) +
-          closingChar +
-          value.substring(selection.start);
-
+      final newText = value.substring(0, selection.start) + closingChar + value.substring(selection.start);
       _promptCtrl.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: selection.start),
@@ -137,11 +239,7 @@ class _ChatInputState extends State<ChatInput> {
     _lastValue = _promptCtrl.text;
   }
 
-  String? _lastValue;
-
-  bool get _canSend {
-    return _promptCtrl.text.trim().isNotEmpty;
-  }
+  bool get _canSend => _promptCtrl.text.trim().isNotEmpty;
 
   void _send() {
     if (!_canSend || widget.isStreaming) return;
@@ -159,102 +257,167 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
-  void dispose() {
-    _promptCtrl.dispose();
-    _codeCtrl.dispose();
-    _errorCtrl.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final cp = context.watch<ChatProvider>();
+    final isPlan = cp.isMissionMode;
+    final isDeep = cp.useParallelOrchestration;
+
+    // Glowing border color theme reflecting mode selection
+    Color auraColor = const Color(0xFF64748B);
+    if (isPlan && isDeep) {
+      auraColor = const Color(0xFF06B6D4); // Neon Teal
+    } else if (isPlan) {
+      auraColor = const Color(0xFF10B981); // Neon Green
+    } else if (isDeep) {
+      auraColor = const Color(0xFF6366F1); // Neon Indigo
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       color: Colors.transparent,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // CONTEXT PREDICTOR CHIPS POPUP
+          if (_promptCtrl.text.isEmpty && !_focus.hasFocus)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, left: 6),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _suggestions.map((suggestion) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        label: Text(
+                          suggestion,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: auraColor.withOpacity(0.85),
+                          ),
+                        ),
+                        backgroundColor: widget.isDark ? const Color(0xFF13172E).withOpacity(0.4) : Colors.black.withOpacity(0.04),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: auraColor.withOpacity(0.2), width: 1.0),
+                        ),
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _promptCtrl.text = suggestion;
+                            _focus.requestFocus();
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
+
+          // Floating Adaptive Glass Dock Container
           ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 decoration: BoxDecoration(
                   color: widget.isDark
-                      ? const Color(0xFF1E293B).withValues(alpha: 0.6)
-                      : Colors.white.withValues(alpha: 0.7),
+                      ? const Color(0xFF0B0E14).withOpacity(0.72)
+                      : Colors.white.withOpacity(0.82),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: _focus.hasFocus
-                        ? const Color(0xFF6366F1).withValues(alpha: 0.6)
-                        : (widget.isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.05)),
+                        ? auraColor.withOpacity(0.7)
+                        : auraColor.withOpacity(0.12),
                     width: 1.5,
                   ),
                   boxShadow: [
                     if (_focus.hasFocus)
                       BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                        blurRadius: 20,
+                        color: auraColor.withOpacity(0.18),
+                        blurRadius: 24,
                         spreadRadius: 2,
                       ),
                     BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: widget.isDark ? 0.4 : 0.1,
-                      ),
+                      color: Colors.black.withOpacity(widget.isDark ? 0.45 : 0.08),
                       blurRadius: 30,
-                      offset: const Offset(0, 10),
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (cp.isEditorMode)
-                      Container(
-                        padding: const EdgeInsets.only(left: 16, top: 12),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF6366F1,
-                                ).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                _detectedLang.toUpperCase(),
-                                style: GoogleFonts.jetBrainsMono(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF6366F1),
+                    // Dynamic Header indicators
+                    Row(
+                      children: [
+                        if (cp.isEditorMode)
+                          Container(
+                            padding: const EdgeInsets.only(left: 16, top: 12),
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: auraColor.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _detectedLang.toUpperCase(),
+                                    style: GoogleFonts.jetBrainsMono(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: auraColor,
+                                    ),
+                                  ),
                                 ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'COMPILING CONTEXT',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: widget.isDark ? Colors.white24 : Colors.black26,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn().slideX(begin: -0.1, end: 0),
+                        
+                        const Spacer(),
+
+                        // Memory Injection micro token
+                        if (_focus.hasFocus)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 16, top: 12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.hub_rounded, size: 10, color: Color(0xFF818CF8)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Memory Injected',
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 8.5, fontWeight: FontWeight.bold, color: const Color(0xFF818CF8)),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'SYNTAX DETECTED',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: widget.isDark
-                                    ? Colors.white24
-                                    : Colors.black26,
-                              ),
-                            ),
-                          ],
-                        ).animate().fadeIn().slideX(begin: -0.1, end: 0),
-                      ),
+                          ).animate().fadeIn(),
+                      ],
+                    ),
+
+                    // Main Textfield area
                     TextField(
                       controller: _promptCtrl,
                       focusNode: _focus,
@@ -266,104 +429,91 @@ class _ChatInputState extends State<ChatInput> {
                           ? GoogleFonts.jetBrainsMono(
                               fontSize: 14,
                               height: 1.6,
-                              color: widget.isDark
-                                  ? Colors.white
-                                  : Colors.black87,
+                              color: widget.isDark ? Colors.white : Colors.black87,
                             )
                           : GoogleFonts.plusJakartaSans(
                               fontSize: 14,
-                              color: widget.isDark
-                                  ? Colors.white
-                                  : Colors.black87,
+                              color: widget.isDark ? Colors.white : Colors.black87,
                             ),
                       decoration: InputDecoration(
                         hintText: cp.isEditorMode
-                            ? 'Write code here...'
-                            : 'Ask me anything...',
+                            ? 'Surgically insert code overrides...'
+                            : (isPlan ? 'Command system targets... (Mission mode enabled)' : 'Ask Code Genie anything...'),
                         hintStyle: GoogleFonts.plusJakartaSans(
-                          color: widget.isDark
-                              ? Colors.white38
-                              : Colors.black38,
+                          color: widget.isDark ? Colors.white30 : Colors.black38,
                           fontSize: 14,
                         ),
-                        contentPadding: const EdgeInsets.all(16),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: InputBorder.none,
                         isDense: true,
                       ),
                     ),
+
+                    // Voice waveform overlay
+                    if (_isVoiceRecording)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: AnimatedBuilder(
+                          animation: _voiceController,
+                          builder: (context, child) {
+                            return SizedBox(
+                              width: double.infinity,
+                              height: 24,
+                              child: CustomPaint(
+                                painter: ThoughtWavePainter(
+                                  animationValue: _voiceController.value,
+                                  color: auraColor,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ).animate().fadeIn(),
+
+                    // Actions Row
                     Padding(
                       padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                       child: Row(
                         children: [
-                          if (widget.attachmentButton != null)
-                            widget.attachmentButton!,
-
+                          if (widget.attachmentButton != null) widget.attachmentButton!,
                           const SizedBox(width: 4),
 
-                          // Web View Toggle Button (World Icon)
-                          Tooltip(
-                            message: widget.isWebOpen
-                                ? 'Close Web View'
-                                : 'Open Web View',
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.public_rounded,
-                                size: 20,
-                                color: widget.isWebOpen
-                                    ? const Color(0xFF6366F1)
-                                    : (widget.isDark
-                                          ? Colors.white38
-                                          : Colors.black38),
-                              ),
-                              onPressed: widget.onToggleWeb,
-                              padding: const EdgeInsets.all(8),
-                              constraints: const BoxConstraints(),
-                            ),
+                          // Web view toggle
+                          _buildDockIcon(
+                            icon: Icons.public_rounded,
+                            isActive: widget.isWebOpen,
+                            message: widget.isWebOpen ? 'Close Live Web Browser' : 'Launch Integrated Web Browser',
+                            onPressed: widget.onToggleWeb,
+                            color: auraColor,
                           ),
-
                           const SizedBox(width: 4),
 
-                          // Terminal Toggle Button
-                          Tooltip(
-                            message: widget.isTerminalOpen
-                                ? 'Hide Terminal'
-                                : 'Show Terminal',
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.terminal_rounded,
-                                size: 20,
-                                color: widget.isTerminalOpen
-                                    ? const Color(0xFF6366F1)
-                                    : (widget.isDark
-                                          ? Colors.white38
-                                          : Colors.black38),
-                              ),
-                              onPressed: widget.onToggleTerminal,
-                              padding: const EdgeInsets.all(8),
-                              constraints: const BoxConstraints(),
-                            ),
+                          // Terminal toggle
+                          _buildDockIcon(
+                            icon: Icons.terminal_rounded,
+                            isActive: widget.isTerminalOpen,
+                            message: widget.isTerminalOpen ? 'Hide Operations Cockpit' : 'Reveal Operations Cockpit',
+                            onPressed: widget.onToggleTerminal,
+                            color: auraColor,
                           ),
+                          const SizedBox(width: 4),
 
-                          // Voice Button
+                          // Interactive Voice Waveform toggle
                           Tooltip(
-                            message: 'Voice Interaction',
+                            message: _isVoiceRecording ? 'Stop Voice Recording' : 'Orchestrate by Voice Command',
                             child: IconButton(
                               icon: Icon(
-                                Icons.keyboard_voice_rounded,
+                                _isVoiceRecording ? Icons.settings_voice_rounded : Icons.keyboard_voice_rounded,
                                 size: 20,
-                                color: widget.isDark
-                                    ? Colors.white38
-                                    : Colors.black38,
+                                color: _isVoiceRecording 
+                                    ? const Color(0xFFEF4444) 
+                                    : (widget.isDark ? Colors.white38 : Colors.black38),
                               ),
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Voice input is not configured yet.',
-                                    ),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  _isVoiceRecording = !_isVoiceRecording;
+                                });
                               },
                               padding: const EdgeInsets.all(8),
                               constraints: const BoxConstraints(),
@@ -371,6 +521,8 @@ class _ChatInputState extends State<ChatInput> {
                           ),
 
                           const Spacer(),
+                          
+                          // Custom Plan & Deep Mode switches
                           _buildMissionToggle(),
                           const SizedBox(width: 8),
                           _buildOrchestratorToggle(),
@@ -379,6 +531,23 @@ class _ChatInputState extends State<ChatInput> {
                         ],
                       ),
                     ),
+
+                    // Plan or Deep mode Custom-Painted blueprint strips at bottom edge
+                    if (isPlan || isDeep)
+                      AnimatedBuilder(
+                        animation: _voiceController,
+                        builder: (context, child) {
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 6,
+                            child: CustomPaint(
+                              painter: isDeep
+                                  ? ThoughtWavePainter(animationValue: _voiceController.value, color: auraColor)
+                                  : BlueprintPainter(animationValue: _voiceController.value, color: auraColor),
+                            ),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -389,27 +558,51 @@ class _ChatInputState extends State<ChatInput> {
     );
   }
 
+  Widget _buildDockIcon({
+    required IconData icon,
+    required bool isActive,
+    required String message,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return Tooltip(
+      message: message,
+      child: IconButton(
+        icon: Icon(
+          icon,
+          size: 20,
+          color: isActive ? color : (widget.isDark ? Colors.white38 : Colors.black38),
+        ),
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onPressed();
+        },
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(),
+      ),
+    );
+  }
+
   Widget _buildOrchestratorToggle() {
     final cp = context.watch<ChatProvider>();
     final isActive = cp.useParallelOrchestration;
 
     return Tooltip(
-      message: 'Deep Solve',
+      message: 'Orchestrate cognitive debates and multi-agent chains',
       child: InkWell(
-        onTap: cp.toggleParallelOrchestration,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          cp.toggleParallelOrchestration();
+        },
         borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: isActive
-                ? const Color(0xFF6366F1).withValues(alpha: 0.14)
-                : Colors.transparent,
+            color: isActive ? const Color(0xFF6366F1).withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive
-                  ? const Color(0xFF6366F1).withValues(alpha: 0.35)
-                  : (widget.isDark ? Colors.white10 : Colors.black12),
+              color: isActive ? const Color(0xFF6366F1).withOpacity(0.35) : (widget.isDark ? Colors.white10 : Colors.black12),
             ),
           ),
           child: Row(
@@ -418,9 +611,7 @@ class _ChatInputState extends State<ChatInput> {
               Icon(
                 Icons.psychology_rounded,
                 size: 18,
-                color: isActive
-                    ? const Color(0xFF818CF8)
-                    : (widget.isDark ? Colors.white54 : Colors.black45),
+                color: isActive ? const Color(0xFF818CF8) : (widget.isDark ? Colors.white54 : Colors.black45),
               ),
               const SizedBox(width: 6),
               Text(
@@ -428,9 +619,7 @@ class _ChatInputState extends State<ChatInput> {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: isActive
-                      ? const Color(0xFF818CF8)
-                      : (widget.isDark ? Colors.white54 : Colors.black45),
+                  color: isActive ? const Color(0xFF818CF8) : (widget.isDark ? Colors.white54 : Colors.black45),
                 ),
               ),
             ],
@@ -445,22 +634,21 @@ class _ChatInputState extends State<ChatInput> {
     final isActive = cp.isMissionMode;
 
     return Tooltip(
-      message: 'Mission Plan',
+      message: 'Plan structured visual timeline sequencing',
       child: InkWell(
-        onTap: cp.toggleMissionMode,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          cp.toggleMissionMode();
+        },
         borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: isActive
-                ? const Color(0xFF22C55E).withValues(alpha: 0.12)
-                : Colors.transparent,
+            color: isActive ? const Color(0xFF10B981).withOpacity(0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive
-                  ? const Color(0xFF22C55E).withValues(alpha: 0.32)
-                  : (widget.isDark ? Colors.white10 : Colors.black12),
+              color: isActive ? const Color(0xFF10B981).withOpacity(0.32) : (widget.isDark ? Colors.white10 : Colors.black12),
             ),
           ),
           child: Row(
@@ -469,9 +657,7 @@ class _ChatInputState extends State<ChatInput> {
               Icon(
                 Icons.flag_rounded,
                 size: 18,
-                color: isActive
-                    ? const Color(0xFF22C55E)
-                    : (widget.isDark ? Colors.white54 : Colors.black45),
+                color: isActive ? const Color(0xFF10B981) : (widget.isDark ? Colors.white54 : Colors.black45),
               ),
               const SizedBox(width: 6),
               Text(
@@ -479,9 +665,7 @@ class _ChatInputState extends State<ChatInput> {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: isActive
-                      ? const Color(0xFF22C55E)
-                      : (widget.isDark ? Colors.white54 : Colors.black45),
+                  color: isActive ? const Color(0xFF10B981) : (widget.isDark ? Colors.white54 : Colors.black45),
                 ),
               ),
             ],
@@ -498,7 +682,15 @@ class _ChatInputState extends State<ChatInput> {
     return MouseRegion(
       cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
-        onTap: isStop ? widget.onStop : _send,
+        onTap: () {
+          if (isStop) {
+            HapticFeedback.mediumImpact();
+            widget.onStop();
+          } else {
+            HapticFeedback.mediumImpact();
+            _send();
+          }
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: EdgeInsets.symmetric(
@@ -507,31 +699,25 @@ class _ChatInputState extends State<ChatInput> {
           ),
           decoration: BoxDecoration(
             gradient: canSend && !isStop
-                ? const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                  )
+                ? const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)])
                 : null,
             color: isStop
-                ? const Color(0xFFEF4444).withValues(alpha: 0.15)
+                ? const Color(0xFFEF4444).withOpacity(0.15)
                 : (!canSend
-                    ? (widget.isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.05))
+                    ? (widget.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))
                     : null),
             borderRadius: BorderRadius.circular(14),
-            border: isStop
-                ? Border.all(color: const Color(0xFFF87171).withValues(alpha: 0.4), width: 1.5)
-                : null,
+            border: isStop ? Border.all(color: const Color(0xFFF87171).withOpacity(0.4), width: 1.5) : null,
             boxShadow: [
               if (canSend && !isStop)
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.4),
+                  color: const Color(0xFF6366F1).withOpacity(0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               if (isStop)
                 BoxShadow(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                  color: const Color(0xFFEF4444).withOpacity(0.25),
                   blurRadius: 14,
                   offset: const Offset(0, 0),
                 ),
@@ -550,10 +736,10 @@ class _ChatInputState extends State<ChatInput> {
               if (isStop) ...[
                 const SizedBox(width: 8),
                 Text(
-                  'Stop Generating',
+                  'Abort Engine',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                     color: const Color(0xFFF87171),
                     letterSpacing: 0.5,
                   ),

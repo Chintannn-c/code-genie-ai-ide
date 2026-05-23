@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["files"])
 
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends, BackgroundTasks
 from app.limiter import limiter
 import aiofiles
 
@@ -23,6 +23,7 @@ import aiofiles
 @limiter.limit("20/minute")
 async def upload_files(
     request: Request,
+    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
     current_user_id: str = Depends(get_current_user_id)
 ):
@@ -110,15 +111,14 @@ async def upload_files(
                 size=size
             )
             
-            # Dispatch Async Background Job
-            from app.services.task_engine import task_engine
-            from app.services.indexer_service import indexer
-            task_id = await task_engine.submit_task(
-                user_id=current_user_id,
-                type="file_indexing",
-                coro_func=indexer.index_single_file,
+            # Dispatch Async Background Security Pipeline Validation
+            from app.services.security_pipeline import run_file_security_pipeline
+            background_tasks.add_task(
+                run_file_security_pipeline,
+                file_id=file_id,
                 file_path=path,
-                file_id=file_id
+                filename=file.filename,
+                user_id=current_user_id
             )
             
             responses.append(UploadResponse(
@@ -274,15 +274,15 @@ async def debug_file(
 
 
 @router.post("/stream-analyze-file")
-async def stream_analyze_file(request: dict, current_user_id: str = Depends(get_current_user_id)):
+async def stream_analyze_file(payload: dict, current_user_id: str = Depends(get_current_user_id)):
     """
     SSE streaming endpoint for file analysis.
     Expected body: {"file_id": "...", "analysis_type": "...", "chat_id": "..."}
     """
     try:
-        file_id = request.get("file_id")
-        chat_id = request.get("chat_id")
-        difficulty = request.get("difficulty", "beginner")
+        file_id = payload.get("file_id")
+        chat_id = payload.get("chat_id")
+        difficulty = payload.get("difficulty", "beginner")
 
         file_meta = await chat_service.get_file_metadata(file_id)
         if not file_meta:
@@ -310,8 +310,8 @@ async def stream_analyze_file(request: dict, current_user_id: str = Depends(get_
         from app.services.llm_gateway import stream_with_failover
         return EventSourceResponse(
             stream_with_failover(
-                provider=request.get("provider", "gemini"),
-                model_name=request.get("model_name"),
+                provider=payload.get("provider", "gemini"),
+                model_name=payload.get("model_name"),
                 prompt_text=prompt_text,
                 history=[], # Analysis doesn't usually need deep history
                 current_user_id=current_user_id,
@@ -328,16 +328,16 @@ async def stream_analyze_file(request: dict, current_user_id: str = Depends(get_
 
 
 @router.post("/stream-debug-file")
-async def stream_debug_file(request: dict, current_user_id: str = Depends(get_current_user_id)):
+async def stream_debug_file(payload: dict, current_user_id: str = Depends(get_current_user_id)):
     """
     SSE streaming endpoint for file debugging.
     Expected body: {"file_id": "...", "error": "...", "chat_id": "..."}
     """
     try:
-        file_id = request.get("file_id")
-        error = request.get("error", "Unknown error")
-        chat_id = request.get("chat_id")
-        difficulty = request.get("difficulty", "beginner")
+        file_id = payload.get("file_id")
+        error = payload.get("error", "Unknown error")
+        chat_id = payload.get("chat_id")
+        difficulty = payload.get("difficulty", "beginner")
 
         file_meta = await chat_service.get_file_metadata(file_id)
         if not file_meta:
@@ -366,8 +366,8 @@ async def stream_debug_file(request: dict, current_user_id: str = Depends(get_cu
         from app.services.llm_gateway import stream_with_failover
         return EventSourceResponse(
             stream_with_failover(
-                provider=request.get("provider", "gemini"),
-                model_name=request.get("model_name"),
+                provider=payload.get("provider", "gemini"),
+                model_name=payload.get("model_name"),
                 prompt_text=prompt_text,
                 history=[],
                 current_user_id=current_user_id,

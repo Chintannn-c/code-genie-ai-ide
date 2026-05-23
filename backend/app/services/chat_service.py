@@ -233,8 +233,60 @@ async def save_file_metadata(
         "file_path": file_path,
         "language": language,
         "size": size,
+        "sha256": "",
+        "status": "uploading",
+        "risk_score": 0,
+        "risk_level": "low",
+        "quarantine_reason": None,
+        "mime_type": "text/plain",
         "created_at": _now()
     })
+
+
+async def update_file_security_status(
+    file_id: str,
+    status: str,
+    sha256: str | None = None,
+    risk_score: int | None = None,
+    risk_level: str | None = None,
+    quarantine_reason: str | None = None,
+    mime_type: str | None = None,
+) -> None:
+    """Update security scanning details and reputation states in MongoDB."""
+    db = get_database()
+    update_data = {"status": status}
+    
+    if sha256 is not None:
+        update_data["sha256"] = sha256
+    if risk_score is not None:
+        update_data["risk_score"] = risk_score
+    if risk_level is not None:
+        update_data["risk_level"] = risk_level
+    if quarantine_reason is not None:
+        update_data["quarantine_reason"] = quarantine_reason
+    if mime_type is not None:
+        update_data["mime_type"] = mime_type
+
+    await db.files.update_one(
+        {"file_id": file_id},
+        {"$set": update_data}
+    )
+
+    file_meta = await db.files.find_one({"file_id": file_id}, {"user_id": 1})
+    if file_meta:
+        user_id = file_meta["user_id"]
+        try:
+            from app.services.socket_manager import manager as socket_manager
+            await socket_manager.broadcast_to_user(user_id, {
+                "type": "file_status_updated",
+                "file_id": file_id,
+                "status": status,
+                "risk_score": risk_score or 0,
+                "risk_level": risk_level or "low",
+                "quarantine_reason": quarantine_reason,
+            })
+        except Exception as e:
+            logger.error(f"Broadcast error in update_file_security_status: {e}")
 
 
 async def get_file_metadata(file_id: str) -> dict | None:
