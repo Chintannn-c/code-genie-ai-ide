@@ -70,7 +70,14 @@ async def stream_generate(
                     messages.append({"role": item["role"], "content": "".join([p.get("text", "") for p in item.get("parts", [])])})
                 
                 success = False
+                pool_attempts = 0
+                max_pool_attempts = 2
+                
                 for model_id in orchestrator.free_pool:
+                    if pool_attempts >= max_pool_attempts:
+                        logger.warning(f"⏩ Pool fallback limit reached ({max_pool_attempts}). Moving to final safety net.")
+                        break
+                        
                     try:
                         logger.info(f"🔄 Attempting OMNI-FAILOVER with: {model_id}")
                         async for chunk in openrouter_service.stream_generate(
@@ -84,6 +91,7 @@ async def stream_generate(
                         success = True
                         break # Exit pool loop on success
                     except Exception as pool_e:
+                        pool_attempts += 1
                         logger.warning(f"⏩ Pool model {model_id} failed: {pool_e}. Trying next...")
                         continue
                 
@@ -96,7 +104,12 @@ async def stream_generate(
                 logger.error(f"❌ All AI failovers exhausted: {hf_e}")
                 yield f"\nCode Genie failed to respond. (System Error: {hf_e})"
 
-async def generate(contents: list[dict], type: str = "generate") -> str:
+async def generate(
+    contents: list[dict], 
+    type: str = "generate",
+    temperature: float = None,
+    max_output_tokens: int = None
+) -> str:
     """
     Always-on Orchestration (Non-streaming).
     """

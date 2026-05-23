@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/websocket_service.dart';
 
 /// Global state provider for persistent system settings.
 class SettingsProvider extends ChangeNotifier {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  StreamSubscription? _wsSubscription;
 
   // Key prefixes for persistence
   static const String _prefixAi = 'ai_setting_';
@@ -89,6 +92,33 @@ class SettingsProvider extends ChangeNotifier {
 
   SettingsProvider() {
     _loadSettings();
+    _subscribeToWebsocketEvents();
+  }
+
+  void _subscribeToWebsocketEvents() {
+    _wsSubscription = WebSocketService().stream.listen((event) {
+      if (event['type'] == 'settings_update') {
+        final settings = event['ai_settings'];
+        if (settings != null) {
+          updateAiSettings(
+            temperature: (settings['temperature'] as num?)?.toDouble(),
+            maxTokens: (settings['max_tokens'] as num?)?.toDouble(),
+            creativity: (settings['creativity'] as num?)?.toDouble(),
+            streaming: settings['streaming'] as bool?,
+            autonomousMode: settings['autonomous_mode'] as bool?,
+            debateMode: settings['debate_mode'] as bool?,
+            ragContext: settings['rag_context'] as bool?,
+            memoryPersist: settings['memory_persist'] as bool?,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _wsSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {

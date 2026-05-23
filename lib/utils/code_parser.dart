@@ -46,18 +46,25 @@ class CodeParser {
 /// A segment of parsed message content.
 class ContentSegment {
   final bool isCode;
+  final bool isDiagram;
   final String content;
   final String language;
 
   ContentSegment._({
     required this.isCode,
+    required this.isDiagram,
     required this.content,
     this.language = '',
   });
 
   factory ContentSegment.text(String content) =>
-      ContentSegment._(isCode: false, content: content);
+      ContentSegment._(isCode: false, isDiagram: false, content: content);
 
   factory ContentSegment.code(String content, String language) =>
-      ContentSegment._(isCode: true, content: content, language: language);
+      ContentSegment._(
+        isCode: true, 
+        isDiagram: language.toLowerCase() == 'mermaid', 
+        content: content, 
+        language: language
+      );
 }

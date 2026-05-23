@@ -8,6 +8,7 @@ import os
 import asyncio
 from app.config import get_settings
 from app.database import connect_to_mongo, close_mongo_connection, get_db
+from app.services.task_engine import task_engine
 from app.routes import chat, history, upload, auth, execution, planning, sync
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
@@ -63,6 +64,9 @@ async def lifespan(app: FastAPI):
 
     # Start initialization in background
     asyncio.create_task(initialize_infrastructure())
+    
+    # Initialize Task Engine
+    await task_engine.start(num_workers=3)
 
     # 4.5 Initialize Audit Logger with DB
     async def init_audit():
@@ -94,6 +98,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("🛑 [SHUTDOWN] Cleanup initiated.")
     heartbeat_task.cancel()
+    await task_engine.stop()
     await close_mongo_connection()
     logger.info("🛑 [SHUTDOWN] Finished.")
 

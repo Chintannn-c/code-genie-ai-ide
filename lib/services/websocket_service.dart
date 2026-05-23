@@ -5,6 +5,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/api_config.dart';
 
 class WebSocketService {
+  WebSocketService._internal();
+  static final WebSocketService _instance = WebSocketService._internal();
+  factory WebSocketService() => _instance;
+
   WebSocketChannel? _channel;
   final StreamController<Map<String, dynamic>> _messageController = 
       StreamController<Map<String, dynamic>>.broadcast();

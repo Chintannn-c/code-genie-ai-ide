@@ -91,6 +91,69 @@ class IndexerService:
         logger.info(f"✅ Indexed {count} files in workspace.")
         return {"status": "success", "files_indexed": count}
 
+    async def index_single_file(self, file_path: str, user_id: str, file_id: str, task_id: str = None):
+        """Indexes a single uploaded file asynchronously and reports progress to TaskEngine."""
+        from app.services.task_engine import task_engine, TaskState
+        import asyncio
+        
+        if not self.collection:
+            logger.error("ChromaDB not initialized, skipping semantic indexing.")
+            if task_id:
+                await task_engine.update_task_state(task_id, TaskState.FAILED, "Vector database unavailable.")
+            return
+
+        if task_id:
+            await task_engine.update_task_state(task_id, TaskState.INDEXING, "Extracting text content...", 0.2)
+
+        rel_path = os.path.basename(file_path)
+        content = ""
+        
+        try:
+            # Simulate slight delay to avoid blocking event loop completely
+            await asyncio.sleep(0.1)
+            
+            # Text Files
+            if file_path.endswith(('.dart', '.py', '.js', '.ts', '.html', '.css', '.md', '.txt', '.json', '.yaml', '.yml', '.cpp', '.c', '.java', '.go', '.rs')):
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+            # PDF Files
+            elif file_path.endswith('.pdf') and PyPDF2:
+                content = self._extract_pdf_text(file_path)
+            # Image Files
+            elif file_path.endswith(('.png', '.jpg', '.jpeg')) and pytesseract and Image:
+                content = self._extract_image_text(file_path)
+
+            if not content.strip():
+                if task_id:
+                    await task_engine.update_task_state(task_id, TaskState.COMPLETED, "File processed (No text found).", 1.0)
+                return
+
+            if task_id:
+                await task_engine.update_task_state(task_id, TaskState.INDEXING, f"Chunking document ({len(content)} chars)...", 0.5)
+
+            chunks = self._chunk_text(content, size=2000)
+            
+            if task_id:
+                await task_engine.update_task_state(task_id, TaskState.INDEXING, f"Generating {len(chunks)} embeddings...", 0.7)
+
+            for i, chunk in enumerate(chunks):
+                chunk_id = f"user_{user_id}_file_{file_id}_chunk_{i}"
+                self.collection.upsert(
+                    documents=[chunk],
+                    metadatas=[{"user_id": user_id, "file_id": file_id, "path": rel_path, "chunk": i}],
+                    ids=[chunk_id]
+                )
+                await asyncio.sleep(0.01) # Yield to event loop
+            
+            logger.info(f"✅ Indexed {len(chunks)} chunks for {rel_path}.")
+            if task_id:
+                await task_engine.update_task_state(task_id, TaskState.COMPLETED, "Vector indexing completed successfully.", 1.0)
+                
+        except Exception as e:
+            logger.error(f"Failed to index single file {file_path}: {e}")
+            if task_id:
+                await task_engine.update_task_state(task_id, TaskState.FAILED, f"Extraction failed: {str(e)}")
+
     def _chunk_text(self, text: str, size: int = 1000) -> List[str]:
         """Simple sliding window chunking."""
         return [text[i:i+size] for i in range(0, len(text), size)]
@@ -132,9 +195,15 @@ class IndexerService:
             
             context = []
             for i in range(len(results['documents'][0])):
+                # Check for path and generic ID metadata structure
+                metadata = results['metadatas'][0][i]
+                source_path = metadata.get('path', 'Unknown File')
+                if 'file_id' in metadata:
+                    source_path = f"Uploaded File: {source_path}"
+                    
                 context.append({
                     "content": results['documents'][0][i],
-                    "path": results['metadatas'][0][i]['path']
+                    "path": source_path
                 })
             return context
         except Exception as e:

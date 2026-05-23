@@ -14,11 +14,16 @@ from app.services import (
 from app.config import get_settings
 
 import asyncio
+import time
 
 logger = logging.getLogger(__name__)
 
 # Registry to track active generation loops for interrupt signaling (cross-device support)
 active_streams: Dict[str, asyncio.Event] = {}
+
+# Stream Recovery Buffer: chat_id -> List[str]
+# Stores the ongoing generation so a dropped connection can resume
+stream_buffers: Dict[str, List[str]] = {}
 
 async def stream_with_failover(
     provider: str,
@@ -42,8 +47,42 @@ async def stream_with_failover(
     settings = get_settings()
     keys = custom_api_keys or {}
 
+    # Fetch active user settings dynamically from central SQL/Postgres layered store
+    from app.services.pg_settings import resolve_active_configuration
+    try:
+        ai_settings = await resolve_active_configuration(current_user_id, chat_id)
+    except Exception as dbe:
+        logger.warning(f"SQL settings hydration failed, using defaults: {dbe}")
+        ai_settings = {}
+
+    # Enforce active global settings overrides
+    if ai_settings:
+        if ai_settings.get("temperature") is not None:
+            temperature = float(ai_settings["temperature"])
+        if ai_settings.get("max_tokens") is not None:
+            max_tokens = int(ai_settings["max_tokens"])
+
+        # Enforce memory persistence context directly into system/prompt guidelines
+        if ai_settings.get("memory_persist", False):
+            memories = ai_settings.get("memories", [])
+            # Inject pinned, non-encrypted development memories
+            pinned_memories = [m for m in memories if m.get("pinned") == True and not m.get("encrypted")]
+            if pinned_memories:
+                prompt_text += "\n\n[STRICT USER COGNITIVE MEMORIES & STYLE GUIDELINES]:\n"
+                for pm in pinned_memories:
+                    prompt_text += f"- {pm.get('text')}\n"
+
+        # Suppress RAG if disabled globally
+        if not ai_settings.get("rag_context", True):
+            import re
+            prompt_text = re.sub(r"--- FILE ATTACHED:.*?\n.*?(?=\n--- FILE ATTACHED:|\Z)", "", prompt_text, flags=re.DOTALL)
+            prompt_text = re.sub(r"--- FILE:.*?\n.*?(?=\n--- FILE:|\Z)", "", prompt_text, flags=re.DOTALL)
+
     cancel_event = asyncio.Event()
     active_streams[chat_id] = cancel_event
+    stream_buffers[chat_id] = []
+    
+    last_heartbeat = time.time()
 
     try:
         # Expose real-time dynamic context status badges to the frontend
@@ -132,7 +171,14 @@ async def stream_with_failover(
                 if cancel_event.is_set():
                     logger.info(f"🛑 [STREAM CONTROL] Stream cancellation triggered in primary provider for chat {chat_id}")
                     break
+                
+                # Prevent connection timeouts with a heartbeat ping every 5 seconds
+                if time.time() - last_heartbeat > 5.0:
+                    yield ServerSentEvent(data=json.dumps({"type": "ping", "timestamp": time.time()}))
+                    last_heartbeat = time.time()
+
                 full_response.append(chunk)
+                stream_buffers[chat_id].append(chunk)
                 yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
         
         except Exception as e:
@@ -157,7 +203,13 @@ async def stream_with_failover(
                 if cancel_event.is_set():
                     logger.info(f"🛑 [STREAM CONTROL] Stream cancellation triggered in backup provider for chat {chat_id}")
                     break
+                    
+                if time.time() - last_heartbeat > 5.0:
+                    yield ServerSentEvent(data=json.dumps({"type": "ping", "timestamp": time.time()}))
+                    last_heartbeat = time.time()
+
                 full_response.append(chunk)
+                stream_buffers[chat_id].append(chunk)
                 yield ServerSentEvent(data=json.dumps({"text": chunk, "done": False}))
 
         # --- PHASE 3: Success Handling ---
@@ -241,3 +293,11 @@ async def stream_with_failover(
         )
     finally:
         active_streams.pop(chat_id, None)
+        # Give the client a 5-minute window to reconnect and pull the buffer if they drop
+        # But for now, we just clear it upon clean exit
+        if chat_id in stream_buffers and not cancel_event.is_set():
+            asyncio.create_task(_delayed_buffer_cleanup(chat_id))
+
+async def _delayed_buffer_cleanup(chat_id: str, delay: int = 300):
+    await asyncio.sleep(delay)
+    stream_buffers.pop(chat_id, None)

@@ -660,6 +660,8 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Widget _buildControlStrip(ChatProvider cp, bool isDark, bool isWide) {
+    final sp = context.watch<SettingsProvider>();
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -683,9 +685,52 @@ class _ChatScreenState extends State<ChatScreen>
             onChanged: cp.setDifficulty,
             isDark: isDark,
           ),
+          // ACTIVE RUNTIME HUD CONFIG INDICATORS
+          if (sp.streaming) _buildStatusIndicatorBubble('Stream', const Color(0xFF3B82F6), isDark),
+          if (sp.autonomousMode) _buildStatusIndicatorBubble('Autonomous', const Color(0xFFEC4899), isDark),
+          if (sp.debateMode) _buildStatusIndicatorBubble('Debate', const Color(0xFFD855F7), isDark),
+          if (sp.ragContext) _buildStatusIndicatorBubble('RAG', const Color(0xFF10B981), isDark),
+          if (sp.memoryPersist) _buildStatusIndicatorBubble('Memory', const Color(0xFF06B6D4), isDark),
         ],
       ),
     );
+  }
+
+  Widget _buildStatusIndicatorBubble(String label, Color color, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 6,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 4, height: 4,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9));
   }
 
   Widget _buildSidebar(ChatProvider cp, AuthProvider ap, bool isDark) {

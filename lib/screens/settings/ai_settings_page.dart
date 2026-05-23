@@ -187,6 +187,11 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           );
           
           setState(() {
+            if (settings['memories'] != null) {
+              _memories = List<Map<String, dynamic>>.from(
+                (settings['memories'] as List).map((x) => Map<String, dynamic>.from(x)),
+              );
+            }
             _consoleLogs.add('✅ [WS-SYNC] Hydrated AI orchestration parameters from central MongoDB.');
           });
         }
@@ -203,10 +208,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
     }
   }
 
+  bool _isSyncing = false;
+  String _syncStatusText = "Saved & Applied";
+
   Future<void> _syncAiSetting(String key, dynamic value) async {
     final ap = context.read<AuthProvider>();
     final token = ap.user?.token;
     if (token == null) return;
+
+    setState(() {
+      _isSyncing = true;
+      _syncStatusText = "Syncing...";
+    });
 
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}/api/auth/ai-settings/update');
@@ -223,14 +236,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
 
       if (response.statusCode == 200) {
         setState(() {
-          _consoleLogs.add('✅ [WS-SYNC] Successfully pushed "$key: $value" to central MongoDB cache.');
+          _isSyncing = false;
+          _syncStatusText = "Saved & Applied";
+          _consoleLogs.add('✅ [WS-SYNC] Successfully pushed "$key: $value" to central PostgreSQL store.');
         });
       } else {
         throw Exception('Sync status ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
-        _consoleLogs.add('⚠️ [SYNC-ERR] Failed to publish "$key" update to central backend. Saved in local offline cache.');
+        _isSyncing = false;
+        _syncStatusText = "Offline Cache";
+        _consoleLogs.add('⚠️ [SYNC-ERR] Failed to publish "$key" update. Saved in offline local store.');
       });
       print('❌ [AiSettingsPage] Sync Error: $e');
     }
@@ -362,6 +379,55 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
               ],
             ),
           ),
+          // Dynamic Sync Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _isSyncing
+                  ? Colors.blueAccent.withValues(alpha: 0.1)
+                  : (_syncStatusText == "Offline Cache"
+                      ? Colors.amber.withValues(alpha: 0.1)
+                      : const Color(0xFF10B981).withValues(alpha: 0.1)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _isSyncing
+                    ? Colors.blueAccent.withValues(alpha: 0.25)
+                    : (_syncStatusText == "Offline Cache"
+                        ? Colors.amber.withValues(alpha: 0.25)
+                        : const Color(0xFF10B981).withValues(alpha: 0.25)),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6, height: 6,
+                  decoration: BoxDecoration(
+                    color: _isSyncing
+                        ? Colors.blueAccent
+                        : (_syncStatusText == "Offline Cache"
+                            ? Colors.amber
+                            : const Color(0xFF10B981)),
+                    shape: BoxShape.circle,
+                  ),
+                ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeOut(duration: 800.ms),
+                const SizedBox(width: 6),
+                Text(
+                  _syncStatusText,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: _isSyncing
+                        ? Colors.blueAccent
+                        : (_syncStatusText == "Offline Cache"
+                            ? Colors.amber
+                            : const Color(0xFF10B981)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
           // WebSocket connection telemetry
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1004,10 +1070,11 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                             'text': _memoryInputController.text,
                             'pinned': false,
                             'encrypted': false,
-                            'tier': 'Local Only',
+                            'tier': 'Cloud Sync',
                           });
                           _memoryInputController.clear();
                         });
+                        _syncAiSetting('memories', _memories);
                         _showToast('Developer preference recorded successfully!');
                       },
                     ),
@@ -1060,13 +1127,16 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(4)),
                                       child: Text(
-                                        item['tier'],
+                                        item['tier'] ?? 'Cloud Sync',
                                         style: GoogleFonts.plusJakartaSans(fontSize: 8, color: Colors.white30, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                     const Spacer(),
                                     GestureDetector(
-                                      onTap: () => setState(() => item['pinned'] = !isPinned),
+                                      onTap: () {
+                                        setState(() => item['pinned'] = !isPinned);
+                                        _syncAiSetting('memories', _memories);
+                                      },
                                       child: Icon(
                                         isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
                                         size: 12,
@@ -1077,6 +1147,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                                     GestureDetector(
                                       onTap: () {
                                         setState(() => item['encrypted'] = !isEncrypted);
+                                        _syncAiSetting('memories', _memories);
                                         _showToast(isEncrypted ? 'Decryption key authorized.' : 'Memory encrypted via AES-256 cloud cipher.');
                                       },
                                       child: Icon(
@@ -1089,6 +1160,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                                     GestureDetector(
                                       onTap: () {
                                         setState(() => _memories.removeAt(idx));
+                                        _syncAiSetting('memories', _memories);
                                         _showToast('Memory item deleted.');
                                       },
                                       child: const Icon(Icons.delete_outline_rounded, size: 12, color: Colors.redAccent),

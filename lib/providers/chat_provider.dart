@@ -128,6 +128,18 @@ class ChatProvider extends ChangeNotifier {
         _messages = [];
       }
       loadChats();
+    } else if (type == 'task_state_update') {
+      final state = event['state'];
+      final message = event['message'];
+      if (state == 'completed' || state == 'failed') {
+        _documentReadingStage = null;
+      } else {
+        _documentReadingStage = message;
+      }
+      notifyListeners();
+    } else if (type == 'orchestration_state') {
+      _activityLabel = event['message'];
+      notifyListeners();
     }
   }
 
@@ -507,7 +519,8 @@ class ChatProvider extends ChangeNotifier {
     String fullResponse = '';
 
     if (fileIds != null && fileIds.isNotEmpty) {
-      startDocumentAnalysisStages();
+      _documentReadingStage = "Initializing indexer...";
+      notifyListeners();
     }
 
     try {
@@ -620,18 +633,52 @@ class ChatProvider extends ChangeNotifier {
 
               notifyListeners();
             },
-            onError: (e) {
+            onError: (e) async {
               _cancelHeartbeat();
               _currentContextStatus = null;
-              final errorText = '⚠️ Code Genie failed to respond. Connection lost. Please try again.';
-              if (_messages.isNotEmpty && _messages.last.role == 'ai') {
-                _messages[_messages.length - 1] = _messages.last.copyWith(
-                  content: errorText,
-                );
+              
+              if (_currentChatId != null) {
+                // Attempt Stream Recovery
+                _activityLabel = 'Reconnecting and recovering stream...';
+                notifyListeners();
+                
+                await Future.delayed(const Duration(seconds: 2));
+                
+                try {
+                  await _streamSubscription?.cancel();
+                  final recoveryStream = _streamService.resumeStream(chatId: _currentChatId!);
+                  _streamSubscription = recoveryStream.listen((chunk) {
+                     if (chunk.text.isNotEmpty) {
+                        fullResponse += chunk.text;
+                        if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+                          _messages[_messages.length - 1] = _messages.last.copyWith(
+                            content: fullResponse,
+                          );
+                        }
+                        notifyListeners();
+                     }
+                     if (chunk.done) {
+                        _isStreaming = false;
+                        _activityLabel = 'Ready';
+                        _updateLatestCode();
+                        notifyListeners();
+                        loadChats();
+                     }
+                  }, onError: (e) {
+                     _handleFinalError();
+                  }, onDone: () {
+                     if (_isStreaming) {
+                       _isStreaming = false;
+                       _activityLabel = 'Ready';
+                       notifyListeners();
+                     }
+                  });
+                  return;
+                } catch (e) {
+                  // Fallthrough to final error
+                }
               }
-              _isStreaming = false;
-              _activityLabel = 'Ready';
-              notifyListeners();
+              _handleFinalError();
             },
             onDone: () {
               _cancelHeartbeat();
@@ -651,6 +698,17 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  void _handleFinalError() {
+      final errorText = '⚠️ Code Genie failed to respond. Connection lost. Please try again.';
+      if (_messages.isNotEmpty && _messages.last.role == 'ai') {
+        _messages[_messages.length - 1] = _messages.last.copyWith(
+          content: errorText,
+        );
+      }
+      _isStreaming = false;
+      _activityLabel = 'Ready';
+      notifyListeners();
+  }
   /// Interactive stop action: aborts streaming connections and terminates compute tasks on backend.
   Future<void> stopGenerating() async {
     if (!_isStreaming || _currentChatId == null) return;
@@ -723,7 +781,6 @@ class ChatProvider extends ChangeNotifier {
 
   String? _documentReadingStage;
   String? get documentReadingStage => _documentReadingStage;
-  Timer? _stageTimer;
 
   void removeFile(String fileId) {
     _selectedFiles.removeWhere((f) => f.fileId == fileId);
@@ -745,34 +802,10 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void startDocumentAnalysisStages() {
-    _documentReadingStage = "Preparing context...";
-    notifyListeners();
-    
-    final stages = [
-      "Extracting text...",
-      "Analyzing document structure...",
-      "Understanding context...",
-      "Generating embeddings...",
-      "Finding key insights...",
-      "Preparing intelligent response...",
-    ];
-    int stageIdx = 0;
-    
-    _stageTimer?.cancel();
-    _stageTimer = Timer.periodic(const Duration(milliseconds: 1400), (timer) {
-      if (stageIdx < stages.length - 1) {
-        stageIdx++;
-        _documentReadingStage = stages[stageIdx];
-        notifyListeners();
-      } else {
-        timer.cancel();
-      }
-    });
+    // Deprecated: Now driven by task_state_update via WebSockets.
   }
 
   void stopDocumentAnalysisStages() {
-    _stageTimer?.cancel();
-    _stageTimer = null;
     _documentReadingStage = null;
     notifyListeners();
   }

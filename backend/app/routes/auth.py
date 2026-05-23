@@ -99,6 +99,11 @@ async def google_login(request: GoogleLoginRequest):
     try:
         # Verify token with Google
         id_info = await auth_service.verify_google_token(request.id_token)
+        
+        # SECURITY FIX: Ensure the email is verified before merging or creating an account
+        if not id_info.get("email_verified"):
+            raise HTTPException(status_code=400, detail="Security: Unverified Google email address.")
+
         email = id_info['email']
         name = id_info.get('name')
         picture = id_info.get('picture') # ASSET FIX: Capture profile image URL
@@ -178,6 +183,26 @@ class AiSettingsUpdateRequest(BaseModel):
     debate_mode: bool = None
     rag_context: bool = None
     memory_persist: bool = None
+    memories: list = None
+
+class NotificationSettingsUpdateRequest(BaseModel):
+    push: bool = None
+    ai_alerts: bool = None
+    security_alerts: bool = None
+    model_failure: bool = None
+    deployment: bool = None
+    collaboration: bool = None
+    email: bool = None
+    sound: bool = None
+    history_retention_days: int = None
+    ai_alert_filtering: str = None
+    quiet_hours_enabled: bool = None
+    quiet_hours_start: str = None
+    quiet_hours_end: str = None
+    custom_webhook_url: str = None
+    slack_webhook_url: str = None
+    discord_webhook_url: str = None
+    teams_webhook_url: str = None
 
 @router.get("/profile")
 async def get_profile(current_user_id: str = Depends(get_current_user_id)):
@@ -216,18 +241,11 @@ async def get_profile(current_user_id: str = Depends(get_current_user_id)):
         set_fields["usage"] = user["usage"]
         updated = True
     if "active_sessions" not in user:
-        user["active_sessions"] = [
-            {"session_id": "current", "device": "Chrome on Windows", "location": "Delhi, India", "status": "Active Session", "ip": "192.168.1.1"},
-            {"session_id": "session_2", "device": "Safari on iPhone 15 Pro", "location": "Mumbai, India", "status": "2 hours ago", "ip": "103.45.67.89"}
-        ]
+        user["active_sessions"] = []
         set_fields["active_sessions"] = user["active_sessions"]
         updated = True
     if "anomaly_logs" not in user:
-        user["anomaly_logs"] = [
-            "Chrome on Windows • Delhi, India • Active Session",
-            "Biometric login enabled • 2 hours ago",
-            "API Token rotated successfully • 1 day ago"
-        ]
+        user["anomaly_logs"] = []
         set_fields["anomaly_logs"] = user["anomaly_logs"]
         updated = True
         
@@ -301,7 +319,8 @@ async def toggle_provider(request: ProviderToggleRequest, current_user_id: str =
 import random
 
 @router.post("/security/send-code")
-async def send_verification_code(request: SendCodeRequest, current_user_id: str = Depends(get_current_user_id)):
+@limiter.limit("5/hour")
+async def send_verification_code(request: Request, body_req: SendCodeRequest, current_user_id: str = Depends(get_current_user_id)):
     """Generate and log a secure 6-digit authentication code to the user's Gmail."""
     db = await get_db()
     user = await db.users.find_one({"_id": current_user_id})
@@ -318,12 +337,11 @@ async def send_verification_code(request: SendCodeRequest, current_user_id: str 
     )
     
     # Print securely to logs so developers/users can see it
-    logger.info(f"📧 [Gmail OTP] Sending 6-digit 2FA validation code {code} to user email {request.email}")
+    logger.info(f"📧 [Gmail OTP] Sending 6-digit 2FA validation code {code} to user email {body_req.email}")
     
     return {
         "status": "success",
-        "message": f"Verification code sent to {request.email}",
-        "dev_code": code  # Dev helper to make testing/running instantaneous!
+        "message": f"Verification code sent to {body_req.email}"
     }
 
 @router.post("/security/update")
@@ -363,67 +381,184 @@ async def update_security(request: SecurityUpdateRequest, current_user_id: str =
 @router.post("/sessions/revoke")
 async def revoke_session(request: SessionRevokeRequest, current_user_id: str = Depends(get_current_user_id)):
     """Revoke an active user session by identifier."""
+@router.get("/ai-settings")
+async def get_ai_settings(current_user_id: str = Depends(get_current_user_id)):
+    """Fetch user's AI orchestration settings from the SQL store."""
+    from app.services.pg_settings import settings_store
+    try:
+        ai_settings = await settings_store.get_user_preferences(current_user_id)
+        return {"status": "success", "ai_settings": ai_settings}
+    except Exception as e:
+        logger.error(f"Failed to fetch user preferences: {e}")
+        # Fallback to local MongoDB if SQL is failing or uninitialized
+        db = await get_db()
+        user = await db.users.find_one({"_id": current_user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        ai_settings = user.get("ai_settings", {
+            "temperature": 0.7,
+            "max_tokens": 4096.0,
+            "creativity": 0.6,
+            "streaming": True,
+            "autonomous_mode": False,
+            "debate_mode": False,
+            "rag_context": True,
+            "memory_persist": False
+        })
+        return {"status": "success", "ai_settings": ai_settings}
+
+@router.post("/ai-settings/update")
+async def update_ai_settings(
+    request: AiSettingsUpdateRequest, 
+    req: Request,
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Update user's AI orchestration settings globally with distributed sync and real-time alerts."""
+    from app.services.pg_settings import settings_store
+    from app.services.socket_manager import manager as socket_manager
+    from app.services.redis_service import redis_service
+    
     db = await get_db()
     
+    # 1. Fetch current settings as base
+    current_settings = await settings_store.get_user_preferences(current_user_id)
+    
+    # 2. Extract updates
+    prefs_update = {}
+    mongo_update = {}
+    if request.temperature is not None:
+        prefs_update["temperature"] = request.temperature
+        mongo_update["ai_settings.temperature"] = request.temperature
+    if request.max_tokens is not None:
+        prefs_update["max_tokens"] = int(request.max_tokens)
+        mongo_update["ai_settings.max_tokens"] = request.max_tokens
+    if request.creativity is not None:
+        prefs_update["creativity"] = request.creativity
+        mongo_update["ai_settings.creativity"] = request.creativity
+    if request.streaming is not None:
+        prefs_update["streaming"] = request.streaming
+        mongo_update["ai_settings.streaming"] = request.streaming
+    if request.autonomous_mode is not None:
+        prefs_update["autonomous_mode"] = request.autonomous_mode
+        mongo_update["ai_settings.autonomous_mode"] = request.autonomous_mode
+    if request.debate_mode is not None:
+        prefs_update["debate_mode"] = request.debate_mode
+        mongo_update["ai_settings.debate_mode"] = request.debate_mode
+    if request.rag_context is not None:
+        prefs_update["rag_context"] = request.rag_context
+        mongo_update["ai_settings.rag_context"] = request.rag_context
+    if request.memory_persist is not None:
+        prefs_update["memory_persist"] = request.memory_persist
+        mongo_update["ai_settings.memory_persist"] = request.memory_persist
+    if request.memories is not None:
+        prefs_update["memories"] = request.memories
+        mongo_update["ai_settings.memories"] = request.memories
+
+    if not prefs_update:
+        return {"status": "success", "message": "No settings to update"}
+
+    # Merge preferences
+    merged_prefs = {**current_settings, **prefs_update}
+    
+    # Extract client metadata for audit logs
+    device_id = req.headers.get("User-Agent", "Web client")
+    
+    # 3. Persist to PostgreSQL Store with structured versioned audit logging
+    version = await settings_store.save_user_preferences(current_user_id, merged_prefs, device_id=device_id)
+    
+    # 4. Sync MongoDB
+    mongo_update["updated_at"] = datetime.now(timezone.utc)
+    await db.users.update_one({"_id": current_user_id}, {"$set": mongo_update})
+    
+    # 5. Dynamic distributed propagation
+    ws_payload = {
+        "type": "settings_update",
+        "ai_settings": merged_prefs,
+        "version": version,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Broadcast through WebSockets to all connected client devices immediately
+    await socket_manager.broadcast_to_user(current_user_id, ws_payload)
+    
+    # Publish to Redis Pub/Sub so that other server processes can reconfigure active pipelines in real time
+    await redis_service.publish(f"settings:user:{current_user_id}", ws_payload)
+    
+    return {
+        "status": "success", 
+        "message": "AI Settings persisted and synchronized successfully",
+        "version": version,
+        "ai_settings": merged_prefs
+    }
+
+@router.get("/ai-settings/audit")
+async def get_settings_audit(current_user_id: str = Depends(get_current_user_id)):
+    """Fetch complete historical log changes list for observability and audits."""
+    from app.services.pg_settings import settings_store
+    logs = await settings_store.get_audit_trail(current_user_id)
+    return {"status": "success", "audit_logs": logs}
+
+class RollbackRequest(BaseModel):
+    version: int
+
+@router.post("/ai-settings/rollback")
+async def rollback_ai_settings(
+    request: RollbackRequest, 
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Rollback AI settings to a specific historical version."""
+    from app.services.pg_settings import settings_store
+    from app.services.socket_manager import manager as socket_manager
+    from app.services.redis_service import redis_service
+    
+    audit_logs = await settings_store.get_audit_trail(current_user_id)
+    target_snapshot = None
+    for log in audit_logs:
+        if log["version"] == request.version:
+            target_snapshot = log["config"]
+            break
+            
+    if not target_snapshot:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Settings version {request.version} not found in audit logs"
+        )
+        
+    # Save target snapshot as the active configuration
+    version = await settings_store.save_user_preferences(
+        current_user_id, 
+        target_snapshot, 
+        device_id="rollback_event"
+    )
+    
+    # Sync with MongoDB
+    db = await get_db()
     await db.users.update_one(
         {"_id": current_user_id},
         {
-            "$pull": {
-                "active_sessions": {"session_id": request.session_id}
+            "$set": {
+                "ai_settings": target_snapshot,
+                "updated_at": datetime.now(timezone.utc)
             }
         }
     )
     
-    return {"status": "success", "message": "Session terminated successfully"}
-
-@router.get("/ai-settings")
-async def get_ai_settings(current_user_id: str = Depends(get_current_user_id)):
-    """Fetch user's AI orchestration settings."""
-    db = await get_db()
-    user = await db.users.find_one({"_id": current_user_id})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    # Broadcast rollback dynamically
+    ws_payload = {
+        "type": "settings_update",
+        "ai_settings": target_snapshot,
+        "version": version,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await socket_manager.broadcast_to_user(current_user_id, ws_payload)
+    await redis_service.publish(f"settings:user:{current_user_id}", ws_payload)
     
-    ai_settings = user.get("ai_settings", {
-        "temperature": 0.7,
-        "max_tokens": 4096.0,
-        "creativity": 0.6,
-        "streaming": True,
-        "autonomous_mode": False,
-        "debate_mode": False,
-        "rag_context": True,
-        "memory_persist": False
-    })
-    return {"status": "success", "ai_settings": ai_settings}
-
-@router.post("/ai-settings/update")
-async def update_ai_settings(request: AiSettingsUpdateRequest, current_user_id: str = Depends(get_current_user_id)):
-    """Update user's AI orchestration settings."""
-    db = await get_db()
-    
-    update_data = {}
-    if request.temperature is not None:
-        update_data["ai_settings.temperature"] = request.temperature
-    if request.max_tokens is not None:
-        update_data["ai_settings.max_tokens"] = request.max_tokens
-    if request.creativity is not None:
-        update_data["ai_settings.creativity"] = request.creativity
-    if request.streaming is not None:
-        update_data["ai_settings.streaming"] = request.streaming
-    if request.autonomous_mode is not None:
-        update_data["ai_settings.autonomous_mode"] = request.autonomous_mode
-    if request.debate_mode is not None:
-        update_data["ai_settings.debate_mode"] = request.debate_mode
-    if request.rag_context is not None:
-        update_data["ai_settings.rag_context"] = request.rag_context
-    if request.memory_persist is not None:
-        update_data["ai_settings.memory_persist"] = request.memory_persist
-
-    if update_data:
-        update_data["updated_at"] = datetime.now(timezone.utc)
-        await db.users.update_one({"_id": current_user_id}, {"$set": update_data})
-        
-    return {"status": "success", "message": "AI Settings synchronized successfully"}
+    return {
+        "status": "success", 
+        "message": f"Successfully rolled back configuration to version {request.version}", 
+        "ai_settings": target_snapshot,
+        "version": version
+    }
 
 @router.post("/privacy/export")
 async def export_data(current_user_id: str = Depends(get_current_user_id)):
@@ -461,10 +596,24 @@ async def export_data(current_user_id: str = Depends(get_current_user_id)):
     }
 
 @router.post("/privacy/clear-memory")
-async def clear_memory(current_user_id: str = Depends(get_current_user_id)):
-    """Clear AI settings, contextual indexing systems, and histories."""
+@limiter.limit("3/day")
+async def clear_memory(request: Request, current_user_id: str = Depends(get_current_user_id)):
+    """Clear AI settings, contextual indexing systems, histories, and permanently delete uploaded files."""
     db = await get_db()
+    import os
     
+    # 0. Delete user physical files and files collection records
+    from app.services import chat_service
+    user_files = await chat_service.get_user_files(current_user_id)
+    for f in user_files:
+        file_path = f.get("file_path")
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                logger.error(f"Failed to delete file {file_path}: {e}")
+    await db.files.delete_many({"user_id": current_user_id})
+
     # 1. Clear all conversations
     chats_cursor = db.chats.find({"user_id": current_user_id})
     async for chat in chats_cursor:
@@ -482,5 +631,95 @@ async def clear_memory(current_user_id: str = Depends(get_current_user_id)):
         }
     )
     
-    return {"status": "success", "message": "All database histories and model context keys cleared"}
+    return {"status": "success", "message": "All database histories, files, and model context keys cleared"}
+
+@router.get("/notification-settings")
+async def get_notification_settings(current_user_id: str = Depends(get_current_user_id)):
+    """Fetch user's notification orchestration settings."""
+    db = await get_db()
+    user = await db.users.find_one({"_id": current_user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    settings = user.get("notification_settings", {
+        "push": True,
+        "ai_alerts": True,
+        "security_alerts": True,
+        "model_failure": True,
+        "deployment": True,
+        "collaboration": True,
+        "email": False,
+        "sound": True,
+        "history_retention_days": 30,
+        "ai_alert_filtering": "ALL",
+        "quiet_hours_enabled": False,
+        "quiet_hours_start": "22:00",
+        "quiet_hours_end": "08:00",
+        "custom_webhook_url": "",
+        "slack_webhook_url": "",
+        "discord_webhook_url": "",
+        "teams_webhook_url": ""
+    })
+    return {"status": "success", "notification_settings": settings}
+
+@router.post("/notification-settings/update")
+async def update_notification_settings(
+    request: NotificationSettingsUpdateRequest,
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Update user's notification channels and webhook configurations globally."""
+    from app.services.socket_manager import manager as socket_manager
+    from app.services.redis_service import redis_service
+    
+    db = await get_db()
+    user = await db.users.find_one({"_id": current_user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    current_settings = user.get("notification_settings", {
+        "push": True,
+        "ai_alerts": True,
+        "security_alerts": True,
+        "model_failure": True,
+        "deployment": True,
+        "collaboration": True,
+        "email": False,
+        "sound": True,
+        "history_retention_days": 30,
+        "ai_alert_filtering": "ALL",
+        "quiet_hours_enabled": False,
+        "quiet_hours_start": "22:00",
+        "quiet_hours_end": "08:00",
+        "custom_webhook_url": "",
+        "slack_webhook_url": "",
+        "discord_webhook_url": "",
+        "teams_webhook_url": ""
+    })
+    
+    # Merge updates
+    updates = {}
+    for field, val in request.model_dump(exclude_unset=True).items():
+        if val is not None:
+            updates[field] = val
+            
+    merged = {**current_settings, **updates}
+    
+    # Save to MongoDB
+    await db.users.update_one(
+        {"_id": current_user_id},
+        {"$set": {"notification_settings": merged, "updated_at": datetime.now(timezone.utc)}}
+    )
+    
+    # Broadcast through WebSockets to all connected client devices immediately
+    ws_payload = {
+        "type": "notification_settings_update",
+        "notification_settings": merged,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await socket_manager.broadcast_to_user(current_user_id, ws_payload)
+    
+    # Publish to Redis Pub/Sub for horizontal scaling/other nodes
+    await redis_service.publish(f"notifications:user:{current_user_id}", ws_payload)
+    
+    return {"status": "success", "message": "Notification preferences synchronized", "notification_settings": merged}
 

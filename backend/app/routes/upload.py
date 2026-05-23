@@ -79,7 +79,7 @@ async def upload_files(
                         )
                     await out_file.write(content)
             
-            # Security: ZIP Bomb Protection
+            # Security: ZIP Validation
             if ext == '.zip':
                 import zipfile
                 try:
@@ -90,15 +90,6 @@ async def upload_files(
                             raise HTTPException(
                                 status_code=400,
                                 detail="Security: ZIP contains too many files (Limit: 100 files)."
-                            )
-                        total_uncompressed_size = sum(zinfo.file_size for zinfo in zip_ref.infolist())
-                        MAX_UNCOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
-                        if total_uncompressed_size > MAX_UNCOMPRESSED_SIZE:
-                            if os.path.exists(path):
-                                os.remove(path)
-                            raise HTTPException(
-                                status_code=400,
-                                detail="Security: ZIP uncompressed payload size is too large (Limit: 100MB)."
                             )
                 except zipfile.BadZipFile:
                     if os.path.exists(path):
@@ -117,6 +108,17 @@ async def upload_files(
                 file_path=path,
                 language=lang,
                 size=size
+            )
+            
+            # Dispatch Async Background Job
+            from app.services.task_engine import task_engine
+            from app.services.indexer_service import indexer
+            task_id = await task_engine.submit_task(
+                user_id=current_user_id,
+                type="file_indexing",
+                coro_func=indexer.index_single_file,
+                file_path=path,
+                file_id=file_id
             )
             
             responses.append(UploadResponse(

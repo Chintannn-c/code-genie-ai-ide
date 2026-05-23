@@ -101,6 +101,8 @@ class AIOrchestrator:
                                user_id=user_id, workflow_id=workflow_id)
 
         # ── Step 0: Semantic Cache Check ──
+        from app.services.socket_manager import manager as socket_manager
+        await socket_manager.broadcast_to_user(user_id, {"type": "orchestration_state", "message": "Analyzing prompt intent..."})
         cached_res = await redis_service.get(f"cache:{prompt}")
         if cached_res:
             await audit_logger.log("OBSERVE", "orchestrator", "cache_hit", 
@@ -127,6 +129,7 @@ class AIOrchestrator:
         clean_prompt = security_result["cleaned_prompt"]
 
         # ── Step 2: Task Analysis ──
+        await socket_manager.broadcast_to_user(user_id, {"type": "orchestration_state", "message": "Assembling specialized AI team..."})
         analysis = await task_analyzer.analyze(clean_prompt)
         task_type = analysis["task_type"]
         selected_agents = analysis["selected_agents"]
@@ -136,6 +139,7 @@ class AIOrchestrator:
                                user_id=user_id, workflow_id=workflow_id)
 
         # ── Step 3: RAG Context Retrieval ──
+        await socket_manager.broadcast_to_user(user_id, {"type": "orchestration_state", "message": "Searching vector memory for context..."})
         context_snippets = await indexer.search_context(clean_prompt)
         context_str = "\n".join(
             [f"--- FILE: {c['path']} ---\n{c['content']}" for c in context_snippets]
@@ -155,6 +159,7 @@ class AIOrchestrator:
                 logger.warning(f"Unknown agent role: {agent_role_name}")
 
         # Execute all agents in parallel with a global timeout
+        await socket_manager.broadcast_to_user(user_id, {"type": "orchestration_state", "message": f"Agents executing in parallel: {', '.join(selected_agents)}..."})
         agent_outputs = []
         try:
             results = await asyncio.wait_for(
@@ -173,6 +178,7 @@ class AIOrchestrator:
 
         # ── Step 5: Synthesis ──
         if agent_outputs:
+            await socket_manager.broadcast_to_user(user_id, {"type": "orchestration_state", "message": "Synthesizing parallel agent outputs..."})
             synthesis_result = await synthesis_engine.synthesize(
                 clean_prompt, agent_outputs, workflow_id
             )

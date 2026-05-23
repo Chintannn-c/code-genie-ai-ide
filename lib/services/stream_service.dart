@@ -86,6 +86,59 @@ class StreamService {
     }
   }
 
+  Stream<StreamChunk> _getStream(String url) async* {
+    cancel();
+    _client = http.Client();
+
+    try {
+      final request = http.Request('GET', Uri.parse(url));
+      final headers = {
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      };
+      
+      if (_token != null) {
+        headers['Authorization'] = 'Bearer $_token';
+      }
+      
+      request.headers.addAll(headers);
+      final response = await _client!.send(request);
+
+      if (response.statusCode != 200) {
+        yield StreamChunk.error('Server error: ${response.statusCode}');
+        return;
+      }
+
+      String buffer = '';
+      final stream = response.stream.transform(utf8.decoder);
+
+      await for (final chunkStr in stream) {
+        buffer += chunkStr;
+        final lines = buffer.split(RegExp(r'\r?\n'));
+        buffer = lines.removeLast();
+
+        for (final line in lines) {
+          final trimmedLine = line.trim();
+          if (trimmedLine.startsWith('data:')) {
+            final data = trimmedLine.substring(5).trim();
+            if (data.isNotEmpty) {
+              if (data == '[DONE]') return;
+              final chunk = StreamChunk.fromSSEData(data);
+              if (chunk.error != null) {
+                yield StreamChunk.error(chunk.error!);
+                return;
+              }
+              yield chunk;
+              if (chunk.done) return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (_client != null) yield StreamChunk.error('Connection error: $e');
+    }
+  }
+
   Stream<StreamChunk> streamResponse({
     required String userId,
     required String type,
@@ -118,6 +171,10 @@ class StreamService {
       if (maxTokens != null) 'max_tokens': maxTokens,
       if (customApiKeys != null && customApiKeys.isNotEmpty) 'custom_api_keys': customApiKeys,
     });
+  }
+
+  Stream<StreamChunk> resumeStream({required String chatId}) {
+    return _getStream('${ApiConfig.baseUrl}/api/chat/resume-stream?chat_id=$chatId');
   }
 
   /// Stream file analysis

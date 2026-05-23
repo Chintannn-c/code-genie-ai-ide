@@ -78,6 +78,14 @@ class RedisService:
         """Store answer in semantic cache for 24 hours."""
         await self.set(f"semantic_cache:{prompt_hash}", answer, expire_seconds=ttl)
 
+    async def publish(self, channel: str, message: Any):
+        if not self._redis: return
+        try:
+            await self._redis.publish(channel, json.dumps(message))
+            logger.info(f"📣 [REDIS-PUB] Published to channel {channel}")
+        except Exception as e:
+            logger.error(f"Redis Publish Error: {e}")
+
     async def close(self):
         if self._redis:
             await self._redis.close()

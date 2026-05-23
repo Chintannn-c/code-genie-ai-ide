@@ -11,6 +11,7 @@ import 'package:shimmer/shimmer.dart';
 import '../models/message.dart';
 import '../utils/code_parser.dart';
 import 'code_block.dart';
+import 'diagram_renderer.dart';
 
 /// Chat message bubble with readable code-aware rendering.
 class MessageBubble extends StatelessWidget {
@@ -291,7 +292,16 @@ class MessageBubble extends StatelessWidget {
     final segments = CodeParser.parse(purified);
     children.addAll(
       segments.map((s) {
-        if (s.isCode) {
+        if (s.isDiagram) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: DiagramRenderer(
+              diagramCode: s.content,
+              isStreaming: isStreaming,
+              agentColor: agentColor,
+            ),
+          );
+        } else if (s.isCode) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: CodeBlock(

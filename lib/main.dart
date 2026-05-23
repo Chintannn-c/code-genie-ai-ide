@@ -62,6 +62,7 @@ void main() async {
           update: (_, auth, notifications) {
             if (auth.status == AuthStatus.authenticated && auth.user != null) {
               NotificationService().connect(auth.user!.userId, auth.user!.token);
+              notifications!.updateAuth(auth.user!.userId, auth.user!.token);
             } else if (auth.status == AuthStatus.unauthenticated) {
               NotificationService().disconnect();
             }
