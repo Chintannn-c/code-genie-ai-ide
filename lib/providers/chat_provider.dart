@@ -7,7 +7,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/chat.dart';
@@ -644,6 +643,7 @@ class ChatProvider extends ChangeNotifier {
               if (chunk.error != null) {
                 _cancelHeartbeat();
                 _currentContextStatus = null;
+                _errorMessage = chunk.error;
                 final errorText = '⚠️ Code Genie failed to respond: ${chunk.error}';
                 if (_messages.isNotEmpty && _messages.last.role == 'ai') {
                   _messages[_messages.length - 1] = _messages.last.copyWith(
