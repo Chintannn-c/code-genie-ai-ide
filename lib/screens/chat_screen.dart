@@ -430,21 +430,6 @@ class _ChatScreenState extends State<ChatScreen>
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Consumer<ChatProvider>(
-                            builder: (context, cp, _) => OrchestrationIndicator(
-                              isActive: cp.isStreaming || cp.isOrchestrating,
-                              label: cp.activityLabel,
-                              models: [
-                                cp.selectedModel ?? cp.selectedProvider,
-                                cp.useParallelOrchestration
-                                    ? 'synthesis'
-                                    : 'stream',
-                              ],
-                            ),
-                          ),
-                        ),
-                        Padding(
                           padding: EdgeInsets.symmetric(
                             horizontal: isWide ? 40 : 12,
                             vertical: 12,

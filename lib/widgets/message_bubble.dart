@@ -169,8 +169,6 @@ class MessageBubble extends StatelessWidget {
                             const SizedBox(height: 12),
                           ],
                           ..._buildContent(context, agentColor),
-                          if (isStreaming && !isUser)
-                            _buildStreamingIndicator(context, agentColor),
                         ],
                       ),
                     ),
@@ -261,40 +259,9 @@ class MessageBubble extends StatelessWidget {
         .join('\n')
         .trim();
 
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     if (purified.isEmpty && !message.isImage) {
-      if (isStreaming && !isUser && chatProvider.documentReadingStage != null) {
-        return [
-          _buildDocumentScanningBlock(context, agentColor, chatProvider.documentReadingStage!)
-        ];
-      }
       return [
-        Shimmer.fromColors(
-          baseColor: agentColor.withValues(alpha: 0.1),
-          highlightColor: agentColor.withValues(alpha: 0.2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 200,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: 150,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildMinimalistThinkingIndicator(agentColor)
       ];
     }
 
@@ -402,6 +369,60 @@ class MessageBubble extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildMinimalistThinkingIndicator(Color agentColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A).withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ThreePulsingDots(color: agentColor.withValues(alpha: 0.6)),
+              const SizedBox(width: 12),
+              Text(
+                'Thinking...',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white38,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            height: 1.5,
+            width: 140,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(1),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(1),
+              child: const LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation(Color(0xFF6366F1)),
+              )
+              .animate(onPlay: (controller) => controller.repeat())
+              .shimmer(duration: 2000.ms, color: const Color(0xFF06B6D4)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PulseIndicator extends StatelessWidget {
@@ -474,249 +495,72 @@ class _ActionIcon extends StatelessWidget {
   }
 }
 
-extension _MessageBubbleScanningExtension on MessageBubble {
-  Widget _buildDocumentScanningBlock(BuildContext context, Color agentColor, String stageText) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.8), // Slate 900
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: agentColor.withValues(alpha: 0.25),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: agentColor.withValues(alpha: 0.1),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          DocumentScannerVisual(agentColor: agentColor),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'AI READING DOCUMENT',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                        color: agentColor,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: agentColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: agentColor.withValues(alpha: 0.3),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        'INDEXING',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w800,
-                          color: agentColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  stageText,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ).animate(key: ValueKey(stageText)).fadeIn(duration: 300.ms).slideX(begin: 0.05, end: 0),
-                const SizedBox(height: 10),
-                // Smooth progressive scanning bar indicator
-                Stack(
-                  children: [
-                    Container(
-                      height: 5,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    FractionallySizedBox(
-                      widthFactor: 0.65,
-                      child: Container(
-                        height: 5,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              agentColor.withValues(alpha: 0.3),
-                              agentColor,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: agentColor.withValues(alpha: 0.5),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class DocumentScannerVisual extends StatefulWidget {
-  final Color agentColor;
-  const DocumentScannerVisual({super.key, required this.agentColor});
+
+class ThreePulsingDots extends StatefulWidget {
+  final Color color;
+  const ThreePulsingDots({super.key, required this.color});
 
   @override
-  State<DocumentScannerVisual> createState() => _DocumentScannerVisualState();
+  State<ThreePulsingDots> createState() => _ThreePulsingDotsState();
 }
 
-class _DocumentScannerVisualState extends State<DocumentScannerVisual>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _ThreePulsingDotsState extends State<ThreePulsingDots>
+    with TickerProviderStateMixin {
+  late List<AnimationController> _controllers;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
+    _controllers = List.generate(3, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 600),
+      );
+    });
+
+    _startAnimations();
+  }
+
+  void _startAnimations() async {
+    for (int i = 0; i < 3; i++) {
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (mounted) {
+        _controllers[i].repeat(reverse: true);
+      }
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final val = _controller.value;
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // Glowing background concentric rings
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: widget.agentColor.withValues(alpha: 0.15 * (1 - val)),
-                  width: 1.5 + (val * 3),
-                ),
-              ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: _controllers[index],
+            curve: Curves.easeInOut,
+          ),
+          child: Container(
+            width: 5,
+            height: 5,
+            margin: const EdgeInsets.symmetric(horizontal: 2.5),
+            decoration: BoxDecoration(
+              color: widget.color,
+              shape: BoxShape.circle,
             ),
-            // Floating scan particle dots
-            Positioned(
-              top: 12 + (val * 16),
-              left: 10 + (val * 8),
-              child: Opacity(
-                opacity: (1 - val),
-                child: Container(
-                  width: 4,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: widget.agentColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 8 + (val * 18),
-              right: 12 + (val * 6),
-              child: Opacity(
-                opacity: val,
-                child: Container(
-                  width: 3.5,
-                  height: 3.5,
-                  decoration: BoxDecoration(
-                    color: widget.agentColor.withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ),
-            // Futuristic scanner card body
-            Transform(
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.002)
-                ..rotateY(val * 2 * 3.14159), // Elegant spin
-              alignment: Alignment.center,
-              child: Container(
-                width: 40,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: widget.agentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: widget.agentColor.withValues(alpha: 0.5),
-                    width: 1.2,
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.description_rounded,
-                    color: widget.agentColor,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-            // Laser scan bar
-            Positioned(
-              top: 4 + (val * 40),
-              child: Container(
-                width: 46,
-                height: 2,
-                decoration: BoxDecoration(
-                  color: widget.agentColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.agentColor,
-                      blurRadius: 8,
-                      spreadRadius: 1.5,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         );
-      },
+      }),
     );
   }
 }
