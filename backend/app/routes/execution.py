@@ -108,12 +108,59 @@ async def execute_code(
             )
 
     if not docker_client:
-        logger.warning(f"🚨 [EXECUTION] Blocked: User {current_user_id} attempted code execution without Docker sandbox.")
-        return ExecutionResponse(
-            output="",
-            error="Security: Code execution requires Docker sandbox. Execution blocked in this environment.",
-            execution_time=round(time.time() - start_time, 3)
-        )
+        if is_cloud:
+            logger.warning(f"🚨 [EXECUTION] Blocked: Cloud execution attempted without Docker.")
+            return ExecutionResponse(
+                output="",
+                error="Security: Code execution in cloud environment requires Docker sandbox.",
+                execution_time=round(time.time() - start_time, 3)
+            )
+        
+        logger.info(f"ℹ️ [EXECUTION] Using local subprocess execution (Docker not available).")
+        try:
+            if lang == "python":
+                cmd = ["python", "-c", code]
+            elif lang in ["javascript", "js"]:
+                cmd = ["node", "-e", code]
+            else:
+                return ExecutionResponse(
+                    output="",
+                    error=f"Language '{lang}' is not supported for execution.",
+                    execution_time=round(time.time() - start_time, 3)
+                )
+
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=5.0
+            )
+            execution_time = round(time.time() - start_time, 3)
+            
+            if proc.returncode != 0:
+                return ExecutionResponse(
+                    output=proc.stdout,
+                    error=proc.stderr if proc.stderr else f"Runtime Error (Exit Code: {proc.returncode})",
+                    execution_time=execution_time
+                )
+            
+            return ExecutionResponse(
+                output=proc.stdout,
+                error=None,
+                execution_time=execution_time
+            )
+        except subprocess.TimeoutExpired:
+            return ExecutionResponse(
+                output="",
+                error="Execution Timed Out (Limit: 5s)",
+                execution_time=round(time.time() - start_time, 3)
+            )
+        except Exception as e:
+            return ExecutionResponse(
+                output="",
+                error=f"Local execution failed: {str(e)}",
+                execution_time=round(time.time() - start_time, 3)
+            )
 
     # Map languages to Docker images and commands
     config = {
