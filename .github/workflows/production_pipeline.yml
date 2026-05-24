@@ -47,8 +47,10 @@ jobs:
         run: flutter pub get
         
       - name: Build Flutter Web
-        run: flutter build web --release --base-href "/"
-        
+        run: |
+          flutter build web --release --base-href "/" \
+            --dart-define=BASE_URL=https://code-genie.up.railway.app
+         
       - name: Archive Web Build
         uses: actions/upload-artifact@v4
         with:
@@ -62,11 +64,18 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download Web Build
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web-build
+          path: build/web
       
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Deploy to Railway (Backend)
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          railway up --service backend --detach
+        run: railway up --service backend --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           
@@ -76,5 +85,5 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+          vercel-args: '--prod --yes'
           working-directory: .
