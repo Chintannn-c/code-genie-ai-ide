@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -86,14 +85,25 @@ class _ChatScreenState extends State<ChatScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final cp = context.read<ChatProvider>();
+        final ap = context.read<AuthProvider>();
         cp.initialize();
-
-        // ADDED: Error Listener to show feedback to user
+        
+        // ADDED: Error Listener to show feedback to user and automatically clear stale/expired sessions
         cp.addListener(() {
           if (cp.errorMessage != null && mounted) {
+            final error = cp.errorMessage!;
+            
+            // Auto-heal on stale session / expired credentials
+            if (error.contains('Could not validate credentials') || error.contains('401')) {
+              debugPrint('⚠️ [Session Interceptor] Expired credentials detected. Auto-recovering session...');
+              ap.signOut(); // Triggers session cleanup and redirects user to LoginScreen
+              cp.clearError();
+              return;
+            }
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(cp.errorMessage!),
+                content: Text(error),
                 backgroundColor: Colors.redAccent,
                 behavior: SnackBarBehavior.floating,
                 action: SnackBarAction(
