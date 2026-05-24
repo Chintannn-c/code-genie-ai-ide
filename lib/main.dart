@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/chat_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'providers/chat_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
@@ -79,8 +80,31 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _splashCompleted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startSplashTimer();
+  }
+
+  void _startSplashTimer() {
+    Future.delayed(const Duration(milliseconds: 2600), () {
+      if (mounted) {
+        setState(() {
+          _splashCompleted = true;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,19 +139,26 @@ class MyApp extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       ),
-      home: _getHome(authProvider),
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 800),
+        switchInCurve: Curves.easeIn,
+        switchOutCurve: Curves.easeOut,
+        child: _splashCompleted && authProvider.status != AuthStatus.uninitialized
+            ? _getHome(authProvider)
+            : const SplashScreen(key: ValueKey('splash')),
+      ),
     );
   }
 
   Widget _getHome(AuthProvider auth) {
     switch (auth.status) {
       case AuthStatus.authenticated:
-        return const ChatScreen();
+        return const ChatScreen(key: ValueKey('chat'));
       case AuthStatus.authenticating:
       case AuthStatus.unauthenticated:
-        return const LoginScreen();
+        return const LoginScreen(key: ValueKey('login'));
       case AuthStatus.uninitialized:
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return const SplashScreen(key: ValueKey('splash_uninit'));
     }
   }
 }

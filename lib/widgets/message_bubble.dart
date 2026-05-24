@@ -210,22 +210,26 @@ class MessageBubble extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isStalled)
+            if (isStalled) ...[
               const Icon(
                 Icons.warning_amber_rounded,
                 size: 14,
                 color: Color(0xFFF97316),
-              )
-            else
-              SizedBox(
-                width: 10,
-                height: 10,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(agentColor),
-                ),
               ),
-            const SizedBox(width: 10),
+              const SizedBox(width: 8),
+            ] else ...[
+              Text(
+                '>_',
+                style: GoogleFonts.firaCode(
+                  color: agentColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .fade(duration: 500.ms, begin: 0.3, end: 1.0),
+              const SizedBox(width: 8),
+            ],
             Text(
               isStalled ? "Connection stalled... waiting for host response" : displayText,
               style: GoogleFonts.plusJakartaSans(
@@ -236,9 +240,6 @@ class MessageBubble extends StatelessWidget {
                     : agentColor.withValues(alpha: 0.82),
                 letterSpacing: 0.2,
               ),
-            ).animate(onPlay: (c) => c.repeat()).shimmer(
-              duration: 1800.ms,
-              color: isStalled ? const Color(0xFFFB923C) : null,
             ),
           ],
         ),
