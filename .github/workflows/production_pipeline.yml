@@ -10,6 +10,9 @@ jobs:
   backend-validation:
     name: Backend CI (Railway Ready)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       
@@ -20,7 +23,6 @@ jobs:
           
       - name: Install Dependencies
         run: |
-          cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
@@ -44,6 +46,12 @@ jobs:
           
       - name: Install Dependencies
         run: flutter pub get
+
+      - name: Static Analysis
+        run: flutter analyze
+
+      - name: Run Tests
+        run: flutter test
         
       - name: Build Flutter Web
         run: |
@@ -82,4 +90,4 @@ jobs:
       - name: Deploy to Vercel (Frontend)
         run: |
           npm install -g vercel
-          vercel deploy --prod --yes
+          vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
