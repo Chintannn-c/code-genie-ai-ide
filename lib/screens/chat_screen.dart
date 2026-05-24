@@ -41,11 +41,16 @@ class _ChatScreenState extends State<ChatScreen>
   bool _showScrollButton = false;
   bool _isAtBottom = true;
   bool _showRightPanel = false;
+  bool _isSidebarOpen = true; // Added: Collapsible sidebar state
   final TextEditingController _searchController = TextEditingController();
 
   // ANIM FIX: Explicit AnimationController for CodePanel size transition
   late AnimationController _panelController;
   late Animation<double> _panelAnimation;
+
+  // Added: Explicit AnimationController for Sidebar size transition
+  late AnimationController _sidebarController;
+  late Animation<double> _sidebarAnimation;
 
   @override
   void initState() {
@@ -64,6 +69,19 @@ class _ChatScreenState extends State<ChatScreen>
 
     // Start panel as collapsed (Web-First / Terminal Suppressed)
     _panelController.value = 0.0;
+
+    // Added: Initialize controller for smooth, compositor-only sidebar size transitions
+    _sidebarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _sidebarAnimation = CurvedAnimation(
+      parent: _sidebarController,
+      curve: Curves.easeInOutCubic,
+    );
+
+    // Start sidebar as fully expanded
+    _sidebarController.value = 1.0;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -151,8 +169,20 @@ class _ChatScreenState extends State<ChatScreen>
   void dispose() {
     _scrollController.dispose();
     _panelController.dispose();
+    _sidebarController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleSidebar() {
+    setState(() {
+      _isSidebarOpen = !_isSidebarOpen;
+      if (_isSidebarOpen) {
+        _sidebarController.forward();
+      } else {
+        _sidebarController.reverse();
+      }
+    });
   }
 
   // ANIM FIX: Toggle logic for explicit controller
@@ -328,8 +358,18 @@ class _ChatScreenState extends State<ChatScreen>
       body: Row(
         children: [
           if (isWide)
-            Consumer<ChatProvider>(
-              builder: (context, cp, _) => _buildSidebar(cp, ap, isDark),
+            SizeTransition(
+              sizeFactor: _sidebarAnimation,
+              axis: Axis.horizontal,
+              axisAlignment: -1.0,
+              child: RepaintBoundary(
+                child: SizedBox(
+                  width: 280,
+                  child: Consumer<ChatProvider>(
+                    builder: (context, cp, _) => _buildSidebar(cp, ap, isDark),
+                  ),
+                ),
+              ),
             ),
           Expanded(
             child: Center(
@@ -551,6 +591,16 @@ class _ChatScreenState extends State<ChatScreen>
                     tooltip: 'Menu',
                   ),
                   const SizedBox(width: 4),
+                ] else ...[
+                  IconButton(
+                    onPressed: _toggleSidebar,
+                    icon: Icon(
+                      _isSidebarOpen ? Icons.menu_open_rounded : Icons.menu_rounded,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                    tooltip: _isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar',
+                  ),
+                  const SizedBox(width: 8),
                 ],
                 Expanded(child: _buildConversationTitle(cp, isDark)),
                 _buildActivityPill(cp, isDark),
