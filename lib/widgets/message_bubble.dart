@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 import '../models/message.dart';
 import '../utils/code_parser.dart';
 import 'code_block.dart';
@@ -43,6 +42,8 @@ class MessageBubble extends StatelessWidget {
     return const Color(0xFF6366F1); // Default Neural Purple
   }
 
+  bool get isLoadingState => !isUser && message.content.trim().isEmpty && !message.isImage;
+
   @override
   Widget build(BuildContext context) {
     final agentColor = _getAgentColor();
@@ -52,24 +53,26 @@ class MessageBubble extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
-          mainAxisAlignment: isUser
-              ? MainAxisAlignment.end
-              : MainAxisAlignment.start,
+          mainAxisAlignment: isLoadingState
+              ? MainAxisAlignment.center
+              : (isUser ? MainAxisAlignment.end : MainAxisAlignment.start),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isUser) Spacer(flex: isWide ? 1 : 2),
+            if (isUser || isLoadingState) Spacer(flex: isWide ? 1 : 2),
 
             Flexible(
               flex: isWide ? 12 : 10,
               child: Column(
-                crossAxisAlignment: isUser
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
+                crossAxisAlignment: isLoadingState
+                    ? CrossAxisAlignment.center
+                    : (isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start),
                 children: [
                   _buildHeader(agentColor),
                   const SizedBox(height: 8),
                   Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: isLoadingState
+                        ? Alignment.center
+                        : (isUser ? Alignment.centerRight : Alignment.centerLeft),
                     child: _buildMainBubble(context, agentColor),
                   ),
                   if (!isUser && !isStreaming)
@@ -78,7 +81,7 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
 
-            if (!isUser) Spacer(flex: isWide ? 1 : 2),
+            if (!isUser || isLoadingState) Spacer(flex: isWide ? 1 : 2),
           ],
         ),
       ),
@@ -180,68 +183,6 @@ class MessageBubble extends StatelessWidget {
           .animate(target: 1)
           .fadeIn(duration: 400.ms)
           .slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad),
-    );
-  }
-
-  Widget _buildStreamingIndicator(BuildContext context, Color agentColor) {
-    final cp = Provider.of<ChatProvider>(context);
-    final status = cp.currentContextStatus;
-    final String displayText = status ?? "Orchestrating response...";
-    final bool isStalled = cp.isStalled;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isStalled
-              ? const Color(0xFFF97316).withValues(alpha: 0.1)
-              : agentColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isStalled
-                ? const Color(0xFFF97316).withValues(alpha: 0.3)
-                : agentColor.withValues(alpha: 0.18),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isStalled) ...[
-              const Icon(
-                Icons.warning_amber_rounded,
-                size: 14,
-                color: Color(0xFFF97316),
-              ),
-              const SizedBox(width: 8),
-            ] else ...[
-              Text(
-                '>_',
-                style: GoogleFonts.firaCode(
-                  color: agentColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .fade(duration: 500.ms, begin: 0.3, end: 1.0),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              isStalled ? "Connection stalled... waiting for host response" : displayText,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: isStalled
-                    ? const Color(0xFFF97316)
-                    : agentColor.withValues(alpha: 0.82),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -421,7 +362,9 @@ class MessageBubble extends StatelessWidget {
           ),
         ],
       ),
-    );
+    )
+    .animate(onPlay: (controller) => controller.repeat(reverse: true))
+    .fade(duration: 1500.ms, begin: 0.7, end: 1.0, curve: Curves.easeInOut);
   }
 }
 

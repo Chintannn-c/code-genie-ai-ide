@@ -13,7 +13,6 @@ import '../providers/settings_provider.dart';
 import '../widgets/chat_list_tile.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
-import '../widgets/orchestration_indicator.dart';
 import '../widgets/file_upload_bar.dart';
 import '../widgets/attachment_button.dart';
 
