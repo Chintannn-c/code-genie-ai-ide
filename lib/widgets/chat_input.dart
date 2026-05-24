@@ -239,7 +239,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     _lastValue = _promptCtrl.text;
   }
 
-  bool get _canSend => _promptCtrl.text.trim().isNotEmpty;
+  bool get _canSend => _promptCtrl.text.trim().isNotEmpty && !context.read<ChatProvider>().isSessionExpired;
 
   void _send() {
     if (!_canSend || widget.isStreaming) return;
@@ -303,7 +303,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(12),
                           side: BorderSide(color: auraColor.withOpacity(0.2), width: 1.0),
                         ),
-                        onPressed: () {
+                        onPressed: cp.isSessionExpired ? null : () {
                           HapticFeedback.selectionClick();
                           setState(() {
                             _promptCtrl.text = suggestion;
@@ -421,11 +421,17 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                     TextField(
                       controller: _promptCtrl,
                       focusNode: _focus,
+                      enabled: !cp.isSessionExpired,
                       maxLines: 8,
                       minLines: 1,
                       onChanged: _handleAutoClosing,
                       onSubmitted: (_) => _send(),
-                      style: cp.isEditorMode
+                      style: cp.isSessionExpired
+                          ? GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              color: Colors.white30,
+                            )
+                          : cp.isEditorMode
                           ? GoogleFonts.jetBrainsMono(
                               fontSize: 14,
                               height: 1.6,
@@ -509,7 +515,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                                     ? const Color(0xFFEF4444) 
                                     : (widget.isDark ? Colors.white38 : Colors.black38),
                               ),
-                              onPressed: () {
+                              onPressed: cp.isSessionExpired ? null : () {
                                 HapticFeedback.selectionClick();
                                 setState(() {
                                   _isVoiceRecording = !_isVoiceRecording;
@@ -573,7 +579,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
           size: 20,
           color: isActive ? color : (widget.isDark ? Colors.white38 : Colors.black38),
         ),
-        onPressed: () {
+        onPressed: context.read<ChatProvider>().isSessionExpired ? null : () {
           HapticFeedback.lightImpact();
           onPressed();
         },
@@ -590,7 +596,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     return Tooltip(
       message: 'Orchestrate cognitive debates and multi-agent chains',
       child: InkWell(
-        onTap: () {
+        onTap: cp.isSessionExpired ? null : () {
           HapticFeedback.selectionClick();
           cp.toggleParallelOrchestration();
         },
@@ -636,7 +642,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     return Tooltip(
       message: 'Plan structured visual timeline sequencing',
       child: InkWell(
-        onTap: () {
+        onTap: cp.isSessionExpired ? null : () {
           HapticFeedback.selectionClick();
           cp.toggleMissionMode();
         },
@@ -682,7 +688,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     return MouseRegion(
       cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
-        onTap: () {
+        onTap: context.read<ChatProvider>().isSessionExpired ? null : () {
           if (isStop) {
             HapticFeedback.mediumImpact();
             widget.onStop();

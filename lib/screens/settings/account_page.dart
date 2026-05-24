@@ -43,7 +43,6 @@ class _AccountPageState extends State<AccountPage> {
   };
   Map<String, dynamic> _usage = {'used': 4210891, 'limit': 10000000};
   List<dynamic> _activeSessions = [];
-  List<dynamic> _anomalyLogs = [];
 
   // API Key local edit controller variables
   bool _showKeyPanel = false;
@@ -96,7 +95,6 @@ class _AccountPageState extends State<AccountPage> {
             _connections = data['connections'] ?? {};
             _usage = data['usage'] ?? {'used': 4210891, 'limit': 10000000};
             _activeSessions = data['active_sessions'] ?? [];
-            _anomalyLogs = data['anomaly_logs'] ?? [];
             _isLoading = false;
             _syncing = false;
           });

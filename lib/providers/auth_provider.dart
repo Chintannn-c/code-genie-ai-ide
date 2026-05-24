@@ -94,6 +94,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  String? _sessionExpiredMessage;
+  String? get sessionExpiredMessage => _sessionExpiredMessage;
+
+  void triggerSessionExpiry() {
+    _sessionExpiredMessage = 'Session expired, please login again';
+    signOut();
+  }
+
+  void clearSessionExpiredMessage() {
+    _sessionExpiredMessage = null;
+    notifyListeners();
+  }
+
   Future<void> signOut() async {
     await _authService.signOut();
     _user = null;

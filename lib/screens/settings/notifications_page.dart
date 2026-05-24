@@ -299,35 +299,6 @@ class _NotificationsPageState extends State<NotificationsPage> with SingleTicker
     );
   }
 
-  Widget _simulateBtn(String label, Color color, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      child: InkWell(
-        onTap: () {
-          _triggerHaptic(HapticFeedbackType.light);
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.25)),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAnimatedEventCard(
     NotificationModel notif,
     bool isExpanded,

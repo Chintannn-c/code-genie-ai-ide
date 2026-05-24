@@ -52,6 +52,9 @@ class ChatProvider extends ChangeNotifier {
   String _activityLabel = 'Ready';
   StreamSubscription? _wsSubscription;
   bool _isEditorMode = false;
+  bool _isSessionExpired = false;
+  Timer? _localExpiryTimer;
+  VoidCallback? _onSessionExpiredCallback;
   String? _errorMessage;
   StreamSubscription? _streamSubscription;
 
@@ -71,6 +74,9 @@ class ChatProvider extends ChangeNotifier {
     // CONCURRENCY FIX: Cancel any pending boot timer to prevent ghost subscriptions
     _bootTimer?.cancel();
     _bootTimer = null;
+
+    _localExpiryTimer?.cancel();
+    _localExpiryTimer = null;
 
     // HEARTBEAT & STREAM FIX: Cleanly abort and release active timers & stream networks
     _heartbeatTimer?.cancel();
@@ -96,6 +102,10 @@ class ChatProvider extends ChangeNotifier {
     _wsSubscription = null;
 
     if (id != null) {
+      _isSessionExpired = false;
+      if (token != null) {
+        _startLocalExpiryCheck(token);
+      }
       // CONCURRENCY FIX: Assign to timer for explicit lifecycle management
       _bootTimer = Timer(const Duration(milliseconds: 100), () {
         if (_userId == id) {
@@ -294,6 +304,88 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get isSessionExpired => _isSessionExpired;
+
+  void onSessionExpired(VoidCallback callback) {
+    _onSessionExpiredCallback = callback;
+  }
+
+  void handleSessionExpired() {
+    if (_isSessionExpired) return;
+    _isSessionExpired = true;
+    _isStreaming = false;
+    _isOrchestrating = false;
+    _activityLabel = 'Session Expired';
+    _cancelHeartbeat();
+    _wsSubscription?.cancel();
+    _wsSubscription = null;
+    _wsService.disconnect();
+    notifyListeners();
+
+    Timer(const Duration(milliseconds: 2500), () {
+      clearAllState();
+      if (_onSessionExpiredCallback != null) {
+        _onSessionExpiredCallback!();
+      }
+    });
+  }
+
+  void clearAllState() {
+    _chats = [];
+    _messages = [];
+    _currentChatId = null;
+    _errorMessage = null;
+    _codeCache.clear();
+    _selectedFiles = [];
+    _latestCode = '';
+    _latestLanguage = 'python';
+    _isSessionExpired = false;
+    notifyListeners();
+  }
+
+  void _startLocalExpiryCheck(String token) {
+    _localExpiryTimer?.cancel();
+    
+    // Check immediately
+    if (_isJwtExpired(token)) {
+      handleSessionExpired();
+      return;
+    }
+    
+    // Check every 10 seconds
+    _localExpiryTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (_userId == null || _isSessionExpired) {
+        timer.cancel();
+        return;
+      }
+      if (_isJwtExpired(token)) {
+        timer.cancel();
+        handleSessionExpired();
+      }
+    });
+  }
+
+  bool _isJwtExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = parts[1];
+      
+      // Base64 padding normalization
+      var normalized = base64Url.normalize(payload);
+      final resp = utf8.decode(base64Url.decode(normalized));
+      final map = jsonDecode(resp) as Map<String, dynamic>;
+      if (map.containsKey('exp')) {
+        final exp = map['exp'] as int;
+        final expDateTime = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+        return DateTime.now().add(const Duration(seconds: 5)).isAfter(expDateTime);
+      }
+    } catch (e) {
+      debugPrint('Error decoding JWT token: $e');
+    }
+    return false; // Safe fallback
+  }
+
   Future<void> loadChats() async {
     if (_userId == null) return;
     
@@ -321,6 +413,10 @@ class ChatProvider extends ChangeNotifier {
       final encodable = freshChats.map((c) => c.toJson()).toList();
       await box.put('chats_list', jsonEncode(encodable));
     } catch (e) {
+      if (e is SessionExpiredException || e.toString().contains('Session expired') || e.toString().contains('401') || e.toString().contains('403')) {
+        handleSessionExpired();
+        return;
+      }
       _errorMessage = 'Failed to load chats: $e';
       notifyListeners();
     }
@@ -354,6 +450,10 @@ class ChatProvider extends ChangeNotifier {
       await _updateLatestCode();
       notifyListeners();
     } catch (e) {
+      if (e is SessionExpiredException || e.toString().contains('Session expired') || e.toString().contains('401') || e.toString().contains('403')) {
+        handleSessionExpired();
+        return;
+      }
       _errorMessage = 'Failed to load messages: $e';
       notifyListeners();
     }
@@ -384,6 +484,10 @@ class ChatProvider extends ChangeNotifier {
         await box.put('chats_list', jsonEncode(encodable));
       }
     } catch (e) {
+      if (e is SessionExpiredException || e.toString().contains('Session expired') || e.toString().contains('401') || e.toString().contains('403')) {
+        handleSessionExpired();
+        return;
+      }
       // Rollback state on connection or parsing failure
       _chats = previousChats;
       _errorMessage = 'Connection failure: $e. Reverted optimistic delete.';
@@ -545,6 +649,11 @@ class ChatProvider extends ChangeNotifier {
       _currentChatId = result['chat_id'];
       _messages = await _apiService.getMessages(_currentChatId!);
       await _updateLatestCode();
+    } catch (e) {
+      if (e is SessionExpiredException || e.toString().contains('Session expired') || e.toString().contains('401') || e.toString().contains('403')) {
+        handleSessionExpired();
+      }
+      rethrow;
     } finally {
       _isOrchestrating = false;
       _activityLabel = 'Ready';
@@ -643,6 +752,11 @@ class ChatProvider extends ChangeNotifier {
               if (chunk.error != null) {
                 _cancelHeartbeat();
                 _currentContextStatus = null;
+                final errStr = chunk.error!;
+                if (errStr.contains('401') || errStr.contains('403') || errStr.contains('credentials') || errStr.contains('Unauthorized') || errStr.contains('Forbidden')) {
+                  handleSessionExpired();
+                  return;
+                }
                 _errorMessage = chunk.error;
                 final errorText = '⚠️ Code Genie failed to respond: ${chunk.error}';
                 if (_messages.isNotEmpty && _messages.last.role == 'ai') {
@@ -1149,6 +1263,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _localExpiryTimer?.cancel();
     _bootTimer?.cancel(); // CONCURRENCY FIX: Cleanup on provider destruction
     _heartbeatTimer?.cancel();
     _wsSubscription?.cancel();

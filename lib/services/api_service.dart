@@ -7,9 +7,34 @@ import '../models/message.dart';
 import '../models/app_file.dart';
 import 'package:file_picker/file_picker.dart';
 
+class SessionExpiredException implements Exception {
+  final String message;
+  SessionExpiredException(this.message);
+  @override
+  String toString() => message;
+}
+
+class InterceptingClient extends http.BaseClient {
+  final http.Client _inner = http.Client();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final response = await _inner.send(request);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw SessionExpiredException('Session expired (${response.statusCode})');
+    }
+    return response;
+  }
+
+  @override
+  void close() {
+    _inner.close();
+  }
+}
+
 /// HTTP API service for non-streaming requests.
 class ApiService {
-  final http.Client _client = http.Client();
+  final http.Client _client = InterceptingClient();
 
   String? _token;
 

@@ -43,7 +43,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PlanningProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
           create: (_) => ChatProvider(),
-          update: (_, auth, chat) => chat!..setUserId(auth.user?.userId, auth.user?.token),
+          update: (_, auth, chat) => chat!
+            ..setUserId(auth.user?.userId, auth.user?.token)
+            ..onSessionExpired(() {
+              auth.triggerSessionExpiry();
+            }),
         ),
         ChangeNotifierProxyProvider<AuthProvider, OrchestrationProvider>(
           create: (_) => OrchestrationProvider(),

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:ai_coding/widgets/code_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -365,200 +366,294 @@ class _ChatScreenState extends State<ChatScreen>
       floatingActionButtonLocation: isWide
           ? FloatingActionButtonLocation.endFloat
           : FloatingActionButtonLocation.centerFloat,
-      body: Row(
+      body: Stack(
         children: [
-          if (isWide)
-            SizeTransition(
-              sizeFactor: _sidebarAnimation,
-              axis: Axis.horizontal,
-              axisAlignment: -1.0,
-              child: RepaintBoundary(
-                child: SizedBox(
-                  width: 280,
-                  child: Consumer<ChatProvider>(
-                    builder: (context, cp, _) => _buildSidebar(cp, ap, isDark),
+          Row(
+            children: [
+              if (isWide)
+                SizeTransition(
+                  sizeFactor: _sidebarAnimation,
+                  axis: Axis.horizontal,
+                  axisAlignment: -1.0,
+                  child: RepaintBoundary(
+                    child: SizedBox(
+                      width: 280,
+                      child: Consumer<ChatProvider>(
+                        builder: (context, cp, _) => _buildSidebar(cp, ap, isDark),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: isWide ? 1100 : double.infinity,
-                ),
-                child: Column(
-                  children: [
-                    Consumer<ChatProvider>(
-                      builder: (context, cp, _) =>
-                          _buildHeader(cp, ap, isDark, isWide),
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isWide ? 1100 : double.infinity,
                     ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          const PlanningTimeline(),
-                          Expanded(
-                            child: Selector<ChatProvider, String>(
-                              selector: (_, cp) =>
-                                  '${cp.messages.length}_${cp.isLoading}_${cp.isStreaming && cp.messages.isNotEmpty ? cp.messages.last.content.length : 0}',
-                              builder: (context, _, __) {
-                                if (chatProvider.isLoading) {
-                                  return _buildSkeletonLoader(isDark);
-                                }
-                                return chatProvider.messages.isEmpty
-                                    ? _buildEmptyState(isDark)
-                                    : _buildMessageList(chatProvider, isDark);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Selector<ChatProvider, String>(
-                      selector: (_, cp) =>
-                          '${cp.selectedFiles.length}_${cp.isUploading}',
-                      builder: (context, _, __) => FileUploadBar(
-                        files: chatProvider.selectedFiles,
-                        isDark: isDark,
-                        onRemove: chatProvider.removeFile,
-                        onAnalyze: (id) => chatProvider.analyzeFile(id),
-                        onAnalyzeProject: chatProvider.analyzeProject,
-                        onClearAll: chatProvider.clearFiles,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Consumer<ChatProvider>(
-                        builder: (context, cp, _) => OrchestrationIndicator(
-                          isActive: cp.isStreaming || cp.isOrchestrating,
-                          label: cp.activityLabel,
-                          models: [
-                            cp.selectedModel ?? cp.selectedProvider,
-                            cp.useParallelOrchestration
-                                ? 'synthesis'
-                                : 'stream',
-                          ],
+                    child: Column(
+                      children: [
+                        Consumer<ChatProvider>(
+                          builder: (context, cp, _) =>
+                              _buildHeader(cp, ap, isDark, isWide),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isWide ? 40 : 12,
-                        vertical: 12,
-                      ),
-                      child: Selector<ChatProvider, String>(
-                        selector: (_, cp) => cp.selectedMode,
-                        builder: (context, mode, _) => ChatInput(
-                          mode: mode,
-                          isStreaming: chatProvider.isStreaming,
-                          onToggleTerminal: _togglePanel,
-                          onToggleWeb: _toggleWeb,
-                          isTerminalOpen: _showRightPanel,
-                          isWebOpen: chatProvider.isWebMode,
-                          isDark: isDark,
-                          onStop: chatProvider.stopStreaming,
-                          attachmentButton: Selector<ChatProvider, int>(
-                            selector: (_, cp) => cp.selectedFiles.length,
-                            builder: (context, fileCount, _) => Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                AttachmentButton(
-                                  isDark: isDark,
-                                  isLoading: chatProvider.isUploading,
-                                  onFilesSelected: chatProvider.uploadFiles,
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const PlanningTimeline(),
+                              Expanded(
+                                child: Selector<ChatProvider, String>(
+                                  selector: (_, cp) =>
+                                      '${cp.messages.length}_${cp.isLoading}_${cp.isStreaming && cp.messages.isNotEmpty ? cp.messages.last.content.length : 0}',
+                                  builder: (context, _, __) {
+                                    if (chatProvider.isLoading) {
+                                      return _buildSkeletonLoader(isDark);
+                                    }
+                                    return chatProvider.messages.isEmpty
+                                        ? _buildEmptyState(isDark)
+                                        : _buildMessageList(chatProvider, isDark);
+                                  },
                                 ),
-                                if (fileCount > 0)
-                                  Positioned(
-                                    right: -2,
-                                    top: -2,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF6366F1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 14,
-                                        minHeight: 14,
-                                      ),
-                                      child: Text(
-                                        fileCount.toString(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Selector<ChatProvider, String>(
+                          selector: (_, cp) =>
+                              '${cp.selectedFiles.length}_${cp.isUploading}',
+                          builder: (context, _, __) => FileUploadBar(
+                            files: chatProvider.selectedFiles,
+                            isDark: isDark,
+                            onRemove: chatProvider.removeFile,
+                            onAnalyze: (id) => chatProvider.analyzeFile(id),
+                            onAnalyzeProject: chatProvider.analyzeProject,
+                            onClearAll: chatProvider.clearFiles,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Consumer<ChatProvider>(
+                            builder: (context, cp, _) => OrchestrationIndicator(
+                              isActive: cp.isStreaming || cp.isOrchestrating,
+                              label: cp.activityLabel,
+                              models: [
+                                cp.selectedModel ?? cp.selectedProvider,
+                                cp.useParallelOrchestration
+                                    ? 'synthesis'
+                                    : 'stream',
                               ],
                             ),
                           ),
-                          onSend: ({required prompt, code = '', error = ''}) {
-                            if (chatProvider.isMissionMode) {
-                              final auth = context.read<AuthProvider>();
-                              final pp = context.read<PlanningProvider>();
-                              pp.generatePlan(
-                                prompt,
-                                auth.user?.userId ?? 'anonymous',
-                                auth.user?.token,
-                                chatId: chatProvider.currentChatId,
-                              );
-                            } else {
-                              final sp = context.read<SettingsProvider>();
-                              final keys = {
-                                if (sp.geminiApiKey.isNotEmpty)
-                                  'gemini': sp.geminiApiKey,
-                                if (sp.groqApiKey.isNotEmpty)
-                                  'groq': sp.groqApiKey,
-                                if (sp.openrouterApiKey.isNotEmpty)
-                                  'openrouter': sp.openrouterApiKey,
-                                if (sp.githubApiKey.isNotEmpty)
-                                  'github': sp.githubApiKey,
-                                if (sp.mistralApiKey.isNotEmpty)
-                                  'mistral': sp.mistralApiKey,
-                              };
-
-                              chatProvider.sendMessage(
-                                prompt: prompt,
-                                code: code,
-                                error: error,
-                                temperature: sp.temperature,
-                                maxTokens: sp.maxTokens.toInt(),
-                                customApiKeys: keys.isNotEmpty ? keys : null,
-                              );
-                            }
-                            _scrollToBottom(force: true);
-                          },
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // ANIM FIX: Replaced AnimatedContainer with SizeTransition + RepaintBoundary
-          if (isWide)
-            SizeTransition(
-              sizeFactor: _panelAnimation,
-              axis: Axis.horizontal,
-              axisAlignment: 1.0,
-              child: RepaintBoundary(
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.30,
-                  child: Selector<ChatProvider, String>(
-                    selector: (_, cp) => cp.latestCode,
-                    builder: (context, code, _) => RightCockpitPanel(
-                      code: code,
-                      language: chatProvider.latestLanguage,
-                      isDark: isDark,
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isWide ? 40 : 12,
+                            vertical: 12,
+                          ),
+                          child: Selector<ChatProvider, String>(
+                            selector: (_, cp) => cp.selectedMode,
+                            builder: (context, mode, _) => ChatInput(
+                              mode: mode,
+                              isStreaming: chatProvider.isStreaming,
+                              onToggleTerminal: _togglePanel,
+                              onToggleWeb: _toggleWeb,
+                              isTerminalOpen: _showRightPanel,
+                              isWebOpen: chatProvider.isWebMode,
+                              isDark: isDark,
+                              onStop: chatProvider.stopStreaming,
+                              attachmentButton: Selector<ChatProvider, int>(
+                                selector: (_, cp) => cp.selectedFiles.length,
+                                builder: (context, fileCount, _) => Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    AttachmentButton(
+                                      isDark: isDark,
+                                      isLoading: chatProvider.isUploading,
+                                      onFilesSelected: chatProvider.uploadFiles,
+                                    ),
+                                    if (fileCount > 0)
+                                      Positioned(
+                                        right: -2,
+                                        top: -2,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF6366F1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 14,
+                                            minHeight: 14,
+                                          ),
+                                          child: Text(
+                                            fileCount.toString(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              onSend: ({required prompt, code = '', error = ''}) {
+                                if (chatProvider.isMissionMode) {
+                                  final auth = context.read<AuthProvider>();
+                                  final pp = context.read<PlanningProvider>();
+                                  pp.generatePlan(
+                                    prompt,
+                                    auth.user?.userId ?? 'anonymous',
+                                    auth.user?.token,
+                                    chatId: chatProvider.currentChatId,
+                                  );
+                                } else {
+                                  final sp = context.read<SettingsProvider>();
+                                  final keys = {
+                                    if (sp.geminiApiKey.isNotEmpty)
+                                      'gemini': sp.geminiApiKey,
+                                    if (sp.groqApiKey.isNotEmpty)
+                                      'groq': sp.groqApiKey,
+                                    if (sp.openrouterApiKey.isNotEmpty)
+                                      'openrouter': sp.openrouterApiKey,
+                                    if (sp.githubApiKey.isNotEmpty)
+                                      'github': sp.githubApiKey,
+                                    if (sp.mistralApiKey.isNotEmpty)
+                                      'mistral': sp.mistralApiKey,
+                                  };
+
+                                  chatProvider.sendMessage(
+                                    prompt: prompt,
+                                    code: code,
+                                    error: error,
+                                    temperature: sp.temperature,
+                                    maxTokens: sp.maxTokens.toInt(),
+                                    customApiKeys: keys.isNotEmpty ? keys : null,
+                                  );
+                                }
+                                _scrollToBottom(force: true);
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ),
+              // ANIM FIX: Replaced AnimatedContainer with SizeTransition + RepaintBoundary
+              if (isWide)
+                SizeTransition(
+                  sizeFactor: _panelAnimation,
+                  axis: Axis.horizontal,
+                  axisAlignment: 1.0,
+                  child: RepaintBoundary(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.30,
+                      child: Selector<ChatProvider, String>(
+                        selector: (_, cp) => cp.latestCode,
+                        builder: (context, code, _) => RightCockpitPanel(
+                          code: code,
+                          language: chatProvider.latestLanguage,
+                          isDark: isDark,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Consumer<ChatProvider>(
+            builder: (context, cp, _) {
+              if (!cp.isSessionExpired) return const SizedBox.shrink();
+              return Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.55),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                    child: Center(
+                      child: Container(
+                        width: 320,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 32,
+                              offset: const Offset(0, 16),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFF59E0B).withOpacity(0.2),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: Color(0xFFF59E0B),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Session Expired',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Your session has ended due to inactivity or security reasons.\n\nPlease log in again to continue.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                height: 1.45,
+                                color: isDark ? Colors.white54 : Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: 140,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: const LinearProgressIndicator(
+                                  minHeight: 3,
+                                  backgroundColor: Colors.transparent,
+                                  valueColor: AlwaysStoppedAnimation(Color(0xFF6366F1)),
+                                ).animate().shimmer(duration: 1500.ms),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn(duration: 180.ms).scale(
+                      begin: const Offset(0.96, 0.96),
+                      end: const Offset(1, 1),
+                      duration: 180.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
