@@ -198,18 +198,13 @@ class PlanningTimeline extends StatelessWidget {
                 : Colors.white.withOpacity(0.85),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isProcessing
-                  ? (isDark ? const Color(0xFF6366F1).withOpacity(0.3) : const Color(0xFF6366F1).withOpacity(0.2))
-                  : (isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05)),
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: isProcessing 
-                    ? const Color(0xFF6366F1).withOpacity(0.12)
-                    : Colors.black.withOpacity(0.25),
+                color: Colors.black.withOpacity(0.25),
                 blurRadius: 30,
-                spreadRadius: isProcessing ? 2 : 0,
                 offset: const Offset(0, 15),
               ),
             ],
@@ -280,29 +275,15 @@ class PlanningTimeline extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isProcessing
-                  ? [const Color(0xFF6366F1), const Color(0xFF8B5CF6)]
-                  : [const Color(0xFF475569), const Color(0xFF64748B)],
-            ),
+            color: isProcessing
+                ? const Color(0xFF6366F1)
+                : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
             shape: BoxShape.circle,
-            boxShadow: [
-              if (isProcessing)
-                BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.4),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-            ],
           ),
           child: const Icon(
             Icons.auto_awesome_rounded,
             size: 20,
             color: Colors.white,
-          ).animate(onPlay: (c) => isProcessing ? c.repeat(reverse: true) : null).scale(
-            begin: const Offset(1, 1),
-            end: const Offset(1.15, 1.15),
-            duration: 800.ms,
           ),
         ),
         const SizedBox(width: 14),
@@ -338,7 +319,7 @@ class PlanningTimeline extends StatelessWidget {
                           color: const Color(0xFF818CF8),
                         ),
                       ),
-                    ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 500.ms),
+                    ),
                 ],
               ),
               const SizedBox(height: 2),
@@ -420,9 +401,8 @@ class PlanningTimeline extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              shadowColor: const Color(0xFF10B981).withOpacity(0.4),
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2.seconds, color: Colors.white24),
+          ),
         ],
       ],
     );
@@ -703,62 +683,20 @@ class PlanningTimeline extends StatelessWidget {
 // ANIMATED GRADIENT GLOW BORDER FOR ACTIVE CARDS
 // ============================================================
 
-class AnimatedGradientBorderPainter extends CustomPainter {
-  final double animationValue;
-  final double strokeWidth;
-  final double radius;
-  final List<Color> colors;
-
-  AnimatedGradientBorderPainter({
-    required this.animationValue,
-    this.strokeWidth = 1.5,
-    this.radius = 16.0,
-    required this.colors,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
-
-    final paint = Paint()
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final gradient = SweepGradient(
-      center: Alignment.center,
-      startAngle: 0.0,
-      endAngle: math.pi * 2,
-      colors: colors,
-      transform: GradientRotation(animationValue * math.pi * 2),
-    );
-
-    paint.shader = gradient.createShader(rect);
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant AnimatedGradientBorderPainter oldDelegate) {
-    return oldDelegate.animationValue != animationValue;
-  }
-}
-
 // ============================================================
-// DYNAMIC DASH / PARTICLE CONNECTOR
+// FLAT DUST-FREE CONNECTOR
 // ============================================================
 
-class GlowingConnectorPainter extends CustomPainter {
+class FlatConnectorPainter extends CustomPainter {
   final bool isActive;
   final bool isCompleted;
   final bool isFailed;
-  final double flowOffset;
   final bool isDark;
 
-  GlowingConnectorPainter({
+  FlatConnectorPainter({
     required this.isActive,
     required this.isCompleted,
     required this.isFailed,
-    required this.flowOffset,
     required this.isDark,
   });
 
@@ -769,63 +707,48 @@ class GlowingConnectorPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    final glowPaint = Paint()
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
     Color baseColor;
     if (isCompleted) {
-      baseColor = const Color(0xFF10B981); // Radiant Green
+      baseColor = const Color(0xFF10B981); // Solid Green
     } else if (isFailed) {
-      baseColor = const Color(0xFFEF4444); // Crimson Alert
+      baseColor = const Color(0xFFEF4444); // Red Alert
     } else if (isActive) {
-      baseColor = const Color(0xFF6366F1); // Pulse Indigo
+      baseColor = const Color(0xFF6366F1); // Indigo
     } else {
-      baseColor = isDark ? Colors.white10 : Colors.black12;
-    }
-
-    if (isCompleted || isActive || isFailed) {
-      glowPaint.color = baseColor.withOpacity(0.18);
-      canvas.drawLine(
-        Offset(size.width / 2, 0),
-        Offset(size.width / 2, size.height),
-        glowPaint,
-      );
+      baseColor = isDark ? Colors.white12 : Colors.black12;
     }
 
     paint.color = baseColor;
-    canvas.drawLine(
-      Offset(size.width / 2, 0),
-      Offset(size.width / 2, size.height),
-      paint,
-    );
 
-    // Dotted dash-flow along the active path
     if (isActive) {
-      final beadPaint = Paint()
-        ..color = const Color(0xFFFFFFFF)
-        ..style = PaintingStyle.fill;
-      
-      final beadGlow = Paint()
-        ..color = const Color(0xFF818CF8)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0)
-        ..style = PaintingStyle.fill;
-
-      for (int i = 0; i < 2; i++) {
-        double yPos = ((flowOffset + (i * 0.5)) % 1.0) * size.height;
-        canvas.drawCircle(Offset(size.width / 2, yPos), 3.5, beadGlow);
-        canvas.drawCircle(Offset(size.width / 2, yPos), 1.8, beadPaint);
+      // Draw a clean dotted line for the active step
+      double dashHeight = 4.0;
+      double dashSpace = 4.0;
+      double startY = 0.0;
+      while (startY < size.height) {
+        canvas.drawLine(
+          Offset(size.width / 2, startY),
+          Offset(size.width / 2, math.min(startY + dashHeight, size.height)),
+          paint,
+        );
+        startY += dashHeight + dashSpace;
       }
+    } else {
+      // Clean solid line
+      canvas.drawLine(
+        Offset(size.width / 2, 0),
+        Offset(size.width / 2, size.height),
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant GlowingConnectorPainter oldDelegate) {
+  bool shouldRepaint(covariant FlatConnectorPainter oldDelegate) {
     return oldDelegate.isActive != isActive ||
         oldDelegate.isCompleted != isCompleted ||
         oldDelegate.isFailed != isFailed ||
-        oldDelegate.flowOffset != flowOffset;
+        oldDelegate.isDark != isDark;
   }
 }
 
@@ -849,31 +772,8 @@ class _StepItem extends StatefulWidget {
   State<_StepItem> createState() => _StepItemState();
 }
 
-class _StepItemState extends State<_StepItem> with TickerProviderStateMixin {
+class _StepItemState extends State<_StepItem> {
   bool _showDiff = false;
-  late AnimationController _glowController;
-  late AnimationController _flowController;
-
-  @override
-  void initState() {
-    super.initState();
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
-
-    _flowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _glowController.dispose();
-    _flowController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -894,197 +794,156 @@ class _StepItemState extends State<_StepItem> with TickerProviderStateMixin {
         ? 'Executing Engine' 
         : (isCompleted ? 'Verification Passed' : (isFailed ? 'Exception Raised' : 'Queued'));
 
-    // Animated glow card wrapper for active steps
-    final cardContent = Stack(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: isRunning
-                ? (isDark ? const Color(0xFF13172E).withOpacity(0.55) : const Color(0xFFEEF2FF).withOpacity(0.85))
-                : (isCompleted 
-                      ? (isDark ? const Color(0xFF0A0F11).withOpacity(0.3) : const Color(0xFFF0FDF4).withOpacity(0.5))
-                      : Colors.transparent),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isRunning
-                  ? const Color(0xFF6366F1).withOpacity(0.2)
-                  : (isCompleted 
-                        ? const Color(0xFF10B981).withOpacity(0.12)
-                        : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02))),
-              width: 1.2,
-            ),
-            boxShadow: [
-              if (isRunning)
-                BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.08),
-                  blurRadius: 16,
-                  spreadRadius: 1,
+    // Flat, premium SaaS card style
+    final cardContent = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isRunning
+            ? (isDark ? const Color(0xFF13172E).withOpacity(0.55) : const Color(0xFFEEF2FF).withOpacity(0.85))
+            : (isCompleted 
+                  ? (isDark ? const Color(0xFF0A0F11).withOpacity(0.3) : const Color(0xFFF0FDF4).withOpacity(0.5))
+                  : Colors.transparent),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isRunning
+              ? const Color(0xFF6366F1).withOpacity(0.2)
+              : (isCompleted 
+                    ? const Color(0xFF10B981).withOpacity(0.12)
+                    : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02))),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Connector pathways column
+          Column(
+            children: [
+              _buildStatusIcon(isDark, step),
+              if (!isLast)
+                SizedBox(
+                  width: 24,
+                  height: isRunning ? 120 : 64,
+                  child: CustomPaint(
+                    painter: FlatConnectorPainter(
+                      isActive: isRunning,
+                      isCompleted: isCompleted,
+                      isFailed: isFailed,
+                      isDark: isDark,
+                    ),
+                  ),
                 ),
             ],
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Connector pathways column
-              Column(
-                children: [
-                  _buildStatusIcon(isDark, step),
-                  if (!isLast)
-                    AnimatedBuilder(
-                      animation: _flowController,
-                      builder: (context, child) {
-                        return SizedBox(
-                          width: 24,
-                          height: isRunning ? 120 : 64,
-                          child: CustomPaint(
-                            painter: GlowingConnectorPainter(
-                              isActive: isRunning,
-                              isCompleted: isCompleted,
-                              isFailed: isFailed,
-                              flowOffset: _flowController.value,
-                              isDark: isDark,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              
-              // Card Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(width: 16),
+          
+          // Card Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            step.title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14.5,
-                              color: isRunning 
-                                  ? const Color(0xFF818CF8) 
-                                  : (isCompleted
-                                        ? (isDark ? Colors.white70 : Colors.black54)
-                                        : (isDark ? Colors.white : Colors.black87)),
-                            ),
-                          ),
+                    Expanded(
+                      child: Text(
+                        step.title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14.5,
+                          color: isRunning 
+                              ? const Color(0xFF818CF8) 
+                              : (isCompleted
+                                    ? (isDark ? Colors.white70 : Colors.black54)
+                                    : (isDark ? Colors.white : Colors.black87)),
                         ),
-                        _buildStepActions(context, isDark, step),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      step.description,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12.5,
-                        color: isDark ? Colors.white38 : Colors.black45,
                       ),
                     ),
-                    
-                    // TELEMETRY STRIP - Displays execution metrics
-                    if (isRunning || isCompleted) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          _buildTelemetryChip(Icons.timer_outlined, durationText, isDark),
-                          _buildTelemetryChip(Icons.smart_toy_outlined, modelUsed, isDark),
-                          _buildTelemetryChip(Icons.memory_outlined, memoryText, isDark),
-                          _buildTelemetryChip(Icons.lens_blur_rounded, phase, isDark, color: isRunning ? const Color(0xFF818CF8) : (isCompleted ? const Color(0xFF10B981) : Colors.grey)),
-                        ],
-                      ),
-                    ],
-
-                    // REASONING SUMMARY
-                    if (isRunning) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.12)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.psychology_outlined, size: 14, color: Color(0xFF818CF8)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'AI Reasoning: Surgical analysis of sandbox execution metrics and context constraints. Resolving project structural targets.',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  fontStyle: FontStyle.italic,
-                                  color: const Color(0xFF818CF8),
-                                  height: 1.3,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    if (step.diff != null && step.diff!.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      _buildDiffButton(isDark),
-                      if (_showDiff) ...[
-                        const SizedBox(height: 10),
-                        DiffViewer(diff: step.diff!, isDark: isDark),
-                      ],
-                    ],
-                    
-                    if (step.toolCall != null) ...[
-                      const SizedBox(height: 8),
-                      AIActionBadge(step: step, isDark: isDark),
-                    ],
-                    
-                    if (step.logs != null && step.logs!.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      _buildConsole(isDark, step),
-                    ],
+                    _buildStepActions(context, isDark, step),
                   ],
                 ),
-              ),
-            ],
-          ),
-        ),
-        
-        // Rotating Glowing border on Active Step
-        if (isRunning)
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _glowController,
-              builder: (context, child) {
-                return CustomPaint(
-                  painter: AnimatedGradientBorderPainter(
-                    animationValue: _glowController.value,
-                    radius: 16,
-                    strokeWidth: 1.5,
-                    colors: [
-                      const Color(0xFF6366F1),
-                      const Color(0xFF8B5CF6),
-                      const Color(0xFFEC4899),
-                      const Color(0xFF6366F1),
+                const SizedBox(height: 4),
+                Text(
+                  step.description,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    color: isDark ? Colors.white38 : Colors.black45,
+                  ),
+                ),
+                
+                // TELEMETRY STRIP - Displays execution metrics
+                if (isRunning || isCompleted) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _buildTelemetryChip(Icons.timer_outlined, durationText, isDark),
+                      _buildTelemetryChip(Icons.smart_toy_outlined, modelUsed, isDark),
+                      _buildTelemetryChip(Icons.memory_outlined, memoryText, isDark),
+                      _buildTelemetryChip(Icons.lens_blur_rounded, phase, isDark, color: isRunning ? const Color(0xFF818CF8) : (isCompleted ? const Color(0xFF10B981) : Colors.grey)),
                     ],
                   ),
-                );
-              },
+                ],
+
+                // REASONING SUMMARY
+                if (isRunning) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.12)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.psychology_outlined, size: 14, color: Color(0xFF818CF8)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'AI Reasoning: Surgical analysis of sandbox execution metrics and context constraints. Resolving project structural targets.',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: const Color(0xFF818CF8),
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                if (step.diff != null && step.diff!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _buildDiffButton(isDark),
+                  if (_showDiff) ...[
+                    const SizedBox(height: 10),
+                    DiffViewer(diff: step.diff!, isDark: isDark),
+                  ],
+                ],
+                
+                if (step.toolCall != null) ...[
+                  const SizedBox(height: 8),
+                  AIActionBadge(step: step, isDark: isDark),
+                ],
+                
+                if (step.logs != null && step.logs!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  _buildConsole(isDark, step),
+                ],
+              ],
             ),
           ),
-      ],
+        ],
+      ),
     );
 
-    // Ambient hover slide-in animations
+    // Clean slide-in animation without glows
     return cardContent
         .animate()
         .fadeIn(duration: 400.ms, curve: Curves.easeOutCubic)
@@ -1288,16 +1147,14 @@ class _StepItemState extends State<_StepItem> with TickerProviderStateMixin {
           ),
         );
       case PlanStepStatus.running:
-        return SizedBox(
+        return const SizedBox(
           width: 22,
           height: 22,
-          child: const CircularProgressIndicator(
+          child: CircularProgressIndicator(
             strokeWidth: 2,
             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
           ),
-        )
-        .animate(onPlay: (c) => c.repeat())
-        .shimmer(duration: 1200.ms, color: Colors.white54);
+        );
       case PlanStepStatus.completed:
         return const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 24)
             .animate()
@@ -1354,14 +1211,6 @@ class _AIActionBadgeState extends State<AIActionBadge> {
                   color: badgeColor.withOpacity(_isHovered ? 0.6 : 0.25),
                   width: 1.2,
                 ),
-                boxShadow: [
-                  if (_isHovered)
-                    BoxShadow(
-                      color: badgeColor.withOpacity(0.18),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1370,7 +1219,7 @@ class _AIActionBadgeState extends State<AIActionBadge> {
                     isCommand ? Icons.terminal_rounded : Icons.edit_note_rounded, 
                     size: 13, 
                     color: badgeColor
-                  ).animate(onPlay: (c) => _isHovered ? c.repeat(reverse: true) : null).shake(duration: 800.ms),
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     action.toString().toUpperCase(),

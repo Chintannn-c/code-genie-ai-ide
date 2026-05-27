@@ -14,6 +14,7 @@ class PlanningProvider extends ChangeNotifier {
   List<PlanModel> _history = [];
   bool _isLoading = false;
   StreamSubscription? _rawMessageSub;
+  Timer? _pollTimer;
 
   PlanModel? get currentPlan => _currentPlan;
   List<PlanModel> get history => _history;
@@ -53,6 +54,19 @@ class PlanningProvider extends ChangeNotifier {
       }
     });
 
+    // Recovery of active state on startup or refresh
+    if (_history.isNotEmpty) {
+      final latest = _history.first;
+      final hasUnfinished = latest.steps.any((s) => s.status == PlanStepStatus.pending || s.status == PlanStepStatus.running);
+      if (latest.isApproved && hasUnfinished) {
+        _currentPlan = latest;
+        // Start polling fallback in case WebSockets dropped
+        _startPollingFallback(_currentPlan!.id, null);
+      } else {
+        _currentPlan = latest;
+      }
+    }
+
     _isLoading = false;
     notifyListeners();
   }
@@ -60,6 +74,7 @@ class PlanningProvider extends ChangeNotifier {
   @override
   void dispose() {
     _rawMessageSub?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
@@ -124,12 +139,71 @@ class PlanningProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchPlanStatus(String planId, {String? token}) async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/api/plan/$planId');
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final planData = jsonDecode(response.body);
+        final plan = PlanModel.fromJson(planData);
+        _currentPlan = plan;
+        
+        // Save to Hive locally
+        final box = Hive.box<PlanModel>(boxName);
+        await box.put(plan.id, plan);
+        
+        notifyListeners();
+        
+        // If finished, stop polling
+        final isFinished = plan.steps.every(
+          (s) => s.status == PlanStepStatus.completed || s.status == PlanStepStatus.failed
+        );
+        if (isFinished) {
+          _pollTimer?.cancel();
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching plan status: $e');
+    }
+  }
+
+  void _startPollingFallback(String planId, String? token) {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (_currentPlan == null || !_currentPlan!.isApproved) {
+        timer.cancel();
+        return;
+      }
+      
+      final isFinished = _currentPlan!.steps.every(
+        (s) => s.status == PlanStepStatus.completed || s.status == PlanStepStatus.failed
+      );
+      
+      if (isFinished) {
+        timer.cancel();
+        return;
+      }
+      
+      await fetchPlanStatus(planId, token: token);
+    });
+  }
+
   Future<void> approvePlan(String userId, String? token) async {
     if (_currentPlan != null) {
       _currentPlan!.isApproved = true;
       final box = Hive.box<PlanModel>(boxName);
       await box.put(_currentPlan!.id, _currentPlan!);
       notifyListeners();
+
+      // Trigger automatic background polling fallback in case WS fails
+      _startPollingFallback(_currentPlan!.id, token);
 
       // Trigger Backend Execution
       try {

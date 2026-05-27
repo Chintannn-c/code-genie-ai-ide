@@ -417,12 +417,24 @@ class AIOrchestrator:
     async def run_autonomous_plan(self, user_id: str, plan_id: str, plan_data: Dict[str, Any]):
         """Iteratively executes a multi-step plan using real-world tools."""
         from app.services.socket_manager import manager as socket_manager
+        from app.database import get_db
 
         workflow_id = f"auto_{plan_id}"
         await audit_logger.log("ACT", "orchestrator", "autonomous_plan_started",
                                {"plan_id": plan_id}, user_id=user_id, workflow_id=workflow_id)
 
         steps = plan_data.get("steps", [])
+
+        # Sync initial state to MongoDB
+        try:
+            db = await get_db()
+            await db.plans.update_one(
+                {"id": plan_id},
+                {"$set": {"status": "running", "is_approved": True, "steps": steps}},
+                upsert=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to save initial plan state: {e}")
 
         for step in steps:
             step_id = step["id"]
@@ -432,6 +444,15 @@ class AIOrchestrator:
                 "step_id": step_id,
                 "status": "running",
             })
+            
+            # Sync running status to MongoDB
+            try:
+                await db.plans.update_one(
+                    {"id": plan_id, "steps.id": step_id},
+                    {"$set": {"steps.$.status": "running"}}
+                )
+            except Exception as e:
+                logger.error(f"Failed to update step running status: {e}")
 
             tool_call = step.get("tool_call")
             output = ""
@@ -463,8 +484,30 @@ class AIOrchestrator:
                     "step_id": step_id,
                     "output": output,
                 })
+                
+                # Sync logs to MongoDB
+                try:
+                    await db.plans.update_one(
+                        {"id": plan_id, "steps.id": step_id},
+                        {"$set": {"steps.$.output": output, "steps.$.logs": [output]}}
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to save step logs: {e}")
 
             await asyncio.sleep(2)
+
+            # Sync completed status to MongoDB
+            try:
+                await db.plans.update_one(
+                    {"id": plan_id, "steps.id": step_id},
+                    {"$set": {
+                        "steps.$.status": "completed",
+                        "steps.$.output": output,
+                        "steps.$.diff": diff
+                    }}
+                )
+            except Exception as e:
+                logger.error(f"Failed to update step completed status: {e}")
 
             await socket_manager.broadcast_to_user(user_id, {
                 "type": "plan_step_update",
@@ -473,6 +516,15 @@ class AIOrchestrator:
                 "output": output,
                 "diff": diff,
             })
+
+        # Sync final plan status to MongoDB
+        try:
+            await db.plans.update_one(
+                {"id": plan_id},
+                {"$set": {"status": "completed"}}
+            )
+        except Exception as e:
+            logger.error(f"Failed to update final plan completed status: {e}")
 
         await audit_logger.log("COMPLETE", "orchestrator", "autonomous_plan_finished",
                                {"plan_id": plan_id}, user_id=user_id, workflow_id=workflow_id)
