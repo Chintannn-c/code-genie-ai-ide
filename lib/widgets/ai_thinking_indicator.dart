@@ -256,18 +256,10 @@ class _DotPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final baseRadius = 4.2;
+    final baseRadius = 4.5;
 
-    // 1. Soft outer breathing halo (ChatGPT style)
-    final ringPaint = Paint()
-      ..color = color.withOpacity((1.0 - progress) * 0.28)
-      ..style = PaintingStyle.fill;
-    
-    final ringRadius = baseRadius + (progress * 6.5);
-    canvas.drawCircle(center, ringRadius, ringPaint);
-
-    // 2. Main fluid core dot (Gemini style)
-    final coreScale = 1.0 + (math.sin(progress * math.pi * 2) * 0.12);
+    // Smooth, gentle size breath animation (ChatGPT/Gemini flat dot)
+    final coreScale = 1.0 + (math.sin(progress * math.pi * 2) * 0.16);
     final corePaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
