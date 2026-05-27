@@ -15,6 +15,7 @@ import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/file_upload_bar.dart';
 import '../widgets/attachment_button.dart';
+import '../widgets/ai_thinking_indicator.dart';
 
 import '../widgets/planning_timeline.dart';
 import '../providers/planning_provider.dart';
@@ -427,6 +428,50 @@ class _ChatScreenState extends State<ChatScreen>
                             onAnalyzeProject: chatProvider.analyzeProject,
                             onClearAll: chatProvider.clearFiles,
                           ),
+                        ),
+                        Selector<ChatProvider, String>(
+                          selector: (_, cp) =>
+                              '${cp.isOrchestrating}_${cp.currentContextStatus}_${cp.isStreaming}',
+                          builder: (context, _, __) {
+                            final showThinking = chatProvider.isOrchestrating ||
+                                chatProvider.currentContextStatus != null ||
+                                (chatProvider.isStreaming &&
+                                    chatProvider.messages.isNotEmpty &&
+                                    chatProvider.messages.last.content.isEmpty);
+
+                            if (!showThinking) return const SizedBox.shrink();
+
+                            List<String> statuses = [
+                              'Understanding request...',
+                              'Planning response...',
+                              'Thinking...',
+                              'Generating answer...',
+                            ];
+
+                            if (chatProvider.currentContextStatus != null &&
+                                chatProvider.currentContextStatus!.isNotEmpty) {
+                              statuses = [chatProvider.currentContextStatus!];
+                            } else if (chatProvider.isOrchestrating) {
+                              statuses = [
+                                'Deep solve: coordinating expert agents...',
+                                'Planning expert reasoning mesh...',
+                                'Consulting planner and auditor...',
+                              ];
+                            }
+
+                            return Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isWide ? 40 : 12,
+                                vertical: 4,
+                              ),
+                              child: AiThinkingIndicator(
+                                isActive: true,
+                                statuses: statuses,
+                                loop: chatProvider.currentContextStatus == null,
+                                cycleInterval: const Duration(milliseconds: 2500),
+                              ),
+                            );
+                          },
                         ),
                         Padding(
                           padding: EdgeInsets.symmetric(

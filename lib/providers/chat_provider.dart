@@ -58,6 +58,47 @@ class ChatProvider extends ChangeNotifier {
   String? _errorMessage;
   StreamSubscription? _streamSubscription;
 
+  // Rate Limiting visual state & countdown controls
+  bool _isRateLimited = false;
+  int _rateLimitRemainingSeconds = 0;
+  Timer? _rateLimitTimer;
+
+  bool get isRateLimited => _isRateLimited;
+  int get rateLimitRemainingSeconds => _rateLimitRemainingSeconds;
+
+  void setRateLimitCooldown(int seconds) {
+    _isRateLimited = true;
+    _rateLimitRemainingSeconds = seconds;
+    _errorMessage = 'Rate limit reached. Please wait before generating again.';
+    
+    // Remove the empty streaming placeholder AI message
+    if (_messages.isNotEmpty && _messages.last.role == 'ai' && _messages.last.content.isEmpty) {
+      _messages.removeLast();
+    }
+    
+    _isStreaming = false;
+    _isOrchestrating = false;
+    _currentContextStatus = null;
+    _cancelHeartbeat();
+    _activityLabel = 'Rate Limited';
+    notifyListeners();
+
+    _rateLimitTimer?.cancel();
+    _rateLimitTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_rateLimitRemainingSeconds > 1) {
+        _rateLimitRemainingSeconds--;
+        notifyListeners();
+      } else {
+        _isRateLimited = false;
+        _rateLimitRemainingSeconds = 0;
+        _errorMessage = null;
+        _activityLabel = 'Ready';
+        timer.cancel();
+        notifyListeners();
+      }
+    });
+  }
+
   // Context awareness & heartbeat watchdog states
   String? _currentContextStatus;
   Timer? _heartbeatTimer;
@@ -77,6 +118,11 @@ class ChatProvider extends ChangeNotifier {
 
     _localExpiryTimer?.cancel();
     _localExpiryTimer = null;
+
+    _rateLimitTimer?.cancel();
+    _rateLimitTimer = null;
+    _isRateLimited = false;
+    _rateLimitRemainingSeconds = 0;
 
     // HEARTBEAT & STREAM FIX: Cleanly abort and release active timers & stream networks
     _heartbeatTimer?.cancel();
@@ -592,6 +638,8 @@ class ChatProvider extends ChangeNotifier {
       // Clear files after successful send
       _selectedFiles = [];
       notifyListeners();
+    } on RateLimitException catch (e) {
+      setRateLimitCooldown(e.retryAfter);
     } catch (e) {
       _activityLabel = 'Ready';
       _isStreaming = false;
@@ -753,6 +801,11 @@ class ChatProvider extends ChangeNotifier {
                 _cancelHeartbeat();
                 _currentContextStatus = null;
                 final errStr = chunk.error!;
+                if (errStr.startsWith('RATE_LIMIT_EXCEEDED:')) {
+                  final retrySeconds = int.tryParse(errStr.split(':')[1]) ?? 60;
+                  setRateLimitCooldown(retrySeconds);
+                  return;
+                }
                 if (errStr.contains('401') || errStr.contains('403') || errStr.contains('credentials') || errStr.contains('Unauthorized') || errStr.contains('Forbidden')) {
                   handleSessionExpired();
                   return;
@@ -1264,6 +1317,7 @@ class ChatProvider extends ChangeNotifier {
   @override
   void dispose() {
     _localExpiryTimer?.cancel();
+    _rateLimitTimer?.cancel();
     _bootTimer?.cancel(); // CONCURRENCY FIX: Cleanup on provider destruction
     _heartbeatTimer?.cancel();
     _wsSubscription?.cancel();

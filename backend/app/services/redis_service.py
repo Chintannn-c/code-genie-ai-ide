@@ -58,17 +58,63 @@ class RedisService:
         except Exception:
             pass
 
-    async def is_rate_limited(self, user_id: str, limit: int = 50, window: int = 3600) -> bool:
-        """Sliding window rate limiter."""
-        if not self._redis: return False
-        key = f"rate_limit:{user_id}"
+    async def check_sliding_window(self, key: str, limit: int, window: int) -> tuple[bool, int, int]:
+        """
+        Thread-safe sliding window rate limiter using Redis ZSET and transactions (pipeline).
+        Returns (is_limited, remaining_requests, reset_seconds).
+        """
+        if not self._redis:
+            return False, limit, window
+            
+        import time
+        import uuid
+        now = time.time()
+        clear_before = now - window
+        request_id = str(uuid.uuid4())
+        
         try:
-            current = await self._redis.incr(key)
-            if current == 1:
-                await self._redis.expire(key, window)
-            return current > limit
-        except Exception:
-            return False
+            pipe = self._redis.pipeline()
+            # Remove timestamps older than window
+            pipe.zremrangebyscore(key, 0, clear_before)
+            # Add current request timestamp
+            pipe.zadd(key, {request_id: now})
+            # Get total requests in the window
+            pipe.zcard(key)
+            # Get the oldest score in ZSET to calculate reset time
+            pipe.zrange(key, 0, 0, withscores=True)
+            # Set TTL on key
+            pipe.expire(key, window)
+            
+            results = await pipe.execute()
+            
+            count = results[2]
+            oldest_elements = results[3]
+            
+            # Remaining requests left
+            remaining = max(0, limit - count)
+            
+            # Calculate reset seconds
+            if oldest_elements:
+                oldest_score = oldest_elements[0][1]
+                reset_seconds = int(max(0, window - (now - oldest_score)))
+            else:
+                reset_seconds = window
+                
+            if count > limit:
+                # Exceeded limit, delete the mock ZADD request to avoid polluting ZSET
+                await self._redis.zrem(key, request_id)
+                return True, 0, reset_seconds
+                
+            return False, remaining, reset_seconds
+        except Exception as e:
+            logger.error(f"Redis Sliding Window Error: {e}")
+            return False, limit, window
+
+    async def is_rate_limited(self, user_id: str, limit: int = 50, window: int = 3600) -> bool:
+        """Sliding window rate limiter backward-compatible helper."""
+        key = f"rate_limit:{user_id}"
+        is_limited, _, _ = await self.check_sliding_window(key, limit, window)
+        return is_limited
 
     async def get_semantic(self, prompt_hash: str) -> Optional[str]:
         """Retrieve answer from semantic cache."""

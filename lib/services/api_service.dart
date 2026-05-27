@@ -14,6 +14,14 @@ class SessionExpiredException implements Exception {
   String toString() => message;
 }
 
+class RateLimitException implements Exception {
+  final String message;
+  final int retryAfter;
+  RateLimitException(this.message, this.retryAfter);
+  @override
+  String toString() => message;
+}
+
 class InterceptingClient extends http.BaseClient {
   final http.Client _inner = http.Client();
 
@@ -22,6 +30,11 @@ class InterceptingClient extends http.BaseClient {
     final response = await _inner.send(request);
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw SessionExpiredException('Session expired (${response.statusCode})');
+    }
+    if (response.statusCode == 429) {
+      final retryAfterStr = response.headers['retry-after'] ?? response.headers['Retry-After'] ?? '60';
+      final retryAfter = int.tryParse(retryAfterStr) ?? 60;
+      throw RateLimitException('Rate limit reached. Please wait before generating again.', retryAfter);
     }
     return response;
   }

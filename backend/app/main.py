@@ -12,7 +12,7 @@ from app.services.task_engine import task_engine
 from app.routes import chat, history, upload, auth, execution, planning, sync, security
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
-from app.middleware import ProductionSecurityMiddleware
+from app.middleware import ProductionSecurityMiddleware, RateLimitMiddleware
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -225,6 +225,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # 3. Middlewares
 # Security & Monitoring (Using pure ASGI middleware to support file uploads)
 app.add_middleware(ProductionSecurityMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 # CORS (Must be outer layer)
 settings = get_settings()

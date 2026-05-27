@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
+    # Rate Limiting Settings
+    RATE_LIMIT_FREE: int = 20
+    RATE_LIMIT_PREMIUM: int = 200
+    RATE_LIMIT_WINDOW_SECONDS: int = 3600
+
     # Pydantic Config: Allow extra fields in .env without crashing
     model_config = SettingsConfigDict(
         env_file=".env",

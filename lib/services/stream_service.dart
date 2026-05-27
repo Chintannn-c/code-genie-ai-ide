@@ -38,6 +38,12 @@ class StreamService {
 
       final response = await _client!.send(request);
 
+      if (response.statusCode == 429) {
+        final retryAfterStr = response.headers['retry-after'] ?? response.headers['Retry-After'] ?? '60';
+        yield StreamChunk.error('RATE_LIMIT_EXCEEDED:$retryAfterStr');
+        return;
+      }
+
       if (response.statusCode != 200) {
         yield StreamChunk.error('Server error: ${response.statusCode}');
         return;
@@ -103,6 +109,12 @@ class StreamService {
       
       request.headers.addAll(headers);
       final response = await _client!.send(request);
+
+      if (response.statusCode == 429) {
+        final retryAfterStr = response.headers['retry-after'] ?? response.headers['Retry-After'] ?? '60';
+        yield StreamChunk.error('RATE_LIMIT_EXCEEDED:$retryAfterStr');
+        return;
+      }
 
       if (response.statusCode != 200) {
         yield StreamChunk.error('Server error: ${response.statusCode}');

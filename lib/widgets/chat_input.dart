@@ -238,7 +238,10 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     _lastValue = _promptCtrl.text;
   }
 
-  bool get _canSend => _promptCtrl.text.trim().isNotEmpty && !context.read<ChatProvider>().isSessionExpired;
+  bool get _canSend {
+    final cp = context.read<ChatProvider>();
+    return _promptCtrl.text.trim().isNotEmpty && !cp.isSessionExpired && !cp.isRateLimited;
+  }
 
   void _send() {
     if (!_canSend || widget.isStreaming) return;
@@ -399,12 +402,12 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                     TextField(
                       controller: _promptCtrl,
                       focusNode: _focus,
-                      enabled: !cp.isSessionExpired,
+                      enabled: !cp.isSessionExpired && !cp.isRateLimited,
                       maxLines: 8,
                       minLines: 1,
                       onChanged: _handleAutoClosing,
                       onSubmitted: (_) => _send(),
-                      style: cp.isSessionExpired
+                      style: (cp.isSessionExpired || cp.isRateLimited)
                           ? GoogleFonts.inter(
                               fontSize: 14,
                               color: const Color(0xFF404040),
@@ -420,9 +423,11 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                               color: widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
                             ),
                       decoration: InputDecoration(
-                        hintText: cp.isEditorMode
-                            ? 'Surgically insert code overrides...'
-                            : (isPlan ? 'Command system targets... (Mission mode enabled)' : 'Ask Code Genie anything...'),
+                        hintText: cp.isRateLimited
+                            ? 'Rate limit reached. Please wait ${cp.rateLimitRemainingSeconds}s before generating again.'
+                            : (cp.isEditorMode
+                                ? 'Surgically insert code overrides...'
+                                : (isPlan ? 'Command system targets... (Mission mode enabled)' : 'Ask Code Genie anything...')),
                         hintStyle: GoogleFonts.inter(
                           color: widget.isDark ? const Color(0xFF404040) : const Color(0xFFD4D4D4),
                           fontSize: 14,
