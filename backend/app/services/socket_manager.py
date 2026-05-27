@@ -9,12 +9,16 @@ class ConnectionManager:
     def __init__(self):
         # user_id -> list of active WebSockets
         self.active_connections: Dict[str, List[WebSocket]] = {}
+        # websocket -> token_hash string
+        self.websocket_tokens: Dict[WebSocket, str] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: str):
+    async def connect(self, websocket: WebSocket, user_id: str, token_hash: str = None):
         await websocket.accept()
         if user_id not in self.active_connections:
             self.active_connections[user_id] = []
         self.active_connections[user_id].append(websocket)
+        if token_hash:
+            self.websocket_tokens[websocket] = token_hash
         logger.info(f"User {user_id} connected. Total connections for user: {len(self.active_connections[user_id])}")
 
     def disconnect(self, websocket: WebSocket, user_id: str):
@@ -23,7 +27,20 @@ class ConnectionManager:
                 self.active_connections[user_id].remove(websocket)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
+        if websocket in self.websocket_tokens:
+            del self.websocket_tokens[websocket]
         logger.info(f"User {user_id} disconnected.")
+
+    async def disconnect_session(self, token_hash: str):
+        """Find the WebSocket associated with a token hash and tear it down cleanly."""
+        for ws, t_hash in list(self.websocket_tokens.items()):
+            if t_hash == token_hash:
+                try:
+                    logger.info(f"🔌 [WEBSOCKET] Remote revocation: closing WS connection for token hash {token_hash}")
+                    await ws.send_json({"type": "session_revoked", "message": "This session has been revoked remotely."})
+                    await ws.close(code=1008)  # Policy Violation / Forced Logout
+                except Exception as e:
+                    logger.error(f"Error closing WebSocket on session revocation: {e}")
 
     async def broadcast_to_user(self, user_id: str, message: dict, exclude_websocket: WebSocket = None):
         """Send a message to all devices of a specific user."""

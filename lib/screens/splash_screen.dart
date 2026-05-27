@@ -2,53 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-/// A simple, premium, and minimalistic Splash Screen in the style of ChatGPT/Gemini.
+/// A clean, minimal Splash Screen.
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF020617), // Solid premium deep space black
+      backgroundColor: const Color(0xFF0D0D0D),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Minimalistic Slow-Pulsing Terminal Icon
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: const Color(0xFF0F172A), // Slate 900
-                border: Border.all(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                  width: 1.2,
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.terminal_rounded,
-                  size: 36,
-                  color: Color(0xFF6366F1), // Indigo accent
-                ),
-              ),
+            // Simple terminal icon — no container, no border, no glow
+            Icon(
+              Icons.terminal_rounded,
+              size: 36,
+              color: const Color(0xFFA3A3A3),
             )
-            .animate(onPlay: (controller) => controller.repeat(reverse: true))
-            .fade(duration: 1400.ms, begin: 0.4, end: 1.0, curve: Curves.easeInOut),
+            .animate()
+            .fadeIn(duration: 400.ms, curve: Curves.easeOut),
 
             const SizedBox(height: 24),
 
-            // Simple, clean brand name
+            // Clean brand name
             Text(
               'Code Genie',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                letterSpacing: 0.5,
+              style: GoogleFonts.inter(
+                fontSize: 17,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFFA3A3A3),
+                letterSpacing: -0.01 * 17,
               ),
-            ),
+            )
+            .animate()
+            .fadeIn(duration: 400.ms, delay: 100.ms, curve: Curves.easeOut),
           ],
         ),
       ),

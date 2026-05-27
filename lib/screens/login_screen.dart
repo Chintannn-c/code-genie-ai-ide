@@ -47,26 +47,11 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           // Background Gradient
           Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark 
-                  ? [const Color(0xFF0D1117), const Color(0xFF161B22)]
-                  : [const Color(0xFFF6F8FA), Colors.white],
-              ),
-            ),
+            color: isDark ? const Color(0xFF0D0D0D) : const Color(0xFFFFFFFF),
           ),
           
           // Floating Elements (Decor)
-          Positioned(
-            top: -100, right: -100,
-            child: _blob(200, const Color(0xFF6366F1).withValues(alpha: 0.1)),
-          ),
-          Positioned(
-            bottom: -50, left: -50,
-            child: _blob(150, const Color(0xFF06B6D4).withValues(alpha: 0.1)),
-          ),
+          // Blobs removed — flat design, no decorative elements
 
           Center(
             child: SingleChildScrollView(
@@ -76,21 +61,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo
+                    // Logo — flat container, no gradient, no glow
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
+                        color: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08),
                         ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                            blurRadius: 30,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
                       ),
                       child: Image.asset(
                         'assets/icon/app_icon.png',
@@ -105,9 +84,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       _isLogin ? 'Code Genie' : 'Join Code Genie',
                       style: GoogleFonts.inter(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
                       ),
                     ),
                     
@@ -118,8 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? 'Sign in to continue your coding journey' 
                         : 'Join the community of modern developers',
                       style: GoogleFonts.inter(
-                        fontSize: 15,
-                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 14,
+                        color: isDark ? const Color(0xFFA3A3A3) : const Color(0xFF525252),
                       ),
                     ),
                     
@@ -188,9 +167,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? null 
                           : _submit,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
+                          backgroundColor: isDark ? const Color(0xFF8B8BF5) : const Color(0xFF6366F1),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                           elevation: 0,
                         ),
                         child: auth.status == AuthStatus.authenticating
@@ -226,9 +205,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(
-                            color: isDark ? Colors.white12 : Colors.black12,
+                            color: isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08),
                           ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
                       ),
                     ),
@@ -260,31 +239,41 @@ class _LoginScreenState extends State<LoginScreen> {
     return TextField(
       controller: ctrl,
       obscureText: isPass,
-      style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black87),
+      style: GoogleFonts.inter(
+        fontSize: 14,
+        color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
+      ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
-        prefixIcon: Icon(icon, color: isDark ? Colors.white38 : Colors.black38),
+        hintStyle: TextStyle(
+          color: isDark ? const Color(0xFF404040) : const Color(0xFFD4D4D4),
+        ),
+        prefixIcon: Icon(icon, color: isDark ? const Color(0xFF6B6B6B) : const Color(0xFFA3A3A3)),
         filled: true,
-        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+        fillColor: isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFF8B8BF5) : const Color(0xFF6366F1),
+            width: 1,
+          ),
         ),
       ),
     );
   }
 
-  Widget _blob(double size, Color color) {
-    return Container(
-      width: size, height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
 
   void _submit() {
     final auth = context.read<AuthProvider>();

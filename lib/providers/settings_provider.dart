@@ -14,6 +14,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _prefixKey = 'api_key_';
   static const String _prefixEditor = 'editor_setting_';
   static const String _prefixAppearance = 'appearance_setting_';
+  static const String _prefixSecurity = 'security_setting_';
 
   // State caches
   // ── AI Settings ──
@@ -53,6 +54,12 @@ class SettingsProvider extends ChangeNotifier {
   bool _particles = true;
   bool _reduceMotion = false;
 
+  // ── Security Settings ──
+  bool _promptInjectionProtection = true;
+  bool _sandboxedExecution = true;
+  bool _endToEndEncryption = true;
+  bool _auditTrailLogging = true;
+
   // Getters ─ AI Settings
   double get temperature => _temperature;
   double get maxTokens => _maxTokens;
@@ -89,6 +96,12 @@ class SettingsProvider extends ChangeNotifier {
   double get animationSpeed => _animationSpeed;
   bool get particles => _particles;
   bool get reduceMotion => _reduceMotion;
+
+  // Getters ─ Security Settings
+  bool get promptInjectionProtection => _promptInjectionProtection;
+  bool get sandboxedExecution => _sandboxedExecution;
+  bool get endToEndEncryption => _endToEndEncryption;
+  bool get auditTrailLogging => _auditTrailLogging;
 
   SettingsProvider() {
     _loadSettings();
@@ -162,6 +175,12 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getDouble('${_prefixAppearance}animation_speed') ?? 0.5;
     _particles = prefs.getBool('${_prefixAppearance}particles') ?? true;
     _reduceMotion = prefs.getBool('${_prefixAppearance}reduce_motion') ?? false;
+
+    // Load Security Settings
+    _promptInjectionProtection = prefs.getBool('${_prefixSecurity}prompt_injection') ?? true;
+    _sandboxedExecution = prefs.getBool('${_prefixSecurity}sandbox_exec') ?? true;
+    _endToEndEncryption = prefs.getBool('${_prefixSecurity}encryption') ?? true;
+    _auditTrailLogging = prefs.getBool('${_prefixSecurity}audit_log') ?? true;
 
     notifyListeners();
   }
@@ -352,6 +371,33 @@ class SettingsProvider extends ChangeNotifier {
     if (reduceMotion != null) {
       _reduceMotion = reduceMotion;
       await prefs.setBool('${_prefixAppearance}reduce_motion', reduceMotion);
+    }
+    notifyListeners();
+  }
+
+  // Setter ─ Security Settings
+  Future<void> updateSecuritySettings({
+    bool? promptInjectionProtection,
+    bool? sandboxedExecution,
+    bool? endToEndEncryption,
+    bool? auditTrailLogging,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (promptInjectionProtection != null) {
+      _promptInjectionProtection = promptInjectionProtection;
+      await prefs.setBool('${_prefixSecurity}prompt_injection', promptInjectionProtection);
+    }
+    if (sandboxedExecution != null) {
+      _sandboxedExecution = sandboxedExecution;
+      await prefs.setBool('${_prefixSecurity}sandbox_exec', sandboxedExecution);
+    }
+    if (endToEndEncryption != null) {
+      _endToEndEncryption = endToEndEncryption;
+      await prefs.setBool('${_prefixSecurity}encryption', endToEndEncryption);
+    }
+    if (auditTrailLogging != null) {
+      _auditTrailLogging = auditTrailLogging;
+      await prefs.setBool('${_prefixSecurity}audit_log', auditTrailLogging);
     }
     notifyListeners();
   }

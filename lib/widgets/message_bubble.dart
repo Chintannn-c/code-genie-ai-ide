@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:ai_coding/providers/chat_provider.dart';
 import 'package:flutter/material.dart';
@@ -100,13 +99,13 @@ class MessageBubble extends StatelessWidget {
           ],
           Text(
             (isUser ? 'You' : (message.modelName ?? 'Code Genie')),
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 11,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
               letterSpacing: 0,
               color: isUser
-                  ? agentColor.withValues(alpha: 0.72)
-                  : agentColor.withValues(alpha: 0.78),
+                  ? (isDark ? const Color(0xFF6B6B6B) : const Color(0xFFA3A3A3))
+                  : const Color(0xFF6B6B6B),
             ),
           ),
           if (isUser) ...[
@@ -114,7 +113,7 @@ class MessageBubble extends StatelessWidget {
             Icon(
               Icons.person_outline_rounded,
               size: 12,
-              color: agentColor.withValues(alpha: 0.4),
+              color: const Color(0xFF6B6B6B),
             ),
           ],
         ],
@@ -126,63 +125,55 @@ class MessageBubble extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 700;
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxWidth: isUser ? 520 : (isWide ? 640 : double.infinity),
+        maxWidth: isUser ? 520 : (isWide ? 680 : double.infinity),
       ),
-      child: ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(isUser ? 10 : 4),
-              topRight: Radius.circular(isUser ? 4 : 10),
-              bottomLeft: const Radius.circular(10),
-              bottomRight: const Radius.circular(10),
-            ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isUser
-                      ? agentColor.withValues(alpha: 0.13)
-                      : (isDark
-                            ? const Color(0xFF111827).withValues(alpha: 0.9)
-                            : Colors.white),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isUser ? 10 : 4),
-                    topRight: Radius.circular(isUser ? 4 : 10),
-                    bottomLeft: const Radius.circular(10),
-                    bottomRight: const Radius.circular(10),
-                  ),
-                  border: Border.all(
-                    color: agentColor.withValues(
-                      alpha: isStreaming ? 0.35 : 0.12,
-                    ),
-                    width: 1,
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (message.fileId != null) ...[
-                            FilePreviewRenderer(
-                              fileId: message.fileId!,
-                              isDark: isDark,
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          ..._buildContent(context, agentColor),
-                        ],
+      child: Container(
+            decoration: BoxDecoration(
+              color: isUser
+                  ? (isDark ? const Color(0xFF1C1C1C) : const Color(0xFFF5F5F5))
+                  : Colors.transparent,
+              borderRadius: isUser
+                  ? BorderRadius.circular(8)
+                  : BorderRadius.zero,
+              border: isUser
+                  ? Border.all(
+                      color: isDark
+                          ? const Color(0xFFFFFFFF).withValues(alpha: 0.1)
+                          : const Color(0x00000000).withValues(alpha: 0.08),
+                      width: 1,
+                    )
+                  : Border(
+                      left: BorderSide(
+                        color: agentColor,
+                        width: 2,
                       ),
                     ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isUser ? 16 : 16,
+                isUser ? 12 : 12,
+                16,
+                12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (message.fileId != null) ...[
+                    FilePreviewRenderer(
+                      fileId: message.fileId!,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12),
                   ],
-                ),
+                  ..._buildContent(context, agentColor),
+                ],
               ),
             ),
           )
           .animate(target: 1)
-          .fadeIn(duration: 400.ms)
-          .slideY(begin: 0.02, end: 0, curve: Curves.easeOutQuad),
+          .fadeIn(duration: 200.ms, curve: Curves.easeOut)
+          .slideY(begin: 0.01, end: 0, curve: Curves.easeOut),
     );
   }
 
@@ -237,25 +228,24 @@ class MessageBubble extends StatelessWidget {
               isDark: isDark,
             ),
           );
-        } else {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: SelectableText(
-              s.content,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                height: 1.6,
-                color: isUser
-                    ? Colors.white
-                    : (isDark
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : Colors.black.withValues(alpha: 0.85)),
-                letterSpacing: 0,
+        } else            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: SelectableText(
+                s.content,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  height: 1.7,
+                  color: isUser
+                      ? (isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A))
+                      : (isDark
+                            ? const Color(0xFFF5F5F5)
+                            : const Color(0xFF0A0A0A)),
+                  letterSpacing: 0,
+                ),
               ),
-            ),
-          );
+            );
         }
-      }),
+      ).toList(),
     );
 
     return children;
@@ -275,14 +265,14 @@ class MessageBubble extends StatelessWidget {
             Text(
               DateFormat.jm().format(message.timestamp.toLocal()),
               style: GoogleFonts.inter(
-                fontSize: 10,
-                color: agentColor.withValues(alpha: 0.4),
+                fontSize: 11,
+                color: const Color(0xFF6B6B6B),
               ),
             ),
             const Spacer(),
             _ActionIcon(
               icon: Icons.copy_rounded,
-              color: agentColor,
+              color: const Color(0xFF6B6B6B),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: message.content));
               },
@@ -290,7 +280,7 @@ class MessageBubble extends StatelessWidget {
             const SizedBox(width: 12),
             _ActionIcon(
               icon: Icons.auto_fix_high_rounded,
-              color: agentColor,
+              color: const Color(0xFF6B6B6B),
               onTap: () {
                 context.read<ChatProvider>().sendMessage(
                   prompt: "Explain the architecture of your previous response.",
@@ -302,8 +292,8 @@ class MessageBubble extends StatelessWidget {
             Text(
               DateFormat.jm().format(message.timestamp.toLocal()),
               style: GoogleFonts.inter(
-                fontSize: 10,
-                color: agentColor.withValues(alpha: 0.4),
+                fontSize: 11,
+                color: const Color(0xFF6B6B6B),
               ),
             ),
         ],
@@ -315,10 +305,10 @@ class MessageBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
+        color: isDark ? const Color(0xFF141414) : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+          color: isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.06) : const Color(0x00000000).withValues(alpha: 0.04),
           width: 1,
         ),
       ),
@@ -329,42 +319,40 @@ class MessageBubble extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ThreePulsingDots(color: agentColor.withValues(alpha: 0.6)),
+              ThreePulsingDots(color: const Color(0xFF6B6B6B)),
               const SizedBox(width: 12),
               Text(
                 'Thinking...',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white38,
-                  letterSpacing: 0.1,
+                  color: const Color(0xFF6B6B6B),
+                  letterSpacing: 0,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Container(
-            height: 1.5,
+            height: 2,
             width: 140,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
+              color: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFE5E5E5),
               borderRadius: BorderRadius.circular(1),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(1),
-              child: const LinearProgressIndicator(
+              child: LinearProgressIndicator(
                 backgroundColor: Colors.transparent,
-                valueColor: AlwaysStoppedAnimation(Color(0xFF6366F1)),
-              )
-              .animate(onPlay: (controller) => controller.repeat())
-              .shimmer(duration: 2000.ms, color: const Color(0xFF06B6D4)),
+                valueColor: AlwaysStoppedAnimation(
+                  isDark ? const Color(0xFF8B8BF5) : const Color(0xFF6366F1),
+                ),
+              ),
             ),
           ),
         ],
       ),
-    )
-    .animate(onPlay: (controller) => controller.repeat(reverse: true))
-    .fade(duration: 1500.ms, begin: 0.7, end: 1.0, curve: Curves.easeInOut);
+    );
   }
 }
 
@@ -374,29 +362,15 @@ class _PulseIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Static dot — no animation, no glow
     return Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.5),
-                blurRadius: 4,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        )
-        .animate(onPlay: (c) => c.repeat())
-        .scale(
-          duration: 1000.ms,
-          begin: const Offset(1, 1),
-          end: const Offset(1.5, 1.5),
-          curve: Curves.easeInOut,
-        )
-        .fadeOut();
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
   }
 }
 
@@ -409,11 +383,11 @@ class _AgentContributionIcon extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: agentColor.withValues(alpha: 0.1),
+        color: Colors.transparent,
         shape: BoxShape.circle,
-        border: Border.all(color: agentColor.withValues(alpha: 0.2)),
+        border: Border.all(color: const Color(0xFF6B6B6B).withValues(alpha: 0.2)),
       ),
-      child: Icon(Icons.hub_rounded, size: 10, color: agentColor),
+      child: Icon(Icons.hub_rounded, size: 10, color: const Color(0xFF6B6B6B)),
     );
   }
 }
@@ -433,7 +407,7 @@ class _ActionIcon extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Icon(icon, size: 14, color: color.withValues(alpha: 0.4)),
+      child: Icon(icon, size: 14, color: const Color(0xFF6B6B6B)),
     );
   }
 }

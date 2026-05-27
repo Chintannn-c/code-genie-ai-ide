@@ -76,9 +76,7 @@ class _AppearancePageState extends State<AppearancePage> {
                     return GestureDetector(
                       onTap: () {
                         sp.updateAppearanceSettings(selectedTheme: index);
-                        // Toggle between dark and light for the actual theme
-                        if (index == 4 && isDark) tp.toggleTheme();
-                        if (index != 4 && !isDark) tp.toggleTheme();
+                        tp.setThemeIndex(index);
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),

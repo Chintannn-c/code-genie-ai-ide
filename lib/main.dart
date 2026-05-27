@@ -9,6 +9,7 @@ import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/orchestration_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/session_provider.dart';
 
 import 'services/notification_service.dart';
 import 'providers/notification_provider.dart';
@@ -42,6 +43,10 @@ void main() async {
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PlanningProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, SessionProvider>(
+          create: (_) => SessionProvider(),
+          update: (_, auth, sessions) => sessions!..setToken(auth.user?.token),
+        ),
         ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
           create: (_) => ChatProvider(),
           update: (_, auth, chat) => chat!
@@ -67,7 +72,7 @@ void main() async {
           update: (_, auth, notifications) {
             if (auth.status == AuthStatus.authenticated && auth.user != null) {
               NotificationService().connect(auth.user!.userId, auth.user!.token);
-              notifications!.updateAuth(auth.user!.userId, auth.user!.token);
+              notifications!.updateAuth(auth.user!.userId, auth.user!.token, auth);
             } else if (auth.status == AuthStatus.unauthenticated) {
               NotificationService().disconnect();
             }

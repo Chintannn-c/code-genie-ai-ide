@@ -27,20 +27,16 @@ class ChatListTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                  ? (isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5))
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: isSelected
-                  ? Border.all(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.3))
-                  : null,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,20 +48,20 @@ class ChatListTile extends StatelessWidget {
                   margin: const EdgeInsets.only(top: 4),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFF6366F1).withValues(alpha: 0.2)
+                        ? (isDark ? const Color(0xFF333333) : const Color(0xFFEEEEEE))
                         : isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(10),
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.chat_bubble_outline_rounded,
                     size: 18,
                     color: isSelected
-                        ? const Color(0xFF6366F1)
+                        ? (isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A))
                         : isDark
-                            ? Colors.white.withValues(alpha: 0.6)
-                            : Colors.black.withValues(alpha: 0.5),
+                            ? Colors.white.withValues(alpha: 0.5)
+                            : Colors.black.withValues(alpha: 0.4),
                   ),
                 ),
                 const SizedBox(width: 12),

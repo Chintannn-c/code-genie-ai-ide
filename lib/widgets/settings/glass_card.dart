@@ -1,8 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
-/// A premium glassmorphic card with customizable blur, glow, and borders.
-/// The foundation of the entire settings UI system.
+/// A clean, flat card with optional border. No blur, no glow.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -19,10 +17,10 @@ class GlassCard extends StatelessWidget {
     required this.child,
     this.padding,
     this.margin,
-    this.borderRadius = 20,
-    this.blur = 18,
+    this.borderRadius = 10,
+    this.blur = 0,
     this.glowColor,
-    this.glowIntensity = 0.08,
+    this.glowIntensity = 0,
     this.showBorder = true,
     this.onTap,
   });
@@ -30,44 +28,29 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final glow = glowColor ?? const Color(0xFF6366F1);
 
-    Widget card = ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding ?? const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF141418).withValues(alpha: 0.65)
-                : Colors.white.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: showBorder
-                ? Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.06),
-                    width: 1.0,
-                  )
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: glow.withValues(alpha: glowIntensity),
-                blurRadius: 30,
-                spreadRadius: -2,
-              ),
-              if (isDark)
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-            ],
+    Widget card = Container(
+      padding: padding ?? const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1C) : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: showBorder
+            ? Border.all(
+                color: isDark
+                    ? const Color(0xFFFFFFFF).withValues(alpha: 0.1)
+                    : const Color(0x00000000).withValues(alpha: 0.08),
+                width: 1.0,
+              )
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child: child,
-        ),
+        ],
       ),
+      child: child,
     );
 
     if (margin != null) {

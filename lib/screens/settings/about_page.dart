@@ -1,8 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/settings/glass_card.dart';
 
@@ -115,17 +115,17 @@ class AboutPage extends StatelessWidget {
                 child: GlassCard(
                   child: Column(
                     children: [
-                      _linkTile('Changelog', Icons.history_rounded, const Color(0xFF6366F1), isDark),
+                      _linkTile('Changelog', Icons.history_rounded, const Color(0xFF6366F1), 'https://github.com/Chintannn-c/code-genie-ai-ide/releases', isDark),
                       _divider(isDark),
-                      _linkTile('Terms of Service', Icons.description_rounded, const Color(0xFF64748B), isDark),
+                      _linkTile('Terms of Service', Icons.description_rounded, const Color(0xFF64748B), 'https://github.com/Chintannn-c/code-genie-ai-ide/blob/main/README.md', isDark),
                       _divider(isDark),
-                      _linkTile('Privacy Policy', Icons.privacy_tip_rounded, const Color(0xFF06B6D4), isDark),
+                      _linkTile('Privacy Policy', Icons.privacy_tip_rounded, const Color(0xFF06B6D4), 'https://github.com/Chintannn-c/code-genie-ai-ide/blob/main/README.md', isDark),
                       _divider(isDark),
-                      _linkTile('Open Source Libraries', Icons.library_books_rounded, const Color(0xFF10B981), isDark),
+                      _linkTile('Open Source Libraries', Icons.library_books_rounded, const Color(0xFF10B981), 'https://pub.dev', isDark),
                       _divider(isDark),
-                      _linkTile('Support Center', Icons.support_agent_rounded, const Color(0xFFF59E0B), isDark),
+                      _linkTile('Support Center', Icons.support_agent_rounded, const Color(0xFFF59E0B), 'https://github.com/Chintannn-c/code-genie-ai-ide/issues', isDark),
                       _divider(isDark),
-                      _linkTile('GitHub Repository', Icons.code_rounded, const Color(0xFFF0F0F0), isDark),
+                      _linkTile('GitHub Repository', Icons.code_rounded, const Color(0xFFF59E0B), 'https://github.com/Chintannn-c/code-genie-ai-ide', isDark),
                     ],
                   ),
                 ),
@@ -199,17 +199,28 @@ class AboutPage extends StatelessWidget {
     );
   }
 
-  Widget _linkTile(String title, IconData icon, Color color, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 14),
-          Expanded(child: Text(title, style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87))),
-          Icon(Icons.chevron_right_rounded, size: 18, color: isDark ? Colors.white12 : Colors.black12),
-        ],
+  Widget _linkTile(String title, IconData icon, Color color, String url, bool isDark) {
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        try {
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        } catch (_) {}
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 14),
+            Expanded(child: Text(title, style: GoogleFonts.plusJakartaSans(
+              fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87))),
+            Icon(Icons.chevron_right_rounded, size: 18, color: isDark ? Colors.white12 : Colors.black12),
+          ],
+        ),
       ),
     );
   }

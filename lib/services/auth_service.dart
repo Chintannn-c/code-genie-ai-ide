@@ -110,6 +110,8 @@ class AuthService {
           'Content-Type': 'application/json',
           'Bypass-Tunnel-Reminder': 'true',
           'ngrok-skip-browser-warning': 'true',
+          'X-Platform': kIsWeb ? 'Web' : (defaultTargetPlatform == TargetPlatform.iOS ? 'iOS' : (defaultTargetPlatform == TargetPlatform.android ? 'Android' : 'Desktop')),
+          'X-Device-Name': kIsWeb ? 'Browser' : (defaultTargetPlatform == TargetPlatform.macOS ? 'macOS Desktop' : (defaultTargetPlatform == TargetPlatform.windows ? 'Windows Desktop' : (defaultTargetPlatform == TargetPlatform.linux ? 'Linux Desktop' : 'Native Client'))),
         },
         body: jsonEncode({'id_token': idToken}),
       ).timeout(const Duration(seconds: 15)); // Add timeout to backend call
@@ -149,7 +151,13 @@ class AuthService {
   Future<User> login(String email, String password) async {
     final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}${ApiConfig.login}'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
+        'ngrok-skip-browser-warning': 'true',
+        'X-Platform': kIsWeb ? 'Web' : (defaultTargetPlatform == TargetPlatform.iOS ? 'iOS' : (defaultTargetPlatform == TargetPlatform.android ? 'Android' : 'Desktop')),
+        'X-Device-Name': kIsWeb ? 'Browser' : (defaultTargetPlatform == TargetPlatform.macOS ? 'macOS Desktop' : (defaultTargetPlatform == TargetPlatform.windows ? 'Windows Desktop' : (defaultTargetPlatform == TargetPlatform.linux ? 'Linux Desktop' : 'Native Client'))),
+      },
       body: jsonEncode({'email': email, 'password': password}),
     );
 
@@ -168,7 +176,13 @@ class AuthService {
   Future<User> register(String email, String password, String fullName) async {
     final response = await _client.post(
       Uri.parse('${ApiConfig.baseUrl}${ApiConfig.register}'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
+        'ngrok-skip-browser-warning': 'true',
+        'X-Platform': kIsWeb ? 'Web' : (defaultTargetPlatform == TargetPlatform.iOS ? 'iOS' : (defaultTargetPlatform == TargetPlatform.android ? 'Android' : 'Desktop')),
+        'X-Device-Name': kIsWeb ? 'Browser' : (defaultTargetPlatform == TargetPlatform.macOS ? 'macOS Desktop' : (defaultTargetPlatform == TargetPlatform.windows ? 'Windows Desktop' : (defaultTargetPlatform == TargetPlatform.linux ? 'Linux Desktop' : 'Native Client'))),
+      },
       body: jsonEncode({
         'email': email,
         'password': password,

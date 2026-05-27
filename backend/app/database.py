@@ -36,6 +36,8 @@ async def connect_to_mongo() -> None:
     await _database.security_logs.create_index([("timestamp", DESCENDING)])
     await _database.audit_logs.create_index([("timestamp", DESCENDING)])
     await _database.orchestration_events.create_index([("workflow_id", ASCENDING)])
+    await _database.user_sessions.create_index([("user_id", ASCENDING)])
+    await _database.user_sessions.create_index([("session_token_hash", ASCENDING)])
 
     logger.info(f"Connected to MongoDB database: {settings.DB_NAME}")
 

@@ -1,12 +1,55 @@
 import logging
+import hashlib
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.database import get_db
 from app.limiter import limiter
 from app.models.user import UserCreate, Token
 from app.services import auth_service
+from app.services.device_detector import parse_device_info
 from uuid import uuid4
 from pydantic import BaseModel
+
+async def register_session(db, request: Request, user_id: str, access_token: str):
+    token_hash = hashlib.sha256(access_token.encode('utf-8')).hexdigest()
+    user_agent = request.headers.get("User-Agent", "")
+    ip_address = request.client.host if request.client else "127.0.0.1"
+    
+    # Extract optional custom client metadata headers
+    device_name_header = request.headers.get("X-Device-Name")
+    device_fingerprint = request.headers.get("X-Device-Fingerprint")
+    platform_header = request.headers.get("X-Platform")
+    
+    # Parse User-Agent for hardware/browser characteristics
+    parsed = parse_device_info(user_agent)
+    
+    device_name = device_name_header or parsed["device_type"]
+    browser = parsed["browser"]
+    operating_system = parsed["os"]
+    platform = platform_header or parsed["platform"]
+    
+    session_id = str(uuid4())
+    session_doc = {
+        "_id": session_id,
+        "user_id": user_id,
+        "session_token_hash": token_hash,
+        "refresh_token_hash": None,
+        "device_name": device_name,
+        "browser": browser,
+        "operating_system": operating_system,
+        "ip_address": ip_address,
+        "platform": platform,
+        "user_agent": user_agent,
+        "device_fingerprint": device_fingerprint,
+        "is_active": True,
+        "revoked": False,
+        "created_at": datetime.now(timezone.utc),
+        "last_seen": datetime.now(timezone.utc)
+    }
+    
+    await db.user_sessions.insert_one(session_doc)
+    logger.info(f"💾 [SESSION] Registered session {session_id} for user {user_id} ({device_name} / {browser})")
+    return session_id
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
@@ -50,6 +93,9 @@ async def register(request: Request, user_in: UserCreate):
     # Create token
     access_token = auth_service.create_access_token(subject=user_id)
     
+    # Register active session
+    await register_session(db, request, user_id, access_token)
+    
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -83,6 +129,9 @@ async def login(request: Request, user_in: UserCreate): # Using same schema for 
     # Create token
     access_token = auth_service.create_access_token(subject=user["_id"])
     
+    # Register active session
+    await register_session(db, request, user["_id"], access_token)
+    
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -92,13 +141,13 @@ async def login(request: Request, user_in: UserCreate): # Using same schema for 
     )
 
 @router.post("/google", response_model=Token)
-async def google_login(request: GoogleLoginRequest):
+async def google_login(request: Request, body_req: GoogleLoginRequest):
     """Verify Google token and login/register user."""
     db = await get_db()
     
     try:
         # Verify token with Google
-        id_info = await auth_service.verify_google_token(request.id_token)
+        id_info = await auth_service.verify_google_token(body_req.id_token)
         
         # SECURITY FIX: Ensure the email is verified before merging or creating an account
         if not id_info.get("email_verified"):
@@ -118,7 +167,7 @@ async def google_login(request: GoogleLoginRequest):
                 "_id": user_id,
                 "email": email,
                 "full_name": name,
-                "picture_url": picture, # ASSET FIX: Persist picture URL
+                "picture_url": picture, # ASSET FIX: Capture profile image URL
                 "hashed_password": auth_service.get_password_hash(str(uuid4())), 
                 "created_at": datetime.now(timezone.utc),
                 "updated_at": datetime.now(timezone.utc),
@@ -135,6 +184,9 @@ async def google_login(request: GoogleLoginRequest):
         
         # Create our custom JWT
         access_token = auth_service.create_access_token(subject=user["_id"])
+        
+        # Register active session
+        await register_session(db, request, user["_id"], access_token)
         
         return Token(
             access_token=access_token,
@@ -378,9 +430,6 @@ async def update_security(request: SecurityUpdateRequest, current_user_id: str =
     
     return {"status": "success", "message": "Security settings synchronized"}
 
-@router.post("/sessions/revoke")
-async def revoke_session(request: SessionRevokeRequest, current_user_id: str = Depends(get_current_user_id)):
-    """Revoke an active user session by identifier."""
 @router.get("/ai-settings")
 async def get_ai_settings(current_user_id: str = Depends(get_current_user_id)):
     """Fetch user's AI orchestration settings from the SQL store."""

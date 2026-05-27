@@ -9,7 +9,7 @@ import asyncio
 from app.config import get_settings
 from app.database import connect_to_mongo, close_mongo_connection, get_db
 from app.services.task_engine import task_engine
-from app.routes import chat, history, upload, auth, execution, planning, sync
+from app.routes import chat, history, upload, auth, execution, planning, sync, security
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
 from app.middleware import ProductionSecurityMiddleware
@@ -251,6 +251,7 @@ app.include_router(auth.router)
 app.include_router(execution.router)
 app.include_router(planning.router)
 app.include_router(sync.router)
+app.include_router(security.router)
 
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):
@@ -262,6 +263,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
         
     try:
         from jose import jwt
+        import hashlib
+        from app.services.redis_service import redis_service
+        from app.database import get_db
+        
         settings = get_settings()
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         token_user_id = payload.get("sub")
@@ -269,12 +274,32 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
             logger.warning(f"❌ WebSocket connection rejected for {user_id}: Token mismatch")
             await websocket.close(code=1008)
             return
+            
+        token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+        
+        # Verify if token is revoked in Redis
+        is_revoked = await redis_service.get(f"revoked_token:{token_hash}")
+        if is_revoked:
+            logger.warning(f"❌ WebSocket connection rejected for {user_id}: Session revoked in Redis")
+            await websocket.close(code=1008)
+            return
+            
+        # Verify in MongoDB
+        db = await get_db()
+        session = await db.user_sessions.find_one({"session_token_hash": token_hash})
+        if session and session.get("revoked"):
+            await redis_service.set(f"revoked_token:{token_hash}", True, expire_seconds=3600)
+            logger.warning(f"❌ WebSocket connection rejected for {user_id}: Session revoked in MongoDB")
+            await websocket.close(code=1008)
+            return
+            
     except Exception as e:
         logger.warning(f"❌ WebSocket connection rejected for {user_id}: Invalid token ({e})")
         await websocket.close(code=1008)
         return
-
-    await socket_manager.connect(websocket, user_id)
+        
+    # Connect and associate with token hash
+    await socket_manager.connect(websocket, user_id, token_hash=token_hash)
     try:
         while True:
             # Keep connection alive

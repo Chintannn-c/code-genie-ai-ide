@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Animated glowing icon for settings navigation items.
+/// Simple icon container for settings navigation items. No glow.
 class GlowIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -17,21 +17,15 @@ class GlowIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isActive ? 0.2 : 0.1),
-        borderRadius: BorderRadius.circular(13),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  spreadRadius: -2,
-                ),
-              ]
-            : [],
+        color: isDark
+            ? const Color(0xFF242424)
+            : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, color: color, size: size),
     );

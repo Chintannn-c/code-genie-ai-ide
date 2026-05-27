@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../config/api_config.dart';
+import 'auth_provider.dart';
 
 class NotificationProvider extends ChangeNotifier {
   final NotificationService _service = NotificationService();
@@ -69,7 +70,7 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateAuth(String userId, String? token) {
+  void updateAuth(String userId, String? token, [AuthProvider? auth]) {
     if (_userId == userId && _token == token) return;
     _userId = userId;
     _token = token;
@@ -79,6 +80,12 @@ class NotificationProvider extends ChangeNotifier {
     _rawSub = _service.rawMessageStream.listen((event) {
       if (event['type'] == 'notification_settings_update') {
         _handleSettingsUpdatePayload(event['notification_settings']);
+      } else if (event['type'] == 'session_revoked') {
+        debugPrint('🔒 [SECURITY] WebSocket remote session revocation received. Triggering forced logout...');
+        auth?.triggerSessionExpiry();
+      } else if (event['type'] == 'session_revoked_event' || event['type'] == 'all_sessions_revoked_event') {
+        // If sessions are revoked from another device, dynamically reload active sessions
+        _service.rawMessageStream.timeout(const Duration(seconds: 0), onTimeout: (sink) {});
       }
     });
 

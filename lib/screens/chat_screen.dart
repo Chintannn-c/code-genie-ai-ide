@@ -653,13 +653,13 @@ class _ChatScreenState extends State<ChatScreen>
       padding: EdgeInsets.fromLTRB(isWide ? 20 : 12, 10, isWide ? 20 : 12, 10),
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF0B0B0C).withValues(alpha: 0.96)
-            : Colors.white.withValues(alpha: 0.96),
+            ? const Color(0xFF141414)
+            : Colors.white,
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05),
+                ? const Color(0xFFFFFFFF).withValues(alpha: 0.06)
+                : const Color(0x00000000).withValues(alpha: 0.04),
           ),
         ),
       ),
@@ -811,12 +811,12 @@ class _ChatScreenState extends State<ChatScreen>
     return Container(
       width: 280,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF121214) : Colors.white,
+        color: isDark ? const Color(0xFF1C1C1C) : Colors.white,
         border: Border(
           right: BorderSide(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.05),
+                ? const Color(0xFFFFFFFF).withValues(alpha: 0.06)
+                : const Color(0x00000000).withValues(alpha: 0.04),
           ),
         ),
       ),
@@ -830,8 +830,8 @@ class _ChatScreenState extends State<ChatScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Image.asset(
                     'assets/icon/app_icon.png',
@@ -843,11 +843,11 @@ class _ChatScreenState extends State<ChatScreen>
                 const SizedBox(width: 12),
                 Text(
                   'Code Genie',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : Colors.black,
-                    letterSpacing: -0.5,
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
+                    letterSpacing: -0.01 * 17,
                   ),
                 ),
               ],
@@ -1349,11 +1349,11 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             )
             .animate(onPlay: (controller) => controller.repeat())
-            .shimmer(
+            .fade(
               duration: const Duration(milliseconds: 1500),
-              color: isDark
-                  ? const Color(0xFF6366F1).withValues(alpha: 0.15)
-                  : const Color(0xFF6366F1).withValues(alpha: 0.08),
+              begin: 0.3,
+              end: 0.6,
+              curve: Curves.easeInOut,
             ),
           ),
         );
@@ -1368,39 +1368,29 @@ class _ChatScreenState extends State<ChatScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.22),
-                ),
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: Color(0xFF6366F1),
-                size: 30,
-              ),
+            Icon(
+              Icons.auto_awesome_rounded,
+              color: isDark ? const Color(0xFF6B6B6B) : const Color(0xFFA3A3A3),
+              size: 28,
             ),
             const SizedBox(height: 22),
             Text(
               'Start a coding session',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : Colors.black,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Choose a mode, attach files if needed, then ask for code, debugging, or explanation.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.inter(
                 fontSize: 14,
                 height: 1.45,
-                color: isDark ? Colors.white38 : Colors.black38,
+                color: isDark ? const Color(0xFFA3A3A3) : const Color(0xFF525252),
               ),
             ),
           ],
@@ -1447,9 +1437,9 @@ class _ChatScreenState extends State<ChatScreen>
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      spreadRadius: 2,
+                      color: Colors.black.withValues(alpha: 0.16),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -1539,18 +1529,18 @@ class TypingIndicator extends StatelessWidget {
                       height: 6,
                       margin: const EdgeInsets.symmetric(horizontal: 2),
                       decoration: const BoxDecoration(
-                        color: Color(0xFF6366F1),
+                        color: Color(0xFF6B6B6B),
                         shape: BoxShape.circle,
                       ),
                     )
-                    .animate(onPlay: (controller) => controller.repeat())
-                    .scale(
-                      duration: 600.ms,
-                      delay: (index * 200).ms,
-                      begin: const Offset(0.5, 0.5),
-                      end: const Offset(1.2, 1.2),
-                    )
-                    .fadeIn(duration: 600.ms, delay: (index * 200).ms);
+                    .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                    .fade(
+                      duration: 900.ms,
+                      delay: (index * 150).ms,
+                      begin: 0.3,
+                      end: 1.0,
+                      curve: Curves.easeInOut,
+                    );
               }),
             ),
           ),
@@ -1894,7 +1884,7 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
         name,
         style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold, color: color),
       ),
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2.seconds, color: Colors.white12);
+    ).animate().fadeIn(duration: 200.ms, curve: Curves.easeOut);
   }
 
   Widget _socRow(String label, String value, Color color) {
@@ -1912,58 +1902,23 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
 }
 
 // ============================================================
-// REAL-TIME HEARTBEAT PULSER
+// REAL-TIME HEARTBEAT PULSER — now a static dot
 // ============================================================
 
-class _LiveHeartbeat extends StatefulWidget {
+class _LiveHeartbeat extends StatelessWidget {
   final bool isActive;
   const _LiveHeartbeat({required this.isActive});
 
   @override
-  State<_LiveHeartbeat> createState() => _LiveHeartbeatState();
-}
-
-class _LiveHeartbeatState extends State<_LiveHeartbeat>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final color = widget.isActive ? const Color(0xFF6366F1) : const Color(0xFF10B981);
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.6 * _controller.value),
-                blurRadius: 6 * _controller.value + 2,
-                spreadRadius: 2 * _controller.value,
-              ),
-            ],
-          ),
-        );
-      },
+    final color = isActive ? const Color(0xFF8B8BF5) : const Color(0xFF4ADE80);
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+      ),
     );
   }
 }

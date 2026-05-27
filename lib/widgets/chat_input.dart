@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -262,15 +261,6 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     final isPlan = cp.isMissionMode;
     final isDeep = cp.useParallelOrchestration;
 
-    // Glowing border color theme reflecting mode selection
-    Color auraColor = const Color(0xFF64748B);
-    if (isPlan && isDeep) {
-      auraColor = const Color(0xFF06B6D4); // Neon Teal
-    } else if (isPlan) {
-      auraColor = const Color(0xFF10B981); // Neon Green
-    } else if (isDeep) {
-      auraColor = const Color(0xFF6366F1); // Neon Indigo
-    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
@@ -292,16 +282,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                       child: ActionChip(
                         label: Text(
                           suggestion,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: auraColor.withOpacity(0.85),
+                            fontWeight: FontWeight.w500,
+                            color: widget.isDark ? const Color(0xFFA3A3A3) : const Color(0xFF525252),
                           ),
                         ),
-                        backgroundColor: widget.isDark ? const Color(0xFF13172E).withOpacity(0.4) : Colors.black.withOpacity(0.04),
+                        backgroundColor: widget.isDark ? const Color(0xFF1C1C1C) : const Color(0xFFF5F5F5),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: auraColor.withOpacity(0.2), width: 1.0),
+                          borderRadius: BorderRadius.circular(6),
+                          side: BorderSide(
+                            color: widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08),
+                            width: 1.0,
+                          ),
                         ),
                         onPressed: cp.isSessionExpired ? null : () {
                           HapticFeedback.selectionClick();
@@ -317,37 +310,20 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               ),
             ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
 
-          // Floating Adaptive Glass Dock Container
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
+          // Flat input container — no blur, no glow
+          AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
                   color: widget.isDark
-                      ? const Color(0xFF0B0E14).withOpacity(0.72)
-                      : Colors.white.withOpacity(0.82),
-                  borderRadius: BorderRadius.circular(24),
+                      ? const Color(0xFF141414)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: _focus.hasFocus
-                        ? auraColor.withOpacity(0.7)
-                        : auraColor.withOpacity(0.12),
-                    width: 1.5,
+                        ? (widget.isDark ? const Color(0xFF8B8BF5) : const Color(0xFF6366F1))
+                        : (widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08)),
+                    width: 1,
                   ),
-                  boxShadow: [
-                    if (_focus.hasFocus)
-                      BoxShadow(
-                        color: auraColor.withOpacity(0.18),
-                        blurRadius: 24,
-                        spreadRadius: 2,
-                      ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(widget.isDark ? 0.45 : 0.08),
-                      blurRadius: 30,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -364,30 +340,30 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: auraColor.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
+                                    color: widget.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     _detectedLang.toUpperCase(),
                                     style: GoogleFonts.jetBrainsMono(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: auraColor,
+                                      color: const Color(0xFF6B6B6B),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'COMPILING CONTEXT',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: widget.isDark ? Colors.white24 : Colors.black26,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF6B6B6B),
                                   ),
                                 ),
                               ],
                             ),
-                          ).animate().fadeIn().slideX(begin: -0.1, end: 0),
+                          ).animate().fadeIn(),
                         
                         const Spacer(),
 
@@ -398,17 +374,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+                                color: widget.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.06) : const Color(0x00000000).withValues(alpha: 0.04),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.hub_rounded, size: 10, color: Color(0xFF818CF8)),
+                                  Icon(Icons.hub_rounded, size: 10, color: const Color(0xFF6B6B6B)),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Memory Injected',
-                                    style: GoogleFonts.plusJakartaSans(fontSize: 8.5, fontWeight: FontWeight.bold, color: const Color(0xFF818CF8)),
+                                    style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w500, color: const Color(0xFF6B6B6B)),
                                   ),
                                 ],
                               ),
@@ -427,26 +405,26 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                       onChanged: _handleAutoClosing,
                       onSubmitted: (_) => _send(),
                       style: cp.isSessionExpired
-                          ? GoogleFonts.plusJakartaSans(
+                          ? GoogleFonts.inter(
                               fontSize: 14,
-                              color: Colors.white30,
+                              color: const Color(0xFF404040),
                             )
                           : cp.isEditorMode
                           ? GoogleFonts.jetBrainsMono(
                               fontSize: 14,
                               height: 1.6,
-                              color: widget.isDark ? Colors.white : Colors.black87,
+                              color: widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
                             )
-                          : GoogleFonts.plusJakartaSans(
+                          : GoogleFonts.inter(
                               fontSize: 14,
-                              color: widget.isDark ? Colors.white : Colors.black87,
+                              color: widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A),
                             ),
                       decoration: InputDecoration(
                         hintText: cp.isEditorMode
                             ? 'Surgically insert code overrides...'
                             : (isPlan ? 'Command system targets... (Mission mode enabled)' : 'Ask Code Genie anything...'),
-                        hintStyle: GoogleFonts.plusJakartaSans(
-                          color: widget.isDark ? Colors.white30 : Colors.black38,
+                        hintStyle: GoogleFonts.inter(
+                          color: widget.isDark ? const Color(0xFF404040) : const Color(0xFFD4D4D4),
                           fontSize: 14,
                         ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -468,7 +446,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                               child: CustomPaint(
                                 painter: ThoughtWavePainter(
                                   animationValue: _voiceController.value,
-                                  color: auraColor,
+                                  color: const Color(0xFF6B6B6B),
                                 ),
                               ),
                             );
@@ -490,7 +468,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                             isActive: widget.isWebOpen,
                             message: widget.isWebOpen ? 'Close Live Web Browser' : 'Launch Integrated Web Browser',
                             onPressed: widget.onToggleWeb,
-                            color: auraColor,
+                            color: const Color(0xFF6B6B6B),
                           ),
                           const SizedBox(width: 4),
 
@@ -500,7 +478,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                             isActive: widget.isTerminalOpen,
                             message: widget.isTerminalOpen ? 'Hide Operations Cockpit' : 'Reveal Operations Cockpit',
                             onPressed: widget.onToggleTerminal,
-                            color: auraColor,
+                            color: const Color(0xFF6B6B6B),
                           ),
                           const SizedBox(width: 4),
 
@@ -513,7 +491,7 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                                 size: 20,
                                 color: _isVoiceRecording 
                                     ? const Color(0xFFEF4444) 
-                                    : (widget.isDark ? Colors.white38 : Colors.black38),
+                                    : const Color(0xFF6B6B6B),
                               ),
                               onPressed: cp.isSessionExpired ? null : () {
                                 HapticFeedback.selectionClick();
@@ -538,27 +516,16 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                       ),
                     ),
 
-                    // Plan or Deep mode Custom-Painted blueprint strips at bottom edge
+                    // Plan or Deep mode line strip — simplified
                     if (isPlan || isDeep)
-                      AnimatedBuilder(
-                        animation: _voiceController,
-                        builder: (context, child) {
-                          return SizedBox(
-                            width: double.infinity,
-                            height: 6,
-                            child: CustomPaint(
-                              painter: isDeep
-                                  ? ThoughtWavePainter(animationValue: _voiceController.value, color: auraColor)
-                                  : BlueprintPainter(animationValue: _voiceController.value, color: auraColor),
-                            ),
-                          );
-                        },
+                      Container(
+                        width: double.infinity,
+                        height: 2,
+                        color: widget.isDark ? const Color(0xFF242424) : const Color(0xFFE5E5E5),
                       ),
                   ],
                 ),
               ),
-            ),
-          ),
         ],
       ),
     );
@@ -600,15 +567,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
           HapticFeedback.selectionClick();
           cp.toggleParallelOrchestration();
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF6366F1).withOpacity(0.12) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isActive
+                ? (widget.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isActive ? const Color(0xFF6366F1).withOpacity(0.35) : (widget.isDark ? Colors.white10 : Colors.black12),
+              color: isActive
+                  ? (widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08))
+                  : (widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.06) : const Color(0x00000000).withValues(alpha: 0.04)),
             ),
           ),
           child: Row(
@@ -617,15 +588,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               Icon(
                 Icons.psychology_rounded,
                 size: 18,
-                color: isActive ? const Color(0xFF818CF8) : (widget.isDark ? Colors.white54 : Colors.black45),
+                color: isActive
+                    ? (widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A))
+                    : const Color(0xFF6B6B6B),
               ),
               const SizedBox(width: 6),
               Text(
                 'Deep',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: isActive ? const Color(0xFF818CF8) : (widget.isDark ? Colors.white54 : Colors.black45),
+                  fontWeight: FontWeight.w500,
+                  color: isActive
+                      ? (widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A))
+                      : const Color(0xFF6B6B6B),
                 ),
               ),
             ],
@@ -646,15 +621,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
           HapticFeedback.selectionClick();
           cp.toggleMissionMode();
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF10B981).withOpacity(0.12) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isActive
+                ? (widget.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isActive ? const Color(0xFF10B981).withOpacity(0.32) : (widget.isDark ? Colors.white10 : Colors.black12),
+              color: isActive
+                  ? (widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.1) : const Color(0x00000000).withValues(alpha: 0.08))
+                  : (widget.isDark ? const Color(0xFFFFFFFF).withValues(alpha: 0.06) : const Color(0x00000000).withValues(alpha: 0.04)),
             ),
           ),
           child: Row(
@@ -663,15 +642,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               Icon(
                 Icons.flag_rounded,
                 size: 18,
-                color: isActive ? const Color(0xFF10B981) : (widget.isDark ? Colors.white54 : Colors.black45),
+                color: isActive
+                    ? (widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A))
+                    : const Color(0xFF6B6B6B),
               ),
               const SizedBox(width: 6),
               Text(
                 'Plan',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: isActive ? const Color(0xFF10B981) : (widget.isDark ? Colors.white54 : Colors.black45),
+                  fontWeight: FontWeight.w500,
+                  color: isActive
+                      ? (widget.isDark ? const Color(0xFFF5F5F5) : const Color(0xFF0A0A0A))
+                      : const Color(0xFF6B6B6B),
                 ),
               ),
             ],
@@ -704,30 +687,15 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
             vertical: 10,
           ),
           decoration: BoxDecoration(
-            gradient: canSend && !isStop
-                ? const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)])
-                : null,
             color: isStop
-                ? const Color(0xFFEF4444).withOpacity(0.15)
-                : (!canSend
-                    ? (widget.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))
-                    : null),
-            borderRadius: BorderRadius.circular(14),
-            border: isStop ? Border.all(color: const Color(0xFFF87171).withOpacity(0.4), width: 1.5) : null,
-            boxShadow: [
-              if (canSend && !isStop)
-                BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              if (isStop)
-                BoxShadow(
-                  color: const Color(0xFFEF4444).withOpacity(0.25),
-                  blurRadius: 14,
-                  offset: const Offset(0, 0),
-                ),
-            ],
+                ? const Color(0xFFEF4444).withValues(alpha: 0.1)
+                : (canSend
+                    ? (widget.isDark ? const Color(0xFF8B8BF5) : const Color(0xFF6366F1))
+                    : (widget.isDark ? const Color(0xFF242424) : const Color(0xFFF5F5F5))),
+            borderRadius: BorderRadius.circular(6),
+            border: isStop
+                ? Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3), width: 1)
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -735,31 +703,23 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
               Icon(
                 isStop ? Icons.stop_circle_rounded : Icons.send_rounded,
                 color: canSend
-                    ? (isStop ? const Color(0xFFF87171) : Colors.white)
-                    : (widget.isDark ? Colors.white24 : Colors.black26),
+                    ? (isStop ? const Color(0xFFEF4444) : Colors.white)
+                    : const Color(0xFF6B6B6B),
                 size: 20,
               ),
               if (isStop) ...[
                 const SizedBox(width: 8),
                 Text(
-                  'Abort Engine',
-                  style: GoogleFonts.plusJakartaSans(
+                  'Stop',
+                  style: GoogleFonts.inter(
                     fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFFF87171),
-                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFFEF4444),
                   ),
                 ),
               ],
             ],
           ),
-        )
-        .animate(target: canSend ? 1 : 0)
-        .scale(
-          begin: const Offset(0.95, 0.95),
-          end: const Offset(1, 1),
-          duration: 200.ms,
-          curve: Curves.easeOutBack,
         ),
       ),
     );

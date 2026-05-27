@@ -52,6 +52,8 @@ class ApiService {
       'Accept': 'application/json',
       'Bypass-Tunnel-Reminder': 'true', 
       'ngrok-skip-browser-warning': 'true', // Added for Ngrok
+      'X-Platform': kIsWeb ? 'Web' : (defaultTargetPlatform == TargetPlatform.iOS ? 'iOS' : (defaultTargetPlatform == TargetPlatform.android ? 'Android' : 'Desktop')),
+      'X-Device-Name': kIsWeb ? 'Browser' : (defaultTargetPlatform == TargetPlatform.macOS ? 'macOS Desktop' : (defaultTargetPlatform == TargetPlatform.windows ? 'Windows Desktop' : (defaultTargetPlatform == TargetPlatform.linux ? 'Linux Desktop' : 'Native Client'))),
     };
     if (_token != null) {
       headers['Authorization'] = 'Bearer $_token';

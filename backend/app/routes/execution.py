@@ -108,59 +108,102 @@ async def execute_code(
             )
 
     if not docker_client:
-        if is_cloud:
-            logger.warning(f"🚨 [EXECUTION] Blocked: Cloud execution attempted without Docker.")
-            return ExecutionResponse(
-                output="",
-                error="Security: Code execution in cloud environment requires Docker sandbox.",
-                execution_time=round(time.time() - start_time, 3)
-            )
-        
-        logger.info(f"ℹ️ [EXECUTION] Using local subprocess execution (Docker not available).")
-        try:
-            if lang == "python":
-                cmd = ["python", "-c", code]
-            elif lang in ["javascript", "js"]:
-                cmd = ["node", "-e", code]
-            else:
-                return ExecutionResponse(
-                    output="",
-                    error=f"Language '{lang}' is not supported for execution.",
-                    execution_time=round(time.time() - start_time, 3)
-                )
+        if is_cloud or lang not in ["python", "js", "javascript"]:
+            logger.info("ℹ️ [EXECUTION] Cloud environment or unsupported native language detected: falling back to remote Piston sandbox.")
+            import urllib.request
+            import urllib.error
+            import json
 
-            proc = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=5.0
-            )
-            execution_time = round(time.time() - start_time, 3)
-            
-            if proc.returncode != 0:
+            # Map standard language identifiers to Piston supported ones
+            piston_lang = lang
+            if lang in ["js", "javascript"]:
+                piston_lang = "javascript"
+            elif lang == "python":
+                piston_lang = "python"
+
+            payload = {
+                "language": piston_lang,
+                "version": "*",
+                "files": [{"content": code}]
+            }
+
+            try:
+                req = urllib.request.Request(
+                    "https://emkc.org/api/v2/piston/execute",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=10.0) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    run_res = res_data.get("run", {})
+                    
+                    execution_time = round(time.time() - start_time, 3)
+                    stderr = run_res.get("stderr", "")
+                    stdout = run_res.get("stdout", "")
+                    output = run_res.get("output", "")
+                    
+                    return ExecutionResponse(
+                        output=output if output else stdout,
+                        error=stderr if stderr else None,
+                        execution_time=execution_time
+                    )
+            except Exception as ex:
+                logger.error(f"❌ [EXECUTION] Remote Piston sandbox failed: {ex}")
+                if is_cloud:
+                    return ExecutionResponse(
+                        output="",
+                        error=f"Cloud Sandbox Error: Remote execution sandbox currently offline or failed ({str(ex)})",
+                        execution_time=round(time.time() - start_time, 3)
+                    )
+                # If not in cloud, allow falling back to local subprocess
+        
+        if not is_cloud:
+            logger.info(f"ℹ️ [EXECUTION] Using local subprocess execution (Docker not available).")
+            try:
+                if lang == "python":
+                    cmd = ["python", "-c", code]
+                elif lang in ["javascript", "js"]:
+                    cmd = ["node", "-e", code]
+                else:
+                    return ExecutionResponse(
+                        output="",
+                        error=f"Language '{lang}' is not supported for execution.",
+                        execution_time=round(time.time() - start_time, 3)
+                    )
+
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=5.0
+                )
+                execution_time = round(time.time() - start_time, 3)
+                
+                if proc.returncode != 0:
+                    return ExecutionResponse(
+                        output=proc.stdout,
+                        error=proc.stderr if proc.stderr else f"Runtime Error (Exit Code: {proc.returncode})",
+                        execution_time=execution_time
+                    )
+                
                 return ExecutionResponse(
                     output=proc.stdout,
-                    error=proc.stderr if proc.stderr else f"Runtime Error (Exit Code: {proc.returncode})",
+                    error=None,
                     execution_time=execution_time
                 )
-            
-            return ExecutionResponse(
-                output=proc.stdout,
-                error=None,
-                execution_time=execution_time
-            )
-        except subprocess.TimeoutExpired:
-            return ExecutionResponse(
-                output="",
-                error="Execution Timed Out (Limit: 5s)",
-                execution_time=round(time.time() - start_time, 3)
-            )
-        except Exception as e:
-            return ExecutionResponse(
-                output="",
-                error=f"Local execution failed: {str(e)}",
-                execution_time=round(time.time() - start_time, 3)
-            )
+            except subprocess.TimeoutExpired:
+                return ExecutionResponse(
+                    output="",
+                    error="Execution Timed Out (Limit: 5s)",
+                    execution_time=round(time.time() - start_time, 3)
+                )
+            except Exception as e:
+                return ExecutionResponse(
+                    output="",
+                    error=f"Local execution failed: {str(e)}",
+                    execution_time=round(time.time() - start_time, 3)
+                )
 
     # Map languages to Docker images and commands
     config = {
