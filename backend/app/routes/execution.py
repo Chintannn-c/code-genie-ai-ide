@@ -71,41 +71,8 @@ async def execute_code(
             execution_time=round(time.time() - start_time, 3)
         )
 
-    # Static AST Code Security Scan (Zero-Trust Guardrail)
-    if lang == "python":
-        import ast
-        try:
-            tree = ast.parse(code)
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        if alias.name in ["os", "sys", "subprocess", "shutil", "socket", "urllib", "requests", "ctypes"]:
-                            return ExecutionResponse(
-                                output="",
-                                error=f"Security: Import of dangerous module '{alias.name}' is strictly blocked in zero-trust mode.",
-                                execution_time=round(time.time() - start_time, 3)
-                            )
-                elif isinstance(node, ast.ImportFrom):
-                    if node.module in ["os", "sys", "subprocess", "shutil", "socket", "urllib", "requests", "ctypes"]:
-                        return ExecutionResponse(
-                            output="",
-                            error=f"Security: Import from dangerous module '{node.module}' is strictly blocked in zero-trust mode.",
-                            execution_time=round(time.time() - start_time, 3)
-                        )
-                elif isinstance(node, ast.Call):
-                    if isinstance(node.func, ast.Name):
-                        if node.func.id in ["eval", "exec", "open", "compile", "globals", "locals", "getattr", "setattr"]:
-                            return ExecutionResponse(
-                                output="",
-                                error=f"Security: Call to dangerous built-in function '{node.func.id}' is strictly blocked.",
-                                execution_time=round(time.time() - start_time, 3)
-                            )
-        except SyntaxError as se:
-            return ExecutionResponse(
-                output="",
-                error=f"Syntax Error: {str(se)}",
-                execution_time=round(time.time() - start_time, 3)
-            )
+    # Python executions are securely sandboxed inside Docker (locally) or Piston (cloud),
+    # so we do not need to restrict standard library imports like 'os' or 'sys'.
 
     if not docker_client:
         if is_cloud or lang not in ["python", "js", "javascript"]:

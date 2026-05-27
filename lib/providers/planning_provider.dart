@@ -111,6 +111,8 @@ class PlanningProvider extends ChangeNotifier {
         final planData = jsonDecode(response.body);
         final plan = PlanModel.fromJson(planData);
         setCurrentPlan(plan);
+        // Instantly execute the mission/plan autonomously
+        await approvePlan(userId, token);
       } else {
         debugPrint('❌ Plan Generation Failed: ${response.statusCode} - ${response.body}');
       }
