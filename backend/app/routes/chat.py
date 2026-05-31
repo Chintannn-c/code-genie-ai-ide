@@ -135,7 +135,7 @@ async def generate_code(request: GenerateRequest, current_user_id: str = Depends
             if not await chat_service.is_chat_owner(chat_id, current_user_id):
                 raise HTTPException(status_code=403, detail="Not authorized to access this chat")
         else:
-            title = f"Generate: {request.prompt[:50]}"
+            title = request.prompt[:50]
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         # SECURITY FIX: Pass current_user_id for ownership verification
@@ -191,7 +191,7 @@ async def debug_code(request: DebugRequest, current_user_id: str = Depends(get_c
             if not await chat_service.is_chat_owner(chat_id, current_user_id):
                 raise HTTPException(status_code=403, detail="Not authorized to access this chat")
         else:
-            title = f"Debug: {request.error[:50]}"
+            title = request.error[:50]
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         user_content = f"**Code:**\n```{request.language}\n{request.code}\n```\n\n**Error:** {request.error}"
@@ -239,7 +239,7 @@ async def explain_code(request: ExplainRequest, current_user_id: str = Depends(g
             if not await chat_service.is_chat_owner(chat_id, current_user_id):
                 raise HTTPException(status_code=403, detail="Not authorized to access this chat")
         else:
-            title = f"Explain: {request.code[:50]}"
+            title = request.code[:50]
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         # SECURITY FIX: Pass current_user_id
@@ -286,7 +286,7 @@ async def orchestrate_response(request: StreamRequest, current_user_id: str = De
             if not await chat_service.is_chat_owner(chat_id, current_user_id):
                 raise HTTPException(status_code=403, detail="Not authorized to access this chat")
         else:
-            chat_id = await chat_service.create_chat(current_user_id, f"Parallel: {request.prompt[:50]}")
+            chat_id = await chat_service.create_chat(current_user_id, request.prompt[:50])
 
         # SECURITY FIX: Pass current_user_id
         fid = request.file_ids[0] if request.file_ids else None
@@ -338,11 +338,11 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
                 raise HTTPException(status_code=403, detail="Not authorized to access this chat")
         else:
             if request.type == "generate":
-                title = f"Generate: {request.prompt[:50]}"
+                title = request.prompt[:50]
             elif request.type == "debug":
-                title = f"Debug: {request.error[:50]}"
+                title = request.error[:50]
             else:
-                title = f"Explain: {request.code[:50]}"
+                title = request.code[:50]
             chat_id = await chat_service.create_chat(current_user_id, title)
 
         if request.type == "generate":
