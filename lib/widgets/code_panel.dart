@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -93,8 +92,11 @@ class _CodePanelState extends State<CodePanel> {
         final uri = Uri.parse(
           'data:text/plain;charset=utf-8,${Uri.encodeComponent(widget.code)}',
         );
-        if (await canLaunchUrl(uri)) {
+        final canLaunch = await canLaunchUrl(uri);
+        if (!context.mounted) return;
+        if (canLaunch) {
           await launchUrl(uri);
+          if (!context.mounted) return;
           _showSnackBar(context, 'File download successfully triggered.');
         } else {
           throw Exception('Browser blocked URL download.');
@@ -104,9 +106,11 @@ class _CodePanelState extends State<CodePanel> {
         final fileName = 'genie_export_${DateTime.now().millisecondsSinceEpoch}.$ext';
         final file = File('./$fileName');
         await file.writeAsString(widget.code);
+        if (!context.mounted) return;
         _showSnackBar(context, 'File saved locally as $fileName inside your workspace.');
       }
     } catch (e) {
+      if (!context.mounted) return;
       _showSnackBar(context, 'Save failed: $e', isError: true);
     }
   }

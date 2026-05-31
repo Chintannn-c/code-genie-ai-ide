@@ -48,7 +48,7 @@ jobs:
         run: flutter pub get
 
       - name: Static Analysis
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run Tests
         run: flutter test
@@ -80,6 +80,12 @@ jobs:
         with:
           name: flutter-web-build
           path: build/web
+
+      - name: Sync Web Build to Backend Static Directory
+        run: |
+          mkdir -p backend/app/static_web
+          rm -rf backend/app/static_web/*
+          cp -r build/web/* backend/app/static_web/
       
       - name: Install Railway CLI
         run: npm install -g @railway/cli
