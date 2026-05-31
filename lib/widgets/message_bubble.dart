@@ -159,10 +159,55 @@ class MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (message.fileId != null) ...[
-                    FilePreviewRenderer(
-                      fileId: message.fileId!,
-                      isDark: isDark,
+                   if (message.fileId != null) ...[
+                    Consumer<ChatProvider>(
+                      builder: (context, cp, _) {
+                        final staged = cp.selectedFiles.where((f) => f.fileId == message.fileId);
+                        final isImage = message.isImage || 
+                            (staged.isNotEmpty && staged.first.language == 'image') ||
+                            message.content.toLowerCase().contains('screenshot');
+                        
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isImage)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF89DCEB).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: const Color(0xFF89DCEB).withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.photo_size_select_actual_rounded,
+                                      color: Color(0xFF89DCEB),
+                                      size: 12,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Screenshot → UI Code',
+                                      style: GoogleFonts.outfit(
+                                        color: const Color(0xFF89DCEB),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ).animate().fadeIn(duration: 300.ms),
+                            FilePreviewRenderer(
+                              fileId: message.fileId!,
+                              isDark: isDark,
+                            ),
+                          ],
+                        );
+                      }
                     ),
                     const SizedBox(height: 12),
                   ],

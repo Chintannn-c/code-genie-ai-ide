@@ -350,6 +350,60 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Workspace Search Getters & Methods
+  List<Map<String, dynamic>> _workspaceSearchResults = [];
+  bool _isSearchingWorkspace = false;
+
+  List<Map<String, dynamic>> get workspaceSearchResults => _workspaceSearchResults;
+  bool get isSearchingWorkspace => _isSearchingWorkspace;
+
+  Future<void> searchWorkspace(String query) async {
+    if (query.trim().isEmpty) {
+      _workspaceSearchResults = [];
+      notifyListeners();
+      return;
+    }
+    _isSearchingWorkspace = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final results = await _apiService.searchWorkspace(query);
+      _workspaceSearchResults = results;
+    } catch (e) {
+      _errorMessage = 'Search failed: ${e.toString()}';
+      _workspaceSearchResults = [];
+    } finally {
+      _isSearchingWorkspace = false;
+      notifyListeners();
+    }
+  }
+
+  void clearWorkspaceSearchResults() {
+    _workspaceSearchResults = [];
+    notifyListeners();
+  }
+
+  // Code Critique Getters & Methods
+  final Map<String, Map<String, dynamic>> _codeCritiques = {};
+  final Map<String, bool> _critiqueLoadingStates = {};
+
+  Map<String, dynamic>? getCritique(String code) => _codeCritiques[code];
+  bool isCritiquing(String code) => _critiqueLoadingStates[code] ?? false;
+
+  Future<void> critiqueCode(String code, String language) async {
+    _critiqueLoadingStates[code] = true;
+    notifyListeners();
+    try {
+      final results = await _apiService.critiqueCode(code, language);
+      _codeCritiques[code] = results;
+    } catch (e) {
+      _errorMessage = 'Critique failed: ${e.toString()}';
+    } finally {
+      _critiqueLoadingStates[code] = false;
+      notifyListeners();
+    }
+  }
+
   bool get isSessionExpired => _isSessionExpired;
 
   void onSessionExpired(VoidCallback callback) {

@@ -472,6 +472,37 @@ class ApiService {
     return response.body;
   }
 
+  /// Search workspace semantically via ChromaDB
+  Future<List<Map<String, dynamic>>> searchWorkspace(String query, {int limit = 10}) async {
+    final response = await _client.post(
+      _uri(ApiConfig.search),
+      headers: _headers,
+      body: jsonEncode({'query': query, 'limit': limit}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Search failed: ${response.body}');
+    }
+
+    final data = jsonDecode(response.body);
+    return List<Map<String, dynamic>>.from(data['results'] ?? []);
+  }
+
+  /// Critique code via Dual-Pass AI review endpoint
+  Future<Map<String, dynamic>> critiqueCode(String code, String language) async {
+    final response = await _client.post(
+      _uri(ApiConfig.critic),
+      headers: _headers,
+      body: jsonEncode({'code': code, 'language': language}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Critique failed: ${response.body}');
+    }
+
+    return jsonDecode(response.body);
+  }
+
   void dispose() {
     _client.close();
   }

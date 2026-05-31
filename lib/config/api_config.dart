@@ -26,6 +26,9 @@ class ApiConfig {
   static const String orchestrate = '/api/orchestrate';
   static const String health = '/api/health';
   static const String execute = '/api/execute';
+  static const String hotpatch = '/api/execute/hotpatch';
+  static const String search = '/api/search';
+  static const String critic = '/api/critic';
   
   // File Upload & Analysis
   static const String upload = '/api/upload';

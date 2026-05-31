@@ -16,6 +16,7 @@ import '../widgets/chat_input.dart';
 import '../widgets/file_upload_bar.dart';
 import '../widgets/attachment_button.dart';
 import '../widgets/ai_thinking_indicator.dart';
+import '../widgets/workspace_search_panel.dart';
 
 import '../widgets/planning_timeline.dart';
 import '../providers/planning_provider.dart';
@@ -42,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen>
   bool _isAtBottom = true;
   bool _showRightPanel = false;
   bool _isSidebarOpen = true; // Added: Collapsible sidebar state
+  bool _showSearchPanel = false;
   final TextEditingController _searchController = TextEditingController();
 
   // ANIM FIX: Explicit AnimationController for CodePanel size transition
@@ -347,7 +349,15 @@ class _ChatScreenState extends State<ChatScreen>
     final isDark = themeProvider.isDark;
     final isWide = MediaQuery.of(context).size.width > 700;
 
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          setState(() {
+            _showSearchPanel = !_showSearchPanel;
+          });
+        },
+      },
+      child: Scaffold(
       key: _scaffoldKey,
       backgroundColor: isDark
           ? themeProvider.darkTheme.scaffoldBackgroundColor
@@ -679,14 +689,40 @@ class _ChatScreenState extends State<ChatScreen>
                       curve: Curves.easeOutCubic,
                     ),
                   ),
-                ),
-              );
+              ));
             },
           ),
+          if (_showSearchPanel)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.6),
+                child: WorkspaceSearchPanel(
+                  onClose: () {
+                    setState(() {
+                      _showSearchPanel = false;
+                    });
+                  },
+                  onInsert: (code) {
+                    Clipboard.setData(ClipboardData(text: code));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Code copied to clipboard! Paste it directly in the input field.'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHeader(
     ChatProvider cp,

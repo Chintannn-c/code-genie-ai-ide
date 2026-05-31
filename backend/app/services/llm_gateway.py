@@ -108,7 +108,25 @@ async def stream_with_failover(
                     if role == "ai":
                         role = "model"
                     contents.append({"role": role, "parts": [{"text": msg["content"]}]})
-                contents.append({"role": "user", "parts": [{"text": prompt_text}]})
+                
+                # vision-to-code support: detect screenshot image file attachments
+                user_parts = [{"text": prompt_text}]
+                if file_id:
+                    meta = await chat_service.get_file_metadata(file_id)
+                    if meta and meta.get("mime_type", "").startswith("image/"):
+                        import os
+                        if os.path.exists(meta["file_path"]):
+                            try:
+                                with open(meta["file_path"], "rb") as img_f:
+                                    img_data = img_f.read()
+                                from google.genai import types
+                                img_part = types.Part.from_bytes(data=img_data, mime_type=meta["mime_type"])
+                                user_parts.append(img_part)
+                                logger.info(f"📸 [VISION] Injected image attachment '{meta['file_name']}' into Gemini request parts.")
+                            except Exception as img_err:
+                                logger.error(f"❌ [VISION] Failed to load image bytes: {img_err}")
+                
+                contents.append({"role": "user", "parts": user_parts})
                 stream = gemini_service.stream_generate(
                     contents,
                     model=model_name,
@@ -191,7 +209,22 @@ async def stream_with_failover(
                 if role in ("assistant", "ai"): role = "model" # Gemini compatibility
                 contents.append({"role": role, "parts": [{"text": msg["content"]}]})
             
-            contents.append({"role": "user", "parts": [{"text": prompt_text}]})
+            # vision-to-code support: detect screenshot image file attachments
+            user_parts = [{"text": prompt_text}]
+            if file_id:
+                meta = await chat_service.get_file_metadata(file_id)
+                if meta and meta.get("mime_type", "").startswith("image/"):
+                    import os
+                    if os.path.exists(meta["file_path"]):
+                        try:
+                            with open(meta["file_path"], "rb") as img_f:
+                                img_data = img_f.read()
+                            from google.genai import types
+                            img_part = types.Part.from_bytes(data=img_data, mime_type=meta["mime_type"])
+                            user_parts.append(img_part)
+                        except Exception: pass
+
+            contents.append({"role": "user", "parts": user_parts})
             final_model_name = f"GEMINI-BACKUP ({settings.GEMINI_MODEL})"
             
             stream = gemini_service.stream_generate(

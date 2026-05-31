@@ -3,7 +3,7 @@ import logging
 import asyncio
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
-from app.models.requests import GenerateRequest, DebugRequest, ExplainRequest, StreamRequest, StopGenerationRequest
+from app.models.requests import GenerateRequest, DebugRequest, ExplainRequest, StreamRequest, StopGenerationRequest, SearchRequest
 from app.models.responses import ChatResponse
 from app.services import chat_service, file_service, ai_service as gemini_service, groq_service, orchestrator_service
 from app.services.socket_manager import manager as socket_manager
@@ -34,6 +34,14 @@ async def stop_generation(request: Request, body_req: StopGenerationRequest, cur
         return {"status": "success", "message": "Termination signal sent to inference pipeline."}
     return {"status": "success", "message": "No active stream found to terminate."}
 
+@router.post("/search")
+@limiter.limit("30/minute")
+async def workspace_search(request: Request, body_req: SearchRequest, current_user_id: str = Depends(get_current_user_id)):
+    """Semantic workspace search using ChromaDB vector index."""
+    from app.services.indexer_service import indexer
+    results = await indexer.search_context(body_req.query, limit=body_req.limit or 10)
+    return {"results": results, "query": body_req.query}
+
 async def _build_file_context(file_ids: list[str] | None, current_user_id: str, prompt_text: str = "") -> str:
     """Validate and extract document contents to inject into system/user prompts."""
     file_context = ""
@@ -52,6 +60,11 @@ async def _build_file_context(file_ids: list[str] | None, current_user_id: str, 
                     detail=f"Document failed to attach to AI context: Access denied for file '{meta['file_name']}'."
                 )
             try:
+                if meta.get("mime_type", "").startswith("image/"):
+                    logger.info(f"📸 [FILE INJECTION] Found image file attachment: '{meta['file_name']}'")
+                    file_context += f"\n\n--- SCREENSHOT ATTACHED: {meta['file_name']} ---\n[Image will be processed by vision model]\n"
+                    continue
+
                 # Use semantic search if we have a prompt and the file is large, otherwise fallback to full text
                 from app.services.indexer_service import indexer
                 if prompt_text and indexer.collection and meta.get("size", 0) > 10000:

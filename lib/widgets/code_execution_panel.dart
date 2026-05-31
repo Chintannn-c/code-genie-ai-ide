@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:ai_coding/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,11 +13,13 @@ import '../config/api_config.dart';
 class CodeExecutionPanel extends StatefulWidget {
   final String initialCode;
   final String language;
+  final String? sourceFilePath; // optional: for hot-patching back to workspace
 
   const CodeExecutionPanel({
     super.key,
     required this.initialCode,
     required this.language,
+    this.sourceFilePath,
   });
 
   @override
@@ -30,6 +33,12 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
   String? _error;
   bool _isRunning = false;
   double? _executionTime;
+
+  // ── New state for enhanced features ──
+  List<String> _images = [];        // base64-encoded image data URIs
+  String? _notice;                  // auto-heal informational notice
+  List<String> _autoInstalled = []; // auto-installed packages
+  bool _isPatching = false;         // hot-patch loading state
 
   @override
   void initState() {
@@ -53,6 +62,9 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
       _output = "";
       _error = null;
       _executionTime = null;
+      _images = [];
+      _notice = null;
+      _autoInstalled = [];
     });
 
     final ap = context.read<AuthProvider>();
@@ -78,6 +90,14 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
           _output = data['output'] ?? "";
           _error = data['error'];
           _executionTime = data['execution_time'];
+          // Parse new enhanced fields
+          if (data['images'] != null) {
+            _images = List<String>.from(data['images']);
+          }
+          _notice = data['notice'];
+          if (data['auto_installed'] != null) {
+            _autoInstalled = List<String>.from(data['auto_installed']);
+          }
         });
       } else {
         if (!mounted) return;
@@ -97,6 +117,94 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
         });
       }
     }
+  }
+
+  Future<void> _hotPatch() async {
+    if (widget.sourceFilePath == null || widget.sourceFilePath!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No source file path available for hot-patching.',
+            style: GoogleFonts.jetBrainsMono(fontSize: 12),
+          ),
+          backgroundColor: const Color(0xFFF59E0B),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isPatching = true);
+    final ap = context.read<AuthProvider>();
+    final token = ap.user?.token;
+
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.hotpatch}'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'file_path': widget.sourceFilePath,
+          'code': _codeController.text,
+        }),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.flash_on_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    data['message'] ?? 'File patched successfully!',
+                    style: GoogleFonts.jetBrainsMono(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF7C3AED),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Hot-patch failed: ${response.body}',
+              style: GoogleFonts.jetBrainsMono(fontSize: 12),
+            ),
+            backgroundColor: const Color(0xFFF85149),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hot-patch error: $e',
+              style: GoogleFonts.jetBrainsMono(fontSize: 12)),
+          backgroundColor: const Color(0xFFF85149),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isPatching = false);
+    }
+  }
+
+  /// Decode a base64 data URI to bytes for Image.memory
+  Uint8List? _decodeBase64Image(String dataUri) {
+    try {
+      final parts = dataUri.split(',');
+      if (parts.length == 2) {
+        return base64Decode(parts[1]);
+      }
+    } catch (_) {}
+    return null;
   }
 
   @override
@@ -181,6 +289,7 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
+                  // ── RUN button ──
                   ElevatedButton.icon(
                     onPressed: _isRunning ? null : _runCode,
                     icon: _isRunning 
@@ -219,7 +328,7 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  // Optimize Option
+                  // ── OPTIMIZE button ──
                   OutlinedButton.icon(
                     onPressed: () {
                       final cp = context.read<ChatProvider>();
@@ -235,6 +344,9 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  // ── HOT PATCH button ──
+                  _buildHotPatchButton(isDark),
                   if (_executionTime != null) ...[
                     const SizedBox(width: 12),
                     Text(
@@ -282,7 +394,7 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
             ),
           ),
 
-          // Terminal Section
+          // Terminal Section (with auto-heal notice + images)
           Expanded(
             flex: 4,
             child: Container(
@@ -291,11 +403,15 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: SingleChildScrollView(
-                  key: ValueKey('${_output.length}_${_error?.length}_$_isRunning'),
+                  key: ValueKey('${_output.length}_${_error?.length}_${_images.length}_$_isRunning'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (_output.isEmpty && _error == null && !_isRunning)
+                      // ── Auto-Heal Notice Banner ──
+                      if (_notice != null)
+                        _buildAutoHealBanner(),
+                      
+                      if (_output.isEmpty && _error == null && !_isRunning && _images.isEmpty)
                         Text(
                           'Ready for execution...',
                           style: GoogleFonts.jetBrainsMono(color: Colors.white24, fontSize: 13),
@@ -315,6 +431,12 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
                           _error!,
                           style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF85149), fontSize: 13),
                         ),
+                      
+                      // ── Rendered Images (Graphs/Charts) ──
+                      if (_images.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        ..._images.map((dataUri) => _buildImageCard(dataUri)),
+                      ],
                     ],
                   ),
                 ),
@@ -324,5 +446,229 @@ class _CodeExecutionPanelState extends State<CodeExecutionPanel> {
         ],
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // HOT PATCH BUTTON — Premium violet/cyan gradient
+  // ═══════════════════════════════════════════════════
+  Widget _buildHotPatchButton(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C3AED), Color(0xFF06B6D4)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: _isPatching ? null : _hotPatch,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _isPatching
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.flash_on_rounded, size: 16, color: Colors.white),
+                const SizedBox(width: 6),
+                Text(
+                  'HOT PATCH',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // AUTO-HEAL NOTICE BANNER
+  // ═══════════════════════════════════════════════════
+  Widget _buildAutoHealBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF7C3AED).withValues(alpha: 0.15),
+            const Color(0xFF06B6D4).withValues(alpha: 0.10),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: const Color(0xFF7C3AED).withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.healing_rounded, size: 16, color: Color(0xFF7C3AED)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AUTO-HEAL',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF7C3AED),
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _notice!,
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 11,
+                    color: const Color(0xFFB4BCD0),
+                    height: 1.4,
+                  ),
+                ),
+                if (_autoInstalled.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    children: _autoInstalled.map((pkg) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF238636).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: const Color(0xFF238636).withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        pkg,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          color: const Color(0xFF7EE787),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1);
+  }
+
+  // ═══════════════════════════════════════════════════
+  // IMAGE CARD — Glassmorphism display for graphs/plots
+  // ═══════════════════════════════════════════════════
+  Widget _buildImageCard(String dataUri) {
+    final bytes = _decodeBase64Image(dataUri);
+    if (bytes == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          '⚠️ Failed to decode image.',
+          style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF59E0B), fontSize: 11),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: 0.06),
+            Colors.white.withValues(alpha: 0.02),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.10),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.08),
+            blurRadius: 24,
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_graph_rounded, size: 14, color: Color(0xFF06B6D4)),
+                const SizedBox(width: 6),
+                Text(
+                  'GENERATED OUTPUT',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF06B6D4),
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const Spacer(),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: dataUri));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Image data copied to clipboard')),
+                    );
+                  },
+                  child: const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF606770)),
+                ),
+              ],
+            ),
+          ),
+          // Image
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '⚠️ Image render failed.',
+                  style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF59E0B), fontSize: 11),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.96, 0.96));
   }
 }

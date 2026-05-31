@@ -4,10 +4,13 @@ import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
 import 'package:flutter_highlight/themes/atom-one-light.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/chat_provider.dart';
 import 'code_execution_panel.dart';
+import 'critic_card.dart';
 
-/// Syntax-highlighted code block widget with copy functionality.
-class CodeBlock extends StatelessWidget {
+/// Syntax-highlighted code block widget with copy and AI Critique functionality.
+class CodeBlock extends StatefulWidget {
   final String code;
   final String language;
   final bool isDark;
@@ -20,24 +23,31 @@ class CodeBlock extends StatelessWidget {
   });
 
   @override
+  State<CodeBlock> createState() => _CodeBlockState();
+}
+
+class _CodeBlockState extends State<CodeBlock> {
+  bool _showCritique = false;
+
+  @override
   Widget build(BuildContext context) {
-    final baseTheme = isDark ? atomOneDarkTheme : atomOneLightTheme;
+    final baseTheme = widget.isDark ? atomOneDarkTheme : atomOneLightTheme;
     final bgColor = baseTheme['root']?.backgroundColor ?? 
-        (isDark ? const Color(0xFF282C34) : Colors.white);
+        (widget.isDark ? const Color(0xFF282C34) : Colors.white);
     
     // Create a modified theme with transparent background for the root
     final theme = Map<String, TextStyle>.from(baseTheme);
     theme['root'] = theme['root']!.copyWith(backgroundColor: Colors.transparent);
 
-    final langDisplay = language.isNotEmpty ? language.toUpperCase() : 'CODE';
+    final langDisplay = widget.language.isNotEmpty ? widget.language.toUpperCase() : 'CODE';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D0D0D) : const Color(0xFFF5F5F5),
+        color: widget.isDark ? const Color(0xFF0D0D0D) : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark
+          color: widget.isDark
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.05),
         ),
@@ -50,12 +60,14 @@ class CodeBlock extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark
+              color: widget.isDark
                   ? const Color(0xFF121214)
                   : const Color(0xFFEFF1F3),
               border: Border(
                 bottom: BorderSide(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                  color: widget.isDark 
+                      ? Colors.white.withValues(alpha: 0.05) 
+                      : Colors.black.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -66,7 +78,7 @@ class CodeBlock extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: isDark
+                    color: widget.isDark
                         ? const Color(0xFF58A6FF).withValues(alpha: 0.2)
                         : const Color(0xFF0969DA).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -76,7 +88,7 @@ class CodeBlock extends StatelessWidget {
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isDark
+                      color: widget.isDark
                           ? const Color(0xFF58A6FF)
                           : const Color(0xFF0969DA),
                     ),
@@ -85,8 +97,32 @@ class CodeBlock extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // AI Critique button
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _showCritique = !_showCritique;
+                        });
+                        if (_showCritique) {
+                          final chatProvider = context.read<ChatProvider>();
+                          if (chatProvider.getCritique(widget.code) == null) {
+                            chatProvider.critiqueCode(widget.code, widget.language);
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.rate_review_rounded, size: 20),
+                      tooltip: 'AI Critic Review',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                      color: _showCritique 
+                          ? const Color(0xFFF38BA8) 
+                          : (widget.isDark 
+                              ? Colors.white.withValues(alpha: 0.6) 
+                              : Colors.black.withValues(alpha: 0.5)),
+                    ),
+                    const SizedBox(width: 8),
                     // Run button (only for supported languages)
-                    if (['python', 'javascript', 'js', 'java'].contains(language.toLowerCase()))
+                    if (['python', 'javascript', 'js', 'java'].contains(widget.language.toLowerCase()))
                       IconButton(
                         onPressed: () {
                           showModalBottomSheet(
@@ -94,8 +130,8 @@ class CodeBlock extends StatelessWidget {
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
                             builder: (context) => CodeExecutionPanel(
-                              initialCode: code,
-                              language: language,
+                              initialCode: widget.code,
+                              language: widget.language,
                             ),
                           );
                         },
@@ -103,7 +139,7 @@ class CodeBlock extends StatelessWidget {
                         tooltip: 'Run Code',
                         constraints: const BoxConstraints(),
                         padding: const EdgeInsets.all(4),
-                        color: isDark ? const Color(0xFF3FB950) : const Color(0xFF1F883D),
+                        color: widget.isDark ? const Color(0xFF3FB950) : const Color(0xFF1F883D),
                       ),
                     const SizedBox(width: 8),
                     // Copy button
@@ -112,7 +148,7 @@ class CodeBlock extends StatelessWidget {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(6),
                         onTap: () {
-                          Clipboard.setData(ClipboardData(text: code));
+                          Clipboard.setData(ClipboardData(text: widget.code));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: const Text('Code copied to clipboard!'),
@@ -133,7 +169,7 @@ class CodeBlock extends StatelessWidget {
                               Icon(
                                 Icons.copy_rounded,
                                 size: 14,
-                                color: isDark
+                                color: widget.isDark
                                     ? Colors.white.withValues(alpha: 0.6)
                                     : Colors.black.withValues(alpha: 0.5),
                               ),
@@ -142,7 +178,7 @@ class CodeBlock extends StatelessWidget {
                                 'Copy',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDark
+                                  color: widget.isDark
                                       ? Colors.white.withValues(alpha: 0.6)
                                       : Colors.black.withValues(alpha: 0.5),
                                 ),
@@ -165,8 +201,8 @@ class CodeBlock extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               child: HighlightView(
-                code.trimRight(), // Clean up trailing newlines
-                language: _mapLanguage(language),
+                widget.code.trimRight(), // Clean up trailing newlines
+                language: _mapLanguage(widget.language),
                 theme: theme,
                 padding: const EdgeInsets.all(16),
                 textStyle: GoogleFonts.jetBrainsMono(
@@ -176,6 +212,29 @@ class CodeBlock extends StatelessWidget {
               ),
             ),
           ),
+          // Critique Card section
+          if (_showCritique)
+            Consumer<ChatProvider>(
+              builder: (context, chatProvider, child) {
+                final critique = chatProvider.getCritique(widget.code);
+                final isLoading = chatProvider.isCritiquing(widget.code);
+                
+                if (critique == null && !isLoading) {
+                  return const SizedBox.shrink();
+                }
+                
+                return Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+                  child: CriticCard(
+                    critique: critique ?? {},
+                    isLoading: isLoading,
+                    onReanalyze: () {
+                      chatProvider.critiqueCode(widget.code, widget.language);
+                    },
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

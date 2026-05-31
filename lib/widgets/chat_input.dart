@@ -1,10 +1,14 @@
 import 'dart:math' as math;
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/chat_provider.dart';
+import '../models/app_file.dart';
 
 // ============================================================
 // COGNITIVE THOUGHT WAVE PAINTER (For Deep Mode Reasoning)
@@ -165,12 +169,19 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     });
 
     _focus.onKeyEvent = (node, event) {
-      if (event is KeyDownEvent &&
-          (event.logicalKey == LogicalKeyboardKey.enter ||
-              event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
-          !HardwareKeyboard.instance.isShiftPressed) {
-        _send();
-        return KeyEventResult.handled;
+      if (event is KeyDownEvent) {
+        if ((event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+            !HardwareKeyboard.instance.isShiftPressed) {
+          _send();
+          return KeyEventResult.handled;
+        }
+        if (event.logicalKey == LogicalKeyboardKey.keyV &&
+            HardwareKeyboard.instance.isControlPressed) {
+          final cp = context.read<ChatProvider>();
+          _handleClipboardPaste(cp);
+          return KeyEventResult.handled;
+        }
       }
       return KeyEventResult.ignored;
     };
@@ -191,6 +202,39 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     _focus.dispose();
     _voiceController.dispose();
     super.dispose();
+  }
+
+  Widget _buildImageThumbnail(AppFile file) {
+    if (file.platformFile == null) return const Icon(Icons.image_rounded, size: 40, color: Color(0xFF89DCEB));
+    
+    // Multiplatform check for web vs native
+    if (kIsWeb) {
+      if (file.platformFile!.bytes != null) {
+        return Image.memory(file.platformFile!.bytes!, fit: BoxFit.cover);
+      }
+    } else {
+      if (file.platformFile!.path != null) {
+        return Image.file(io.File(file.platformFile!.path!), fit: BoxFit.cover);
+      }
+    }
+    return const Icon(Icons.image_rounded, size: 40, color: Color(0xFF89DCEB));
+  }
+
+  Future<void> _handleClipboardPaste(ChatProvider cp) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        cp.uploadFiles(result.files);
+        if (_promptCtrl.text.trim().isEmpty) {
+          _promptCtrl.text = "Generate UI code from this screenshot";
+        }
+      }
+    } catch (e) {
+      debugPrint("Paste handler warning: $e");
+    }
   }
 
   String _detectLanguage(String text) {
@@ -397,6 +441,113 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
                           ).animate().fadeIn(),
                       ],
                     ),
+
+                    // Image attachment thumbnail preview
+                    if (cp.selectedFiles.any((f) => f.fileName.toLowerCase().endsWith('.png') || f.fileName.toLowerCase().endsWith('.jpg') || f.fileName.toLowerCase().endsWith('.jpeg')))
+                      Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: cp.selectedFiles.where((f) => f.fileName.toLowerCase().endsWith('.png') || f.fileName.toLowerCase().endsWith('.jpg') || f.fileName.toLowerCase().endsWith('.jpeg')).map((file) {
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFF89DCEB).withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.2),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: _buildImageThumbnail(file),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: -6,
+                                  top: -6,
+                                  child: GestureDetector(
+                                    onTap: () => cp.removeFile(file.fileId),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFF38BA8),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close_rounded,
+                                        size: 12,
+                                        color: Color(0xFF11111B),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                    // Visual Dropzone Panel (renders if no images are currently selected)
+                    if (!cp.selectedFiles.any((f) => f.fileName.toLowerCase().endsWith('.png') || f.fileName.toLowerCase().endsWith('.jpg') || f.fileName.toLowerCase().endsWith('.jpeg')))
+                      GestureDetector(
+                        onTap: () async {
+                          final result = await FilePicker.platform.pickFiles(
+                            type: FileType.image,
+                            allowMultiple: false,
+                          );
+                          if (result != null && result.files.isNotEmpty) {
+                            cp.uploadFiles(result.files);
+                            // Auto set prompt
+                            if (_promptCtrl.text.trim().isEmpty) {
+                              _promptCtrl.text = "Generate UI code from this screenshot";
+                            }
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF89DCEB).withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF89DCEB).withValues(alpha: 0.15),
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.add_photo_alternate_rounded,
+                                color: Color(0xFF89DCEB),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Paste or click to upload a UI screenshot for Screenshot-to-Code',
+                                style: GoogleFonts.outfit(
+                                  color: const Color(0xFFCDD6F4).withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
 
                     // Main Textfield area
                     TextField(

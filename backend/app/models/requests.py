@@ -78,3 +78,15 @@ class SyncDeltaRequest(BaseModel):
 class StopGenerationRequest(BaseModel):
     """Request schema to interrupt/abort streaming AI generation sessions."""
     chat_id: str = Field(..., min_length=1, description="Target chat identifier to abort")
+
+
+class SearchRequest(BaseModel):
+    """Request schema for semantic workspace search."""
+    query: str = Field(..., min_length=1, max_length=500)
+    limit: int | None = Field(10, ge=1, le=50)
+
+
+class CriticRequest(BaseModel):
+    """Request schema for dual-pass AI review of generated code."""
+    code: str = Field(..., min_length=1, max_length=50000)
+    language: str = Field("python")

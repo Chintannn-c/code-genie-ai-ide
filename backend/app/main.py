@@ -9,7 +9,7 @@ import asyncio
 from app.config import get_settings
 from app.database import connect_to_mongo, close_mongo_connection, get_db
 from app.services.task_engine import task_engine
-from app.routes import chat, history, upload, auth, execution, planning, sync, security
+from app.routes import chat, history, upload, auth, execution, planning, sync, security, critic
 from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
 from app.middleware import ProductionSecurityMiddleware, RateLimitMiddleware
@@ -253,6 +253,7 @@ app.include_router(execution.router)
 app.include_router(planning.router)
 app.include_router(sync.router)
 app.include_router(security.router)
+app.include_router(critic.router)
 
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):

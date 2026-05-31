@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-/// A premium, ultra-minimal AI response planning and thinking animation widget.
-/// Styled for modern dark UIs (background #050816) with extreme visual simplicity.
-/// Does not use large glowing boxes, heavy gradients, or progress sweeps.
+/// A premium, expandable AI response planning and thinking animation widget.
+/// Styled for modern dark UIs (background #0F111E) with extreme visual simplicity.
+/// Shows progress stages in a collapsible vertical timeline.
 class AiThinkingIndicator extends StatefulWidget {
   /// Whether the thinking indicator is active and visible.
   final bool isActive;
@@ -22,10 +23,7 @@ class AiThinkingIndicator extends StatefulWidget {
   /// Triggered when the last status text is reached (only if [loop] is false).
   final VoidCallback? onCompleted;
 
-  /// Optional trailing widget, e.g., small action tags or buttons.
-  final Widget? trailing;
-
-  /// Solid background color. Defaults to premium dark #050816.
+  /// Solid background color. Defaults to premium dark #0F111E.
   final Color backgroundColor;
 
   /// Border color. Defaults to subtle translucent slate.
@@ -44,15 +42,15 @@ class AiThinkingIndicator extends StatefulWidget {
     super.key,
     this.isActive = true,
     this.statuses = const [
-      'Planning response...',
-      'Thinking...',
-      'Generating answer...',
-      'Working...',
+      '🧠 Understanding request...',
+      '📋 Planning solution...',
+      '💻 Writing code...',
+      '🧪 Testing logic...',
+      '✅ Finalizing response...',
     ],
-    this.cycleInterval = const Duration(milliseconds: 3000),
-    this.loop = true,
+    this.cycleInterval = const Duration(milliseconds: 2500),
+    this.loop = false,
     this.onCompleted,
-    this.trailing,
     this.backgroundColor = const Color(0xFF0F111E), // sleek modern SaaS flat dark
     this.borderColor = const Color(0x1BFFFFFF),     // subtle thin transparent border
     this.accentColor = const Color(0xFF6366F1),      // premium indigo/blue accent
@@ -67,6 +65,7 @@ class AiThinkingIndicator extends StatefulWidget {
 class _AiThinkingIndicatorState extends State<AiThinkingIndicator> {
   int _currentIndex = 0;
   Timer? _cycleTimer;
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -113,106 +112,199 @@ class _AiThinkingIndicatorState extends State<AiThinkingIndicator> {
     super.dispose();
   }
 
-  Color _getDotColor(String status) {
-    final lower = status.toLowerCase();
-    if (lower.contains('plan') || lower.contains('context')) {
-      return const Color(0xFF06B6D4); // Sleek Cyan
-    } else if (lower.contains('think') || lower.contains('expert') || lower.contains('reason')) {
-      return const Color(0xFF6366F1); // Indigo
-    } else if (lower.contains('generat') || lower.contains('answer') || lower.contains('solv')) {
-      return const Color(0xFFD946EF); // Violet/Magenta
-    } else if (lower.contains('work') || lower.contains('run') || lower.contains('compil')) {
-      return const Color(0xFF10B981); // Emerald Green
+  Color _getDotColor(int index) {
+    switch (index) {
+      case 0:
+        return const Color(0xFF06B6D4); // Cyan (Understanding)
+      case 1:
+        return const Color(0xFF6366F1); // Indigo (Planning)
+      case 2:
+        return const Color(0xFFD946EF); // Magenta (Coding)
+      case 3:
+        return const Color(0xFFF59E0B); // Amber (Testing)
+      case 4:
+        return const Color(0xFF10B981); // Emerald (Finalizing)
+      default:
+        return widget.accentColor;
     }
-    return widget.accentColor;
   }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.isActive || widget.statuses.isEmpty) return const SizedBox.shrink();
 
-    final status = widget.statuses[_currentIndex];
-    final dotColor = _getDotColor(status);
+    final currentStatus = widget.statuses[_currentIndex];
+    final activeColor = _getDotColor(_currentIndex);
 
-    final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: widget.backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: widget.borderColor,
-          width: 1.0,
+    return Center(
+      child: Container(
+        width: widget.isFullWidth ? double.infinity : 320,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: widget.borderColor,
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 16,
+              spreadRadius: -2,
+            ),
+          ],
         ),
-      ),
-      child: Row(
-        mainAxisSize: widget.isFullWidth ? MainAxisSize.max : MainAxisSize.min,
-        children: [
-          // Elegant Gemini/ChatGPT style fluid breathing dot
-          _GeminiChatGptDot(color: dotColor),
-          const SizedBox(width: 12),
-          
-          // Cycling status text (smooth slide and fade transition)
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.04, 0.0),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  )),
-                  child: child,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Collapse/Expand Header bar
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    _PulseIndicator(color: activeColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.02, 0.0),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                            )),
+                            child: child,
+                          ),
+                        ),
+                        child: Text(
+                          currentStatus,
+                          key: ValueKey<String>(currentStatus),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13.0,
+                            fontWeight: FontWeight.w600,
+                            color: widget.textColor,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: Colors.white54,
+                    ),
+                  ],
                 ),
-              );
-            },
-            child: Text(
-              status,
-              key: ValueKey<String>(status),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13.0,
-                fontWeight: FontWeight.w600,
-                color: widget.textColor,
-                letterSpacing: 0.1,
               ),
             ),
-          ),
-          
-          if (widget.trailing != null) ...[
-            const Spacer(),
-            widget.trailing!,
+
+            // Expanded Stages Timeline
+            if (_isExpanded)
+              Padding(
+                padding: const EdgeInsets.only(left: 18, right: 18, bottom: 16, top: 8),
+                child: Column(
+                  children: List.generate(widget.statuses.length, (index) {
+                    final status = widget.statuses[index];
+                    final isCompleted = index < _currentIndex;
+                    final isActive = index == _currentIndex;
+
+                    Widget indicatorWidget;
+
+                    if (isCompleted) {
+                      indicatorWidget = const Icon(
+                        Icons.check_circle_rounded,
+                        size: 16,
+                        color: Color(0xFF10B981),
+                      ).animate().scale(duration: 200.ms);
+                    } else if (isActive) {
+                      final itemColor = _getDotColor(index);
+                      indicatorWidget = _PulseIndicator(color: itemColor, size: 10);
+                    } else {
+                      indicatorWidget = Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 1.5),
+                        ),
+                      );
+                    }
+
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Left side: Line and Indicator column
+                          Column(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                alignment: Alignment.center,
+                                child: indicatorWidget,
+                              ),
+                              if (index < widget.statuses.length - 1)
+                                Expanded(
+                                  child: Container(
+                                    width: 1.5,
+                                    margin: const EdgeInsets.symmetric(vertical: 4),
+                                    color: isCompleted
+                                        ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                                        : Colors.white10,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 16),
+                          // Right side: Stage Text description
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                status,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12.5,
+                                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                                  color: isActive
+                                      ? Colors.white
+                                      : (isCompleted ? const Color(0xFFA3A3A3) : Colors.white30),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.05, end: 0, curve: Curves.easeOut),
           ],
-        ],
+        ),
       ),
     );
-
-    if (widget.isFullWidth) {
-      return content;
-    } else {
-      return Center(
-        child: IntrinsicWidth(
-          child: content,
-        ),
-      );
-    }
   }
 }
 
 /// A compact dot that gently breathes and pulses outward (ChatGPT/Gemini hybrid style)
-class _GeminiChatGptDot extends StatefulWidget {
+class _PulseIndicator extends StatefulWidget {
   final Color color;
-  const _GeminiChatGptDot({required this.color});
+  final double size;
+  const _PulseIndicator({required this.color, this.size = 8.0});
 
   @override
-  State<_GeminiChatGptDot> createState() => _GeminiChatGptDotState();
+  State<_PulseIndicator> createState() => _PulseIndicatorState();
 }
 
-class _GeminiChatGptDotState extends State<_GeminiChatGptDot> with SingleTickerProviderStateMixin {
+class _PulseIndicatorState extends State<_PulseIndicator> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -236,10 +328,11 @@ class _GeminiChatGptDotState extends State<_GeminiChatGptDot> with SingleTickerP
       animation: _controller,
       builder: (context, child) {
         return CustomPaint(
-          size: const Size(18, 18),
-          painter: _DotPainter(
+          size: Size(widget.size + 10, widget.size + 10),
+          painter: _PulsePainter(
             progress: _controller.value,
             color: widget.color,
+            baseRadius: widget.size / 2,
           ),
         );
       },
@@ -247,28 +340,34 @@ class _GeminiChatGptDotState extends State<_GeminiChatGptDot> with SingleTickerP
   }
 }
 
-class _DotPainter extends CustomPainter {
+class _PulsePainter extends CustomPainter {
   final double progress;
   final Color color;
+  final double baseRadius;
 
-  _DotPainter({required this.progress, required this.color});
+  _PulsePainter({required this.progress, required this.color, required this.baseRadius});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final baseRadius = 4.5;
 
-    // Smooth, gentle size breath animation (ChatGPT/Gemini flat dot)
-    final coreScale = 1.0 + (math.sin(progress * math.pi * 2) * 0.16);
+    // Gently breathes and pulses outward
+    final coreScale = 1.0 + (math.sin(progress * math.pi * 2) * 0.18);
     final corePaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
     
     canvas.drawCircle(center, baseRadius * coreScale, corePaint);
+
+    // Dynamic wave glow pulse ring
+    final wavePaint = Paint()
+      ..color = color.withValues(alpha: 0.35 * (1.0 - progress))
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, baseRadius * (1.0 + progress * 1.6), wavePaint);
   }
 
   @override
-  bool shouldRepaint(covariant _DotPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color;
+  bool shouldRepaint(covariant _PulsePainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color || oldDelegate.baseRadius != baseRadius;
   }
 }
