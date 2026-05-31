@@ -23,7 +23,7 @@ class ThoughtWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(0.3)
+      ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
@@ -41,7 +41,7 @@ class ThoughtWavePainter extends CustomPainter {
 
     // Draw secondary lighter path
     final path2 = Path();
-    paint.color = color.withOpacity(0.12);
+    paint.color = color.withValues(alpha: 0.12);
     for (double x = 0; x <= size.width; x += 2) {
       double wave1 = math.cos((x * 0.025) + (animationValue * math.pi * 1.2)) * 5.0;
       double wave2 = math.sin((x * 0.045) - (animationValue * math.pi * 2.0)) * 2.0;
@@ -69,7 +69,7 @@ class BlueprintPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(0.25)
+      ..color = color.withValues(alpha: 0.25)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
@@ -266,8 +266,9 @@ class _ChatInputState extends State<ChatInput> with TickerProviderStateMixin {
     final lastChar = value[selection.start - 1];
     String? closingChar;
 
-    if (lastChar == '(') closingChar = ')';
-    else if (lastChar == '[') closingChar = ']';
+    if (lastChar == '(') {
+      closingChar = ')';
+    } else if (lastChar == '[') closingChar = ']';
     else if (lastChar == '{') closingChar = '}';
     else if (lastChar == '"') closingChar = '"';
     else if (lastChar == "'") closingChar = "'";

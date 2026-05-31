@@ -177,10 +177,10 @@ class StreamService {
       'type': type,
       'difficulty': difficulty,
       'provider': provider,
-      if (modelName != null) 'model_name': modelName,
+      'model_name': ?modelName,
       if (fileIds != null && fileIds.isNotEmpty) 'file_ids': fileIds,
-      if (temperature != null) 'temperature': temperature,
-      if (maxTokens != null) 'max_tokens': maxTokens,
+      'temperature': ?temperature,
+      'max_tokens': ?maxTokens,
       if (customApiKeys != null && customApiKeys.isNotEmpty) 'custom_api_keys': customApiKeys,
     });
   }

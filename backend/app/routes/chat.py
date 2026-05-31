@@ -59,6 +59,11 @@ async def _build_file_context(file_ids: list[str] | None, current_user_id: str, 
                     status_code=403,
                     detail=f"Document failed to attach to AI context: Access denied for file '{meta['file_name']}'."
                 )
+            if meta.get("status", "safe") not in {"safe", "ready"}:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Document '{meta['file_name']}' is not available because its security status is '{meta.get('status')}'."
+                )
             try:
                 if meta.get("mime_type", "").startswith("image/"):
                     logger.info(f"📸 [FILE INJECTION] Found image file attachment: '{meta['file_name']}'")
@@ -171,9 +176,11 @@ async def generate_code(request: GenerateRequest, current_user_id: str = Depends
             language=request.language,
             timestamp=datetime.now(timezone.utc),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Generate error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Code generation failed due to a server error.")
 
 @router.post("/debug", response_model=ChatResponse)
 async def debug_code(request: DebugRequest, current_user_id: str = Depends(get_current_user_id)):
@@ -217,9 +224,11 @@ async def debug_code(request: DebugRequest, current_user_id: str = Depends(get_c
             chat_id=chat_id, message_id=message_id, content=content,
             type="debug", language=request.language, timestamp=datetime.now(timezone.utc),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Debug error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Debugging failed due to a server error.")
 
 @router.post("/explain", response_model=ChatResponse)
 async def explain_code(request: ExplainRequest, current_user_id: str = Depends(get_current_user_id)):
@@ -262,9 +271,11 @@ async def explain_code(request: ExplainRequest, current_user_id: str = Depends(g
             chat_id=chat_id, message_id=message_id, content=content,
             type="explain", language=request.language, timestamp=datetime.now(timezone.utc),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Explain error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Explanation failed due to a server error.")
 
 @router.post("/orchestrate")
 async def orchestrate_response(request: StreamRequest, current_user_id: str = Depends(get_current_user_id)):
@@ -311,9 +322,11 @@ async def orchestrate_response(request: StreamRequest, current_user_id: str = De
             "models_participated": result["models_participated"],
             "latency": result["latency"]
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Orchestration Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Orchestration failed due to a server error.")
 
 @router.post("/stream")
 async def stream_response(request: StreamRequest, current_user_id: str = Depends(get_current_user_id)):
@@ -382,9 +395,11 @@ async def stream_response(request: StreamRequest, current_user_id: str = Depends
             ),
             headers={"X-Accel-Buffering": "no"}
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Stream setup error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Stream setup failed due to a server error.")
 
 @router.get("/resume-stream")
 async def resume_stream(chat_id: str, current_user_id: str = Depends(get_current_user_id)):

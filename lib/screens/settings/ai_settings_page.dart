@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +29,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
 
   // ── INFRASTRUCTURE STATES ──
   bool _geminiOutage = false;
-  Map<String, Map<String, dynamic>> _models = {
+  final Map<String, Map<String, dynamic>> _models = {
     'Gemini 1.5 Pro': {'latency': 45, 'throughput': 2850, 'status': 'Generating', 'region': 'us-central1', 'load': 'Low', 'uptime': '99.98%', 'priority': 1, 'color': Color(0xFF3B82F6)},
     'Groq Llama 3': {'latency': 12, 'throughput': 6410, 'status': 'Streaming', 'region': 'us-east4', 'load': 'Medium', 'uptime': '99.95%', 'priority': 2, 'color': Color(0xFFF59E0B)},
     'OpenRouter Route': {'latency': 120, 'throughput': 1420, 'status': 'Idle', 'region': 'eu-west1', 'load': 'Low', 'uptime': '99.91%', 'priority': 3, 'color': Color(0xFF8B5CF6)},
@@ -52,7 +50,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   bool _permExecute = false;
   bool _permInstall = false;
   bool _permDeploy = false;
-  List<String> _sandboxLogs = [
+  final List<String> _sandboxLogs = [
     '[AUDIT] Sandbox initialized container sandbox-7a912',
     '[SECURE] Blocked attempt to delete .git/config directory',
     '[AUDIT] File modification request accepted for: lib/main.dart',
@@ -60,7 +58,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
 
   // ── MULTI-AGENT DEBATE ARENA ──
   double _consensusScore = 84.0;
-  List<Map<String, String>> _debateLogs = [
+  final List<Map<String, String>> _debateLogs = [
     {'agent': 'Security Auditor', 'msg': 'Recommends strict token signature validation inside auth handlers.'},
     {'agent': 'Scale Planner', 'msg': 'Suggests utilizing optimistic server state cache tables to offload database locks.'},
     {'agent': 'Code Optimizer', 'msg': 'Agrees with scale planner; AST verification verifies type integrity.'},
@@ -77,7 +75,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   ];
 
   // ── LIVE TELEMETRY CONSOLE logs ──
-  List<String> _consoleLogs = [
+  final List<String> _consoleLogs = [
     '🛰️ [WS] Connected to Central Intelligence Orchestrator (WebSocket secure)',
     '⚙️ [RAG] Vector database synchronized: 4,812 embedding chunks compiled',
     '🤖 [ORCHESTRATOR] Routing request to Gemini 1.5 Pro (Accuracy prioritize)',

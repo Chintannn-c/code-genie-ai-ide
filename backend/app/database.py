@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlsplit, urlunsplit
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
 from app.config import get_settings
@@ -9,12 +10,26 @@ _client: AsyncIOMotorClient | None = None
 _database: AsyncIOMotorDatabase | None = None
 
 
+def _redact_mongo_uri(uri: str) -> str:
+    """Return a log-safe Mongo URI with credentials removed."""
+    try:
+        parsed = urlsplit(uri)
+        if not parsed.username and not parsed.password:
+            return uri
+        host = parsed.hostname or ""
+        if parsed.port:
+            host = f"{host}:{parsed.port}"
+        return urlunsplit((parsed.scheme, host, parsed.path, parsed.query, parsed.fragment))
+    except Exception:
+        return "<invalid mongo uri>"
+
+
 async def connect_to_mongo() -> None:
     """Initialize MongoDB connection and create indexes."""
     global _client, _database
     settings = get_settings()
 
-    logger.info(f"Connecting to MongoDB at {settings.MONGO_URI}...")
+    logger.info("Connecting to MongoDB at %s...", _redact_mongo_uri(settings.MONGO_URI))
     _client = AsyncIOMotorClient(
         settings.MONGO_URI,
         serverSelectionTimeoutMS=5000,

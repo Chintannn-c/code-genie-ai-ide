@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -77,7 +76,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                             colors: [Color(0xFF22C55E), Color(0xFF10B981)],
                           ),
                           boxShadow: [
-                            BoxShadow(color: const Color(0xFF22C55E).withOpacity(0.3), blurRadius: 20),
+                            BoxShadow(color: const Color(0xFF22C55E).withValues(alpha: 0.3), blurRadius: 20),
                           ],
                         ),
                         child: Center(
@@ -135,7 +134,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                           padding: const EdgeInsets.all(24),
                           child: Column(
                             children: [
-                              Icon(Icons.error_outline_rounded, color: Colors.redAccent.withOpacity(0.8), size: 24),
+                              Icon(Icons.error_outline_rounded, color: Colors.redAccent.withValues(alpha: 0.8), size: 24),
                               const SizedBox(height: 12),
                               Text(
                                 sessionProvider.error!,
@@ -316,8 +315,8 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: session.isCurrent 
-                  ? const Color(0xFF22C55E).withOpacity(0.08) 
-                  : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+                  ? const Color(0xFF22C55E).withValues(alpha: 0.08) 
+                  : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -351,7 +350,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         margin: const EdgeInsets.only(left: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E).withOpacity(0.12),
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -372,7 +371,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                     fontSize: 11, 
                     fontWeight: FontWeight.w500,
                     color: session.isCurrent 
-                        ? const Color(0xFF22C55E).withOpacity(0.8) 
+                        ? const Color(0xFF22C55E).withValues(alpha: 0.8) 
                         : (isDark ? Colors.white30 : Colors.black38),
                   ),
                 ),
@@ -445,7 +444,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
           Container(
             width: 34, height: 34,
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -457,7 +456,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                 Container(
                   width: 140, height: 12,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+                    color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -465,7 +464,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                 Container(
                   width: 90, height: 8,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02),
+                    color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -478,6 +477,6 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
   }
 
   Widget _divider(bool isDark) {
-    return Divider(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05), height: 1);
+    return Divider(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05), height: 1);
   }
 }

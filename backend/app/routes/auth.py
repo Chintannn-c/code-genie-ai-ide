@@ -1,14 +1,18 @@
 import logging
 import hashlib
-from datetime import datetime, timezone
+import hmac
+import secrets
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.database import get_db
 from app.limiter import limiter
 from app.models.user import UserCreate, Token
 from app.services import auth_service
+from app.config import get_settings
 from app.services.device_detector import parse_device_info
 from uuid import uuid4
 from pydantic import BaseModel
+from typing import Literal
 
 async def register_session(db, request: Request, user_id: str, access_token: str):
     token_hash = hashlib.sha256(access_token.encode('utf-8')).hexdigest()
@@ -59,6 +63,11 @@ class ForgotPasswordRequest(BaseModel):
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+def _hash_otp(code: str) -> str:
+    settings = get_settings()
+    return hashlib.sha256(f"{settings.JWT_SECRET}:{code}".encode("utf-8")).hexdigest()
 
 @router.post("/register", response_model=Token)
 @limiter.limit("5/hour")
@@ -212,7 +221,7 @@ class ProfileUpdateRequest(BaseModel):
     email: str
 
 class ProviderToggleRequest(BaseModel):
-    provider: str
+    provider: Literal["Google", "GitHub", "OpenRouter", "Groq"]
     connected: bool
 
 class SecurityUpdateRequest(BaseModel):
@@ -336,13 +345,20 @@ async def get_profile(current_user_id: str = Depends(get_current_user_id)):
 async def update_profile(request: ProfileUpdateRequest, current_user_id: str = Depends(get_current_user_id)):
     """Update profile information across devices."""
     db = await get_db()
+    user = await db.users.find_one({"_id": current_user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if request.email != user.get("email"):
+        raise HTTPException(
+            status_code=400,
+            detail="Email changes require a verified email-change flow."
+        )
     
     await db.users.update_one(
         {"_id": current_user_id},
         {
             "$set": {
                 "full_name": request.full_name,
-                "email": request.email,
                 "updated_at": datetime.now(timezone.utc)
             }
         }
@@ -368,28 +384,31 @@ async def toggle_provider(request: ProviderToggleRequest, current_user_id: str =
     
     return {"status": "success", "message": f"{request.provider} status changed successfully"}
 
-import random
-
 @router.post("/security/send-code")
 @limiter.limit("5/hour")
 async def send_verification_code(request: Request, body_req: SendCodeRequest, current_user_id: str = Depends(get_current_user_id)):
-    """Generate and log a secure 6-digit authentication code to the user's Gmail."""
+    """Generate a short-lived 6-digit authentication code."""
     db = await get_db()
     user = await db.users.find_one({"_id": current_user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Generate 6-digit numeric OTP code
-    code = f"{random.randint(100000, 999999)}"
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     
-    # Securely cache this code in user's document for validation
+    # Store only a peppered hash. The delivery integration can read the code from this scope.
     await db.users.update_one(
         {"_id": current_user_id},
-        {"$set": {"pending_2fa_code": code}}
+        {
+            "$set": {
+                "pending_2fa_code_hash": _hash_otp(code),
+                "pending_2fa_expires_at": expires_at,
+            },
+            "$unset": {"pending_2fa_code": ""}
+        }
     )
     
-    # Print securely to logs so developers/users can see it
-    logger.info(f"📧 [Gmail OTP] Sending 6-digit 2FA validation code {code} to user email {body_req.email}")
+    logger.info("Generated 2FA validation code for user %s", current_user_id)
     
     return {
         "status": "success",
@@ -406,7 +425,13 @@ async def update_security(request: SecurityUpdateRequest, current_user_id: str =
         
     # If enabling two_factor, check code
     if request.two_factor and not user.get("two_factor"):
-        if not request.code or request.code != user.get("pending_2fa_code"):
+        expires_at = user.get("pending_2fa_expires_at")
+        if expires_at and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        is_expired = not expires_at or expires_at < datetime.now(timezone.utc)
+        expected_hash = user.get("pending_2fa_code_hash")
+        supplied_hash = _hash_otp(request.code) if request.code else ""
+        if is_expired or not expected_hash or not hmac.compare_digest(supplied_hash, expected_hash):
             raise HTTPException(status_code=400, detail="Invalid Gmail verification code.")
 
     # Log anomaly updates dynamically
@@ -418,6 +443,11 @@ async def update_security(request: SecurityUpdateRequest, current_user_id: str =
                 "two_factor": request.two_factor,
                 "biometric": request.biometric,
                 "updated_at": datetime.now(timezone.utc)
+            },
+            "$unset": {
+                "pending_2fa_code_hash": "",
+                "pending_2fa_expires_at": "",
+                "pending_2fa_code": ""
             },
             "$push": {
                 "anomaly_logs": {
@@ -771,4 +801,3 @@ async def update_notification_settings(
     await redis_service.publish(f"notifications:user:{current_user_id}", ws_payload)
     
     return {"status": "success", "message": "Notification preferences synchronized", "notification_settings": merged}
-

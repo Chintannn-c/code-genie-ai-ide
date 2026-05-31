@@ -53,7 +53,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                           color: const Color(0xFF22C55E),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF22C55E).withOpacity(0.6),
+                              color: const Color(0xFF22C55E).withValues(alpha: 0.6),
                               blurRadius: 8,
                             ),
                           ],
@@ -229,10 +229,10 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F1219),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.05),
+            color: color.withValues(alpha: 0.05),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -252,7 +252,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                   shape: BoxShape.circle,
                   color: color,
                   boxShadow: [
-                    BoxShadow(color: color.withOpacity(0.5), blurRadius: 6),
+                    BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 6),
                   ],
                 ),
               ),
@@ -311,7 +311,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                   ? (orch.clean / orch.totalScanned).clamp(0.0, 1.0)
                   : 1.0,
               minHeight: 6,
-              backgroundColor: const Color(0xFFEF4444).withOpacity(0.3),
+              backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.3),
               valueColor: const AlwaysStoppedAnimation(Color(0xFF22C55E)),
             ),
           ),
@@ -381,7 +381,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
               shape: BoxShape.circle,
               color: color,
               boxShadow: [
-                BoxShadow(color: color.withOpacity(0.4), blurRadius: 6),
+                BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 6),
               ],
             ),
           ),
@@ -411,9 +411,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -472,7 +472,7 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
+                          color: color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -557,9 +557,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: riskColor.withOpacity(0.06),
+              color: riskColor.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: riskColor.withOpacity(0.3)),
+              border: Border.all(color: riskColor.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -722,9 +722,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1219).withOpacity(0.7),
+            color: const Color(0xFF0F1219).withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: titleColor.withOpacity(0.15)),
+            border: Border.all(color: titleColor.withValues(alpha: 0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -906,9 +906,9 @@ class _OrchestrationDashboardState extends State<OrchestrationDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         status,

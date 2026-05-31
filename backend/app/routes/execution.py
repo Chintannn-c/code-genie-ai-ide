@@ -11,10 +11,12 @@ import docker
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
+from app.config import get_settings
 from app.routes.deps import get_current_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/execute", tags=["execution"])
+settings = get_settings()
 
 class ExecutionRequest(BaseModel):
     code: str
@@ -50,7 +52,7 @@ if not is_cloud:
     except Exception as e:
         logger.warning(f"⚠️ [EXECUTION] Docker not found: {e}. Falling back to insecure mode (DEV ONLY).")
 else:
-    logger.info("ℹ️ [EXECUTION] Remote/Cloud environment detected: Skipping Docker initialization (native mode active).")
+    logger.info("[EXECUTION] Remote/Cloud environment detected: Docker initialization skipped.")
 
 
 # ─────────────────────────────────────────────────────
@@ -88,6 +90,12 @@ def _try_auto_install(module_name: str) -> tuple[bool, str]:
     Returns (success: bool, log_message: str).
     """
     pip_name = _resolve_pip_name(module_name)
+    if not settings.ALLOW_EXECUTION_AUTO_INSTALL:
+        return False, (
+            f"Auto-install of '{pip_name}' is disabled by server policy. "
+            "Add the dependency to the execution image instead."
+        )
+
     logger.info(f"🩹 [AUTO-HEAL] Installing missing module: {pip_name} (import: {module_name})")
     try:
         result = subprocess.run(
@@ -300,54 +308,48 @@ async def execute_code(
     # so we do not need to restrict standard library imports like 'os' or 'sys'.
 
     if not docker_client:
-        if is_cloud or lang not in ["python", "js", "javascript"]:
-            logger.info("ℹ️ [EXECUTION] Cloud environment or unsupported native language detected: falling back to remote Piston sandbox.")
-            import urllib.request
-            import urllib.error
-            import json
+        if is_cloud or not settings.ALLOW_NATIVE_CODE_EXECUTION:
+            logger.info("[EXECUTION] Docker unavailable; using remote Piston sandbox.")
+            import httpx
 
-            # Map standard language identifiers to Piston supported ones
-            piston_lang = lang
-            if lang in ["js", "javascript"]:
-                piston_lang = "javascript"
-            elif lang == "python":
-                piston_lang = "python"
-
+            piston_lang = "javascript" if lang in ["js", "javascript"] else lang
             payload = {
                 "language": piston_lang,
                 "version": "*",
-                "files": [{"content": code}]
+                "files": [{"content": code}],
             }
 
             try:
-                req = urllib.request.Request(
-                    "https://emkc.org/api/v2/piston/execute",
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                with urllib.request.urlopen(req, timeout=10.0) as response:
-                    res_data = json.loads(response.read().decode("utf-8"))
-                    run_res = res_data.get("run", {})
-                    
-                    execution_time = round(time.time() - start_time, 3)
-                    stderr = run_res.get("stderr", "")
-                    stdout = run_res.get("stdout", "")
-                    output = run_res.get("output", "")
-                    
-                    return ExecutionResponse(
-                        output=output if output else stdout,
-                        error=stderr if stderr else None,
-                        execution_time=execution_time
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.post(
+                        "https://emkc.org/api/v2/piston/execute",
+                        json=payload,
                     )
+                    response.raise_for_status()
+                    res_data = response.json()
+                    run_res = res_data.get("run", {})
+
+                execution_time = round(time.time() - start_time, 3)
+                stderr = run_res.get("stderr", "")
+                stdout = run_res.get("stdout", "")
+                output = run_res.get("output", "")
+
+                return ExecutionResponse(
+                    output=output if output else stdout,
+                    error=stderr if stderr else None,
+                    execution_time=execution_time,
+                )
             except Exception as ex:
-                logger.error(f"❌ [EXECUTION] Remote Piston sandbox failed: {ex}")
-                # Piston failed (often 401 Unauthorized due to new policies), fall back to local subprocess
-                pass
-        
-        # ── Use enhanced local execution with auto-healing + image capture ──
-        logger.info(f"ℹ️ [EXECUTION] Using enhanced local subprocess execution (auto-heal + image capture).")
-        return _run_in_tmpdir(code, lang, start_time, max_retries=1)
+                logger.error("Remote Piston sandbox failed: %s", ex)
+                return ExecutionResponse(
+                    output="",
+                    error="Remote execution sandbox is unavailable. Native fallback is disabled by server policy.",
+                    execution_time=round(time.time() - start_time, 3),
+                )
+
+        logger.warning("[EXECUTION] Using local subprocess execution because ALLOW_NATIVE_CODE_EXECUTION=true.")
+        retries = 1 if settings.ALLOW_EXECUTION_AUTO_INSTALL else 0
+        return _run_in_tmpdir(code, lang, start_time, max_retries=retries)
 
     # Map languages to Docker images and commands
     config = {
@@ -440,24 +442,48 @@ async def hotpatch_file(
     Write code directly to a workspace file (hot-patch).
     Security: Only allows writing to files within the project workspace.
     """
-    file_path = os.path.abspath(request.file_path)
-    
-    # Security: Prevent path traversal attacks
-    # The file must exist on disk already (we don't create new files via hot-patch)
+    if not settings.ENABLE_HOTPATCH:
+        raise HTTPException(
+            status_code=403,
+            detail="Hot-patch is disabled by server policy."
+        )
+
+    workspace_root = os.path.realpath(os.path.abspath(settings.HOTPATCH_WORKSPACE))
+    requested_path = request.file_path
+    if os.path.isabs(requested_path):
+        file_path = os.path.realpath(os.path.abspath(requested_path))
+    else:
+        file_path = os.path.realpath(os.path.abspath(os.path.join(workspace_root, requested_path)))
+
+    try:
+        inside_workspace = (
+            os.path.commonpath([os.path.normcase(workspace_root), os.path.normcase(file_path)])
+            == os.path.normcase(workspace_root)
+        )
+    except ValueError:
+        inside_workspace = False
+
+    if not inside_workspace:
+        raise HTTPException(
+            status_code=403,
+            detail="Hot-patch path must stay inside HOTPATCH_WORKSPACE."
+        )
+
+    basename = os.path.basename(file_path).lower()
+    _, ext = os.path.splitext(file_path)
+    protected_names = {".env", ".env.local", ".env.production", ".npmrc", ".pypirc"}
+    protected_extensions = {".pem", ".key", ".crt", ".p12", ".pfx", ".jks"}
+    if basename in protected_names or ext.lower() in protected_extensions:
+        raise HTTPException(
+            status_code=403,
+            detail="Hot-patch cannot modify secret or credential files."
+        )
+
     if not os.path.isfile(file_path):
         raise HTTPException(
             status_code=404,
             detail=f"File not found: {request.file_path}. Hot-patch can only update existing files."
         )
-    
-    # Security: Block writing to sensitive system paths
-    blocked_prefixes = ["/etc", "/usr", "/bin", "/sbin", "/var", "/root", "C:\\Windows", "C:\\Program Files"]
-    for prefix in blocked_prefixes:
-        if file_path.startswith(prefix):
-            raise HTTPException(
-                status_code=403,
-                detail="Hot-patch is not allowed for system files."
-            )
     
     try:
         with open(file_path, "w", encoding="utf-8") as f:

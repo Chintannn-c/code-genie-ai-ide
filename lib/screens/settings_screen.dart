@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -70,8 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => pages[index],
-        transitionsBuilder: (_, anim, __, child) {
+        pageBuilder: (_, _, _) => pages[index],
+        transitionsBuilder: (_, anim, _, child) {
           return FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
             child: SlideTransition(

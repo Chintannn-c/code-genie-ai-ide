@@ -20,8 +20,9 @@ class OrchestrationIndicator extends StatelessWidget {
     if (m.contains('gemini')) return const Color(0xFF4285F4);
     if (m.contains('qwen')) return const Color(0xFF00F2FF);
     if (m.contains('mistral')) return const Color(0xFFFF4B4B);
-    if (m.contains('llama') || m.contains('groq'))
+    if (m.contains('llama') || m.contains('groq')) {
       return const Color(0xFF00FF88);
+    }
     return const Color(0xFF6366F1);
   }
 

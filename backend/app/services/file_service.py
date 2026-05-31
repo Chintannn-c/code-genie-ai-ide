@@ -6,23 +6,34 @@ from app.config import get_settings
 
 settings = get_settings()
 UPLOAD_DIR = settings.UPLOAD_PATH
+MAX_UPLOAD_SIZE = 15 * 1024 * 1024
+BLOCKED_EXTENSIONS = {'.exe', '.bat', '.sh', '.cmd', '.msi', '.dll', '.so', '.dylib', '.elf', '.bin', '.com', '.vbs'}
 
 async def save_upload(user_id: str, file: UploadFile) -> str:
     """Save an uploaded file to local storage. Returns relative path."""
     # SECURITY FIX: Sanitize user_id to prevent path traversal attacks
     safe_user_id = "".join([c for c in user_id if c.isalnum() or c in ('-', '_')])
     user_dir = os.path.join(UPLOAD_DIR, safe_user_id)
-    if not os.path.exists(user_dir):
-        os.makedirs(user_dir)
+    os.makedirs(user_dir, exist_ok=True)
         
     # Generate unique filename to avoid collisions
-    ext = os.path.splitext(file.filename)[1]
+    filename = file.filename or "upload"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in BLOCKED_EXTENSIONS:
+        raise ValueError(f"Uploading file type '{ext}' is not allowed.")
     safe_name = f"{uuid4()}{ext}"
     file_path = os.path.join(user_dir, safe_name)
     
+    total_size = 0
     async with aiofiles.open(file_path, 'wb') as out_file:
-        content = await file.read()
-        await out_file.write(content)
+        while content := await file.read(1024 * 1024):
+            total_size += len(content)
+            if total_size > MAX_UPLOAD_SIZE:
+                await out_file.close()
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise ValueError("File exceeds the 15MB upload limit.")
+            await out_file.write(content)
         
     return file_path
 

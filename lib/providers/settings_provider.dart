@@ -261,13 +261,13 @@ class SettingsProvider extends ChangeNotifier {
 
   // Setter ─ Editor Settings
   Future<String> _readApiKey(String provider, SharedPreferences prefs) async {
-    final key = '${_prefixKey}$provider';
+    final key = '$_prefixKey$provider';
     final secureValue = await _secureStorage.read(key: key);
     return secureValue ?? prefs.getString(key) ?? '';
   }
 
   Future<void> _writeApiKey(String provider, String value) async {
-    final key = '${_prefixKey}$provider';
+    final key = '$_prefixKey$provider';
     final cleanValue = value.trim();
     if (cleanValue.isEmpty) {
       await _secureStorage.delete(key: key);

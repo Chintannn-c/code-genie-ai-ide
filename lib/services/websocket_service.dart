@@ -25,7 +25,7 @@ class WebSocketService {
     _disconnectInternal();
     
     final tokenQuery = token != null ? '?token=$token' : '';
-    final wsUrl = ApiConfig.baseUrl.replaceFirst('http', 'ws') + '/ws/$userId$tokenQuery';
+    final wsUrl = '${ApiConfig.baseUrl.replaceFirst('http', 'ws')}/ws/$userId$tokenQuery';
     
     try {
       if (kIsWeb) {

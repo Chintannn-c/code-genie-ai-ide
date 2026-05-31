@@ -34,10 +34,12 @@ class MessageBubble extends StatelessWidget {
     if (m.contains('gemini')) return const Color(0xFF4285F4); // Electric Blue
     if (m.contains('qwen')) return const Color(0xFF00F2FF); // Cyber Cyan
     if (m.contains('mistral')) return const Color(0xFFFF4B4B); // Security Red
-    if (m.contains('llama') || m.contains('groq'))
+    if (m.contains('llama') || m.contains('groq')) {
       return const Color(0xFF00FF88); // Optimizer Green
-    if (m.contains('gpt') || m.contains('oss'))
+    }
+    if (m.contains('gpt') || m.contains('oss')) {
       return const Color(0xFFFFD700); // Holographic Gold
+    }
     return const Color(0xFF6366F1); // Default Neural Purple
   }
 

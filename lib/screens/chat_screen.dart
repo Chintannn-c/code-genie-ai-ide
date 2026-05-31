@@ -414,7 +414,7 @@ class _ChatScreenState extends State<ChatScreen>
                                 child: Selector<ChatProvider, String>(
                                   selector: (_, cp) =>
                                       '${cp.messages.length}_${cp.isLoading}_${cp.isStreaming && cp.messages.isNotEmpty ? cp.messages.last.content.length : 0}',
-                                  builder: (context, _, __) {
+                                  builder: (context, _, _) {
                                     if (chatProvider.isLoading) {
                                       return _buildSkeletonLoader(isDark);
                                     }
@@ -430,7 +430,7 @@ class _ChatScreenState extends State<ChatScreen>
                         Selector<ChatProvider, String>(
                           selector: (_, cp) =>
                               '${cp.selectedFiles.length}_${cp.isUploading}',
-                          builder: (context, _, __) => FileUploadBar(
+                          builder: (context, _, _) => FileUploadBar(
                             files: chatProvider.selectedFiles,
                             isDark: isDark,
                             onRemove: chatProvider.removeFile,
@@ -442,7 +442,7 @@ class _ChatScreenState extends State<ChatScreen>
                         Selector<ChatProvider, String>(
                           selector: (_, cp) =>
                               '${cp.isOrchestrating}_${cp.currentContextStatus}_${cp.isStreaming}',
-                          builder: (context, _, __) {
+                          builder: (context, _, _) {
                             final showThinking = chatProvider.isOrchestrating ||
                                 chatProvider.currentContextStatus != null ||
                                 (chatProvider.isStreaming &&
@@ -608,7 +608,7 @@ class _ChatScreenState extends State<ChatScreen>
               if (!cp.isSessionExpired) return const SizedBox.shrink();
               return Positioned.fill(
                 child: Container(
-                  color: Colors.black.withOpacity(0.55),
+                  color: Colors.black.withValues(alpha: 0.55),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
                     child: Center(
@@ -619,12 +619,12 @@ class _ChatScreenState extends State<ChatScreen>
                           color: isDark ? const Color(0xFF0F172A) : Colors.white,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.06),
+                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
                             width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.4),
+                              color: Colors.black.withValues(alpha: 0.4),
                               blurRadius: 32,
                               offset: const Offset(0, 16),
                             ),
@@ -636,10 +636,10 @@ class _ChatScreenState extends State<ChatScreen>
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF59E0B).withOpacity(0.1),
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: const Color(0xFFF59E0B).withOpacity(0.2),
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
                                 ),
                               ),
                               child: const Icon(
@@ -840,13 +840,13 @@ class _ChatScreenState extends State<ChatScreen>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: active
-            ? const Color(0xFF6366F1).withOpacity(0.12)
-            : const Color(0xFF10B981).withOpacity(0.08),
+            ? const Color(0xFF6366F1).withValues(alpha: 0.12)
+            : const Color(0xFF10B981).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: active
-              ? const Color(0xFF6366F1).withOpacity(0.3)
-              : const Color(0xFF10B981).withOpacity(0.2),
+              ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+              : const Color(0xFF10B981).withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -1674,7 +1674,7 @@ class _RightCockpitPanelState extends State<RightCockpitPanel>
         color: widget.isDark ? const Color(0xFF0D0F16) : Colors.white,
         border: Border(
           left: BorderSide(
-            color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05),
+            color: widget.isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
             width: 1.5,
           ),
         ),
@@ -1688,7 +1688,7 @@ class _RightCockpitPanelState extends State<RightCockpitPanel>
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: widget.isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                    color: widget.isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                   ),
                 ),
               ),
@@ -1800,7 +1800,7 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: orch.totalScanned > 0 ? (orch.clean / orch.totalScanned).clamp(0.0, 1.0) : 1.0,
                           minHeight: 4,
-                          backgroundColor: const Color(0xFFEF4444).withOpacity(0.2),
+                          backgroundColor: const Color(0xFFEF4444).withValues(alpha: 0.2),
                           valueColor: const AlwaysStoppedAnimation(Color(0xFF10B981)),
                         ),
                       ),
@@ -1820,9 +1820,9 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
                           margin: const EdgeInsets.only(bottom: 6),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444).withOpacity(0.06),
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
+                            border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             children: [
@@ -1872,7 +1872,7 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.black38,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withOpacity(0.04)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                     ),
                     padding: const EdgeInsets.all(8),
                     child: ListView.builder(
@@ -1889,7 +1889,7 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                decoration: BoxDecoration(color: const Color(0xFF6366F1).withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+                                decoration: BoxDecoration(color: const Color(0xFF6366F1).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
                                 child: Text(type, style: GoogleFonts.jetBrainsMono(fontSize: 8, fontWeight: FontWeight.bold, color: const Color(0xFF818CF8))),
                               ),
                               const SizedBox(width: 6),
@@ -1919,9 +1919,9 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF131520).withOpacity(0.6),
+        color: const Color(0xFF131520).withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.15)),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1957,9 +1957,9 @@ class _OrchestrationTelemetryTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         name,

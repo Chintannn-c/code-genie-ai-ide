@@ -1,5 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
+import uuid
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +16,6 @@ from app.services.socket_manager import manager as socket_manager
 from app.logging_config import setup_logging
 from app.middleware import ProductionSecurityMiddleware, RateLimitMiddleware
 from fastapi import WebSocket, WebSocketDisconnect
-from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
@@ -22,6 +23,24 @@ from app.limiter import limiter
 # Initialize Production Logging
 setup_logging()
 logger = logging.getLogger(__name__)
+settings = get_settings()
+WEB_ROOT = Path(__file__).resolve().parent / "static_web"
+
+
+def _safe_static_file(relative_path: str) -> Path | None:
+    """Resolve a SPA static path without allowing traversal outside static_web."""
+    try:
+        web_root = WEB_ROOT.resolve()
+        candidate = (web_root / relative_path).resolve()
+        candidate.relative_to(web_root)
+    except ValueError:
+        logger.warning("Blocked static path traversal attempt: %s", relative_path)
+        return None
+    except Exception as exc:
+        logger.warning("Failed to resolve static path %s: %s", relative_path, exc)
+        return None
+
+    return candidate if candidate.is_file() else None
 
 # STARTUP DIAGNOSTICS
 logger.info(f"🔍 [DIAGNOSTIC] RAILWAY_PORT: {os.environ.get('PORT')}")
@@ -33,6 +52,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚩 [STARTUP] Phase 1: Initializing Lifecycle...")
     
     settings = get_settings()
+    settings.validate_production_safety()
     
     # --- NON-BLOCKING BACKGROUND INIT ---
     async def initialize_infrastructure():
@@ -128,15 +148,20 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
-# 3. Global Exception Interceptor (Prints everything to Terminal)
+# 3. Global Exception Interceptor
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    import traceback
-    error_details = traceback.format_exc()
-    logger.error(f"🔥 UNHANDLED ERROR: {exc}\n{error_details}")
+    error_id = str(uuid.uuid4())
+    logger.error(
+        "Unhandled error %s while processing %s %s",
+        error_id,
+        request.method,
+        request.url.path,
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error", "error": str(exc)}
+        content={"detail": "Internal Server Error", "error_id": error_id}
     )
 
 @app.get("/api/health/detailed")
@@ -148,8 +173,8 @@ async def detailed_health_check():
         db = await get_db()
         await db.command("ping")
         db_status = "connected"
-    except Exception as e:
-        db_status = f"error: {e}"
+    except Exception:
+        db_status = "error"
 
     return {
         "status": "online",
@@ -212,9 +237,8 @@ async def resolve_approval(request_id: str, approved: bool = True):
 @app.get("/")
 async def root(request: Request):
     """Serve SPA index or API status."""
-    web_path = os.path.join(os.path.dirname(__file__), "static_web")
-    index_path = os.path.join(web_path, "index.html")
-    if os.path.exists(index_path):
+    index_path = WEB_ROOT / "index.html"
+    if index_path.exists():
         return FileResponse(index_path)
     return {"status": "ok", "service": "Code Genie API", "message": "SPA Index not found"}
 
@@ -228,17 +252,16 @@ app.add_middleware(ProductionSecurityMiddleware)
 app.add_middleware(RateLimitMiddleware)
 
 # CORS (Must be outer layer)
-settings = get_settings()
-origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",")] if settings.ALLOWED_ORIGINS != "*" else ["*"]
+origins = settings.allowed_origins
 
 # Also include defaults for local dev
-if "*" not in origins:
-    origins.extend(["http://localhost", "http://localhost:8000"])
+if not settings.is_production and "*" not in origins:
+    origins.extend(["http://localhost", "http://localhost:8000", "http://127.0.0.1:8000"])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials="*" not in origins,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -256,7 +279,7 @@ app.include_router(security.router)
 app.include_router(critic.router)
 
 @app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):
+async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str | None = None):
     # Security: Verify JWT token before allowing connection
     if not token:
         logger.warning(f"❌ WebSocket connection rejected for {user_id}: Missing token")
@@ -325,17 +348,16 @@ async def not_found_handler(request: Request, exc):
     
     # 2. Check if it's a static file request
     # Flutter Web builds place assets, main.dart.js, etc. in the static_web folder
-    web_path = os.path.join(os.path.dirname(__file__), "static_web")
     path = request.url.path.lstrip("/")
     
     if path:
-        static_file = os.path.join(web_path, path)
-        if os.path.isfile(static_file):
+        static_file = _safe_static_file(path)
+        if static_file:
             return FileResponse(static_file)
 
     # 3. Default to SPA index for root or client-side routes
-    index_path = os.path.join(web_path, "index.html")
-    if os.path.exists(index_path):
+    index_path = WEB_ROOT / "index.html"
+    if index_path.exists():
         return FileResponse(index_path)
         
     return JSONResponse(status_code=404, content={"detail": "Resource not found"})
@@ -363,11 +385,11 @@ if __name__ == "__main__":
     final_port = 3000
     if env_port:
         final_port = int(env_port)
-        print(f"🎯 [PORT_FOUND] Using PORT from environment: {final_port}")
+        logger.info("Using PORT from environment: %s", final_port)
     elif proxy_port:
         final_port = int(proxy_port)
-        print(f"🎯 [PORT_FOUND] Using RAILWAY_TCP_PROXY_PORT: {final_port}")
+        logger.info("Using RAILWAY_TCP_PROXY_PORT: %s", final_port)
     else:
-        print(f"⚠️ [PORT_MISSING] No port found in environment, defaulting to 8000")
+        logger.warning("No port found in environment, defaulting to 3000")
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=final_port, log_level="info", proxy_headers=True)  # nosec

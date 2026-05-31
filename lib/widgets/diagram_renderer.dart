@@ -94,7 +94,7 @@ class _DiagramRendererState extends State<DiagramRenderer> {
           try {
             const container = document.getElementById('diagram-container');
             // Remove code block backticks if they are passed accidentally
-            graphDefinition = graphDefinition.replace(/^```mermaid\s*/, '').replace(/```\s*\$/, '');
+            graphDefinition = graphDefinition.replace(/^```mermaids*/, '').replace(/```s*\$/, '');
             const { svg } = await mermaid.render('graphDiv', graphDefinition);
             container.innerHTML = svg;
           } catch (error) {

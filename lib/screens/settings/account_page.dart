@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -135,7 +134,7 @@ class _AccountPageState extends State<AccountPage> {
         body: jsonEncode({
           'two_factor': twoFactor,
           'biometric': biometric,
-          if (code != null) 'code': code,
+          'code': ?code,
         }),
       );
 

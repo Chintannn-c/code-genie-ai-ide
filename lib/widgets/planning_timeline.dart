@@ -144,8 +144,8 @@ class _NeuralGridPainter extends CustomPainter {
         if (dist < maxDistance) {
           final intensity = (1.0 - (dist / maxDistance)) * 0.18;
           linePaint.color = isDark
-              ? (isProcessing ? const Color(0xFF818CF8) : const Color(0xFF64748B)).withOpacity(intensity)
-              : (isProcessing ? const Color(0xFF4F46E5) : const Color(0xFF94A3B8)).withOpacity(intensity);
+              ? (isProcessing ? const Color(0xFF818CF8) : const Color(0xFF64748B)).withValues(alpha: intensity)
+              : (isProcessing ? const Color(0xFF4F46E5) : const Color(0xFF94A3B8)).withValues(alpha: intensity);
           canvas.drawLine(Offset(p1.x, p1.y), Offset(p2.x, p2.y), linePaint);
         }
       }
@@ -154,8 +154,8 @@ class _NeuralGridPainter extends CustomPainter {
     // Draw particles
     for (var p in particles) {
       particlePaint.color = isDark
-          ? (isProcessing ? const Color(0xFF818CF8) : const Color(0xFF64748B)).withOpacity(p.alpha)
-          : (isProcessing ? const Color(0xFF4F46E5) : const Color(0xFF94A3B8)).withOpacity(p.alpha);
+          ? (isProcessing ? const Color(0xFF818CF8) : const Color(0xFF64748B)).withValues(alpha: p.alpha)
+          : (isProcessing ? const Color(0xFF4F46E5) : const Color(0xFF94A3B8)).withValues(alpha: p.alpha);
       canvas.drawCircle(Offset(p.x, p.y), p.radius, particlePaint);
     }
   }
@@ -194,16 +194,16 @@ class PlanningTimeline extends StatelessWidget {
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark 
-                ? const Color(0xFF0D0F16).withOpacity(0.72) 
-                : Colors.white.withOpacity(0.85),
+                ? const Color(0xFF0D0F16).withValues(alpha: 0.72) 
+                : Colors.white.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
+                color: Colors.black.withValues(alpha: 0.25),
                 blurRadius: 30,
                 offset: const Offset(0, 15),
               ),
@@ -307,9 +307,9 @@ class PlanningTimeline extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withOpacity(0.15),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+                        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         'ACTIVE ENGINE',
@@ -328,7 +328,7 @@ class PlanningTimeline extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white.withOpacity(0.87) : Colors.black87,
+                  color: isDark ? Colors.white.withValues(alpha: 0.87) : Colors.black87,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -343,7 +343,7 @@ class PlanningTimeline extends StatelessWidget {
           },
           icon: Icon(Icons.close_rounded, color: isDark ? Colors.white38 : Colors.black38),
           visualDensity: VisualDensity.compact,
-          hoverColor: Colors.red.withOpacity(0.1),
+          hoverColor: Colors.red.withValues(alpha: 0.1),
         ),
       ],
     );
@@ -373,7 +373,7 @@ class PlanningTimeline extends StatelessWidget {
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF818CF8),
-            side: BorderSide(color: const Color(0xFF818CF8).withOpacity(0.3)),
+            side: BorderSide(color: const Color(0xFF818CF8).withValues(alpha: 0.3)),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -489,15 +489,15 @@ class PlanningTimeline extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F111E).withOpacity(0.85) : Colors.white.withOpacity(0.9),
+          color: isDark ? const Color(0xFF0F111E).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isProcessing ? const Color(0xFF6366F1).withOpacity(0.3) : (isDark ? Colors.white10 : Colors.black12),
+            color: isProcessing ? const Color(0xFF6366F1).withValues(alpha: 0.3) : (isDark ? Colors.white10 : Colors.black12),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -549,7 +549,7 @@ class PlanningTimeline extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: isProcessing ? const Color(0xFF6366F1).withOpacity(0.12) : const Color(0xFF10B981).withOpacity(0.12),
+                color: isProcessing ? const Color(0xFF6366F1).withValues(alpha: 0.12) : const Color(0xFF10B981).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -591,7 +591,7 @@ class PlanningTimeline extends StatelessWidget {
             child: Container(
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0D0F16).withOpacity(0.92) : Colors.white.withOpacity(0.95),
+                color: isDark ? const Color(0xFF0D0F16).withValues(alpha: 0.92) : Colors.white.withValues(alpha: 0.95),
                 border: Border.all(color: Colors.white12, width: 1.5),
                 borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
               ),
@@ -801,17 +801,17 @@ class _StepItemState extends State<_StepItem> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isRunning
-            ? (isDark ? const Color(0xFF13172E).withOpacity(0.55) : const Color(0xFFEEF2FF).withOpacity(0.85))
+            ? (isDark ? const Color(0xFF13172E).withValues(alpha: 0.55) : const Color(0xFFEEF2FF).withValues(alpha: 0.85))
             : (isCompleted 
-                  ? (isDark ? const Color(0xFF0A0F11).withOpacity(0.3) : const Color(0xFFF0FDF4).withOpacity(0.5))
+                  ? (isDark ? const Color(0xFF0A0F11).withValues(alpha: 0.3) : const Color(0xFFF0FDF4).withValues(alpha: 0.5))
                   : Colors.transparent),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isRunning
-              ? const Color(0xFF6366F1).withOpacity(0.2)
+              ? const Color(0xFF6366F1).withValues(alpha: 0.2)
               : (isCompleted 
-                    ? const Color(0xFF10B981).withOpacity(0.12)
-                    : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02))),
+                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                    : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02))),
           width: 1.2,
         ),
       ),
@@ -893,9 +893,9 @@ class _StepItemState extends State<_StepItem> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.06),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.12)),
+                      border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.12)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -955,7 +955,7 @@ class _StepItemState extends State<_StepItem> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -986,9 +986,9 @@ class _StepItemState extends State<_StepItem> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.08),
+          color: Colors.green.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.green.withOpacity(0.2)),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1021,7 @@ class _StepItemState extends State<_StepItem> {
         color: isDark ? const Color(0xFF070913) : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
         ),
       ),
       child: Column(
@@ -1205,10 +1205,10 @@ class _AIActionBadgeState extends State<AIActionBadge> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: badgeColor.withOpacity(_isHovered ? 0.22 : 0.12),
+                color: badgeColor.withValues(alpha: _isHovered ? 0.22 : 0.12),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: badgeColor.withOpacity(_isHovered ? 0.6 : 0.25),
+                  color: badgeColor.withValues(alpha: _isHovered ? 0.6 : 0.25),
                   width: 1.2,
                 ),
               ),
@@ -1234,7 +1234,7 @@ class _AIActionBadgeState extends State<AIActionBadge> {
                   Icon(
                     _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
                     size: 13,
-                    color: badgeColor.withOpacity(0.6),
+                    color: badgeColor.withValues(alpha: 0.6),
                   ),
                 ],
               ),
@@ -1248,9 +1248,9 @@ class _AIActionBadgeState extends State<AIActionBadge> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: widget.isDark ? const Color(0xFF0F121E).withOpacity(0.85) : Colors.black.withOpacity(0.04),
+              color: widget.isDark ? const Color(0xFF0F121E).withValues(alpha: 0.85) : Colors.black.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: badgeColor.withOpacity(0.15)),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.15)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

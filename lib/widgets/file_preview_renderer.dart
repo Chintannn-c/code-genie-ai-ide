@@ -694,7 +694,7 @@ class _FilePreviewRendererState extends State<FilePreviewRenderer> {
                   node.name,
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 12,
-                    color: widget.isDark ? Colors.white.withOpacity(0.8) : Colors.black87,
+                    color: widget.isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black87,
                   ),
                 ),
               ),
@@ -710,7 +710,7 @@ class _FilePreviewRendererState extends State<FilePreviewRenderer> {
   // 5. ISOLATED TEXT CODE VIEWER RENDERER
   Widget _buildCodeViewerRenderer(AppFile file, String content) {
     final cleanCode = content.length > 5000 
-        ? content.substring(0, 5000) + '\n...[Preview truncated for length limits]...'
+        ? '${content.substring(0, 5000)}\n...[Preview truncated for length limits]...'
         : content;
 
     return Column(

@@ -92,8 +92,17 @@ class AgentToolsService:
         # Normalize to prevent path traversal via ../ or symlinks
         full_path = os.path.realpath(os.path.abspath(os.path.join(self.workspace_root, relative_path)))
 
-        # Security: Prevent path traversal
-        if not full_path.startswith(os.path.realpath(self.workspace_root)):
+        # Security: Prevent path traversal, including sibling-prefix paths.
+        workspace_root = os.path.realpath(self.workspace_root)
+        try:
+            inside_workspace = (
+                os.path.commonpath([os.path.normcase(workspace_root), os.path.normcase(full_path)])
+                == os.path.normcase(workspace_root)
+            )
+        except ValueError:
+            inside_workspace = False
+
+        if not inside_workspace:
             logger.warning(f"🚨 [PATH TRAVERSAL] Blocked: {relative_path}")
             raise PermissionError(f"Access denied: path traversal detected.")
 

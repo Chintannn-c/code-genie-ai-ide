@@ -19,6 +19,17 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends
 from app.limiter import limiter
 import aiofiles
 
+
+def _require_safe_file(file_meta: dict) -> None:
+    """Block AI ingestion or download until the async security scan has cleared the file."""
+    status = file_meta.get("status", "safe")
+    if status not in {"safe", "ready"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"File is not available because its security status is '{status}'."
+        )
+
+
 @router.post("/upload", response_model=list[UploadResponse])
 @limiter.limit("20/minute")
 async def upload_files(
@@ -30,8 +41,12 @@ async def upload_files(
     """Upload one or more files and store metadata using streaming to prevent OOM."""
     responses = []
     try:
+        if len(files) > 10:
+            raise HTTPException(status_code=400, detail="A maximum of 10 files can be uploaded at once.")
+
         for file in files:
             file_id = str(uuid4())
+            filename = file.filename or "upload"
             
             # 1. Create user directory
             from app.services import file_service
@@ -41,7 +56,7 @@ async def upload_files(
             os.makedirs(user_dir, exist_ok=True)
             
             # 2. Generate safe path
-            ext = os.path.splitext(file.filename)[1].lower()
+            ext = os.path.splitext(filename)[1].lower()
             
             # Security: File extension validation
             BLOCKED_EXTENSIONS = {'.exe', '.bat', '.sh', '.cmd', '.msi', '.dll', '.so', '.dylib', '.elf', '.bin', '.com', '.vbs'}
@@ -98,14 +113,14 @@ async def upload_files(
                     raise HTTPException(status_code=400, detail="Invalid ZIP archive.")
             
             # Detect language
-            lang = file_service.get_language_from_ext(file.filename)
+            lang = file_service.get_language_from_ext(filename)
             size = os.path.getsize(path)
             
             # Save metadata to DB
             await chat_service.save_file_metadata(
                 user_id=current_user_id,
                 file_id=file_id,
-                file_name=file.filename,
+                file_name=filename,
                 file_path=path,
                 language=lang,
                 size=size
@@ -117,18 +132,20 @@ async def upload_files(
                 run_file_security_pipeline,
                 file_id=file_id,
                 file_path=path,
-                filename=file.filename,
+                filename=filename,
                 user_id=current_user_id
             )
             
             responses.append(UploadResponse(
                 file_id=file_id,
-                file_name=file.filename,
+                file_name=filename,
                 language=lang,
                 size=size
             ))
             
         return responses
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Upload error: {e}")
         # SECURITY FIX: Generic message
@@ -159,6 +176,7 @@ async def analyze_file(
         if file_meta["user_id"] != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
             
+        _require_safe_file(file_meta)
         content = await file_service.read_file_content(file_meta["file_path"])
         
         # Create chat if needed
@@ -207,9 +225,11 @@ async def analyze_file(
             language=file_meta["language"],
             timestamp=datetime.now(timezone.utc)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="File analysis failed due to a server error.")
 
 
 @router.post("/debug-file", response_model=ChatResponse)
@@ -228,6 +248,7 @@ async def debug_file(
         if file_meta["user_id"] != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
             
+        _require_safe_file(file_meta)
         content = await file_service.read_file_content(file_meta["file_path"])
         
         if not chat_id:
@@ -272,9 +293,11 @@ async def debug_file(
             language=file_meta["language"],
             timestamp=datetime.now(timezone.utc)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Debug error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="File debug failed due to a server error.")
 
 
 @router.post("/stream-analyze-file")
@@ -296,6 +319,7 @@ async def stream_analyze_file(payload: dict, current_user_id: str = Depends(get_
         if file_meta["user_id"] != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
 
+        _require_safe_file(file_meta)
         content = await file_service.read_file_content(file_meta["file_path"])
         
         if not chat_id:
@@ -326,9 +350,11 @@ async def stream_analyze_file(payload: dict, current_user_id: str = Depends(get_
             headers={"X-Accel-Buffering": "no"}
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Stream analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="File stream analysis failed due to a server error.")
 
 
 @router.post("/stream-debug-file")
@@ -351,6 +377,7 @@ async def stream_debug_file(payload: dict, current_user_id: str = Depends(get_cu
         if file_meta["user_id"] != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
 
+        _require_safe_file(file_meta)
         content = await file_service.read_file_content(file_meta["file_path"])
         
         if not chat_id:
@@ -382,9 +409,11 @@ async def stream_debug_file(payload: dict, current_user_id: str = Depends(get_cu
             headers={"X-Accel-Buffering": "no"}
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Stream debug error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="File stream debug failed due to a server error.")
 
 
 @router.post("/generate-patch")
@@ -399,14 +428,17 @@ async def generate_patch(request: PatchRequest, current_user_id: str = Depends(g
         if file_meta["user_id"] != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
             
+        _require_safe_file(file_meta)
         content = await file_service.read_file_content(file_meta["file_path"])
         prompt = build_prompt("patch", file_meta["language"], code=content, error=request.issue)
         patch = await gemini_service.generate([{"role": "user", "parts": [{"text": prompt}]}])
         
         return {"patch": patch, "file_name": file_meta["file_name"]}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Patch error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate patch: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate patch due to a server error.")
 
 @router.get("/file/{file_id}")
 async def download_file(file_id: str, current_user_id: str = Depends(get_current_user_id)):
@@ -420,11 +452,14 @@ async def download_file(file_id: str, current_user_id: str = Depends(get_current
         if file_meta["user_id"] != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this file")
             
+        _require_safe_file(file_meta)
         from fastapi.responses import FileResponse
         return FileResponse(file_meta["file_path"])
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Download error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="File download failed due to a server error.")
 
 @router.get("/file-metadata/{file_id}")
 async def get_file_metadata(file_id: str, current_user_id: str = Depends(get_current_user_id)):

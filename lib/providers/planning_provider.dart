@@ -118,7 +118,7 @@ class PlanningProvider extends ChangeNotifier {
         body: jsonEncode({
           'user_id': userId,
           'prompt': prompt,
-          if (chatId != null) 'chat_id': chatId,
+          'chat_id': ?chatId,
         }),
       );
 
